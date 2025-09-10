@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✅ Consentimiento Odontológico - Consultorio Dental</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../css/forms.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container py-4">
+        <!-- Encabezado -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2>✅ Consentimiento Informado para Procedimientos y Tratamientos Odontológicos</h2>
+                <p class="text-muted">Este formulario es necesario para autorizar al dentista a realizar los procedimientos y tratamientos odontológicos descritos.</p>
+            </div>
+            <button class="btn btn-outline-secondary" onclick="window.history.back()">
+                ← Volver
+            </button>
+        </div>
+
+        <!-- Indicador de pasos -->
+        <div class="step-indicator">
+            <div class="text-center">
+                <div class="step active" id="step1-indicator">1</div>
+                <div class="step-label">Datos del Doctor</div>
+            </div>
+            <div class="text-center mx-4 d-flex align-items-center">
+                <div style="width: 60px; height: 2px; background-color: #dee2e6;"></div>
+            </div>
+            <div class="text-center">
+                <div class="step" id="step2-indicator">2</div>
+                <div class="step-label">Confirmación del Paciente</div>
+            </div>
+        </div>
+
+        <form id="consentForm">
+            <!-- Paso 1: Datos del Doctor -->
+            <div id="doctor-step" class="doctor-section">
+                <!-- Sección 1: Identificación del Paciente -->
+                <div class="card section-card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">1. Identificación del Paciente</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label required">Nombre del Paciente</label>
+                                <select class="form-select" required>
+                                    <option value="">Seleccionar paciente...</option>
+                                    <option value="1">Ana García López</option>
+                                    <option value="2">Carlos Rodríguez Martínez</option>
+                                    <option value="3">María Fernández Sánchez</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label required">Fecha</label>
+                                <input type="date" class="form-control" required>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Número de paciente</label>
+                                <input type="text" class="form-control" readonly placeholder="Se asigna automáticamente">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 2: Autorización del Tratamiento -->
+                <div class="card section-card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">2. Autorización del Tratamiento</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Por medio de la presente autorizo al C.D. Nancy Alejandra Hernández López para realizar el tratamiento o procedimiento clínico y/o quirúrgico denominado:</strong></p>
+                        <div class="mb-3">
+                            <textarea class="form-control" rows="3" placeholder="Especificar el tipo de tratamiento o procedimiento..." required></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 7: Acuerdo Económico -->
+                <div class="card section-card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">7. Acuerdo Económico</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label required">Monto acordado ($)</label>
+                                <input type="number" class="form-control" placeholder="0.00" min="0" step="0.01" required>
+                            </div>
+                        </div>
+                        <p>Se me ha informado, que en relación con los pagos estos comprenden única y exclusivamente el tratamiento en cuestión. Que toda cita no cancelada genera el pago de la misma, que todo pago no realizado en la fecha acordada genera cargos adicionales.</p>
+                    </div>
+                </div>
+
+                <!-- Sección 8: Ausencia a Citas -->
+                <div class="card section-card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">8. Ausencia a Citas</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Se me ha informado que en caso de no asistir a mis citas por un período de 
+                            <input type="number" class="form-control d-inline" style="width: 80px;" min="1" max="365" placeholder="30" required> 
+                            días, el tratamiento será suspendido y los resultados del mismo serán estrictamente mi responsabilidad, este párrafo se aplica también a la ausencia de pagos en las fechas convenidas.</p>
+                    </div>
+                </div>
+
+                <!-- Botón para siguiente paso -->
+                <div class="text-center mt-4">
+                    <button type="button" class="btn btn-primary btn-lg btn-step" onclick="showPatientStep()">
+                        Siguiente → Confirmación del Paciente
+                    </button>
+                </div>
+            </div>
+
+            <!-- Paso 2: Confirmación del Paciente -->
+            <div id="patient-step" class="patient-section">
+                <!-- Sección 1: Identificación del Paciente (solo lectura) -->
+                <div class="card section-card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">1. Identificación del Paciente</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Nombre del Paciente</label>
+                                <input type="text" class="form-control" value="Ana García López" readonly>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Fecha</label>
+                                <input type="text" class="form-control" value="2024-05-15" readonly>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Número de paciente</label>
+                                <input type="text" class="form-control" value="PAC-001" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 2: Autorización del Tratamiento (solo lectura) -->
+                <div class="card section-card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">2. Autorización del Tratamiento</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Tratamiento autorizado:</strong></p>
+                        <div class="mb-3">
+                            <textarea class="form-control" rows="2" readonly>Tratamiento de conducto en diente #16 con corona provisional</textarea>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="autorizacionCheck" required>
+                            <label class="form-check-label required" for="autorizacionCheck">
+                                He sido informado y autorizo el tratamiento especificado.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 3: Información sobre Tratamientos Alternativos y Riesgos -->
+                <div class="card section-card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">3. Información sobre Tratamientos Alternativos y Riesgos</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>El Dr(a). me ha informado los tratamientos alternos, características y riesgos de este tratamiento. Se me ha informado de manera clara y completa, la enfermedad bucal que padezco, así como los tratamientos que pudieran realizarse para su atención. También se me ha informado acerca de las posibles complicaciones que pudieran surgir a lo largo del tratamiento así como las molestias, riesgos posibles y beneficios que se pueden esperar, a su vez se me ha prevenido de las consecuencias de no seguirlo.</p>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="riesgosCheck" required>
+                            <label class="form-check-label required" for="riesgosCheck">
+                                He sido informado/a de manera clara y completa sobre los tratamientos alternativos, riesgos y beneficios asociados.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 4: Responsabilidad del Paciente -->
+                <div class="card section-card">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0">4. Responsabilidad del Paciente</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Expresto bajo protesta de decir la verdad que no he omitido o alterado datos al responder la historia clínica, específicamente en los puntos relacionados con: Alergias, automedicación, consumo de estimulantes o drogas, embarazo, trastornos presentes provocados por intervenciones anteriores (quirúrgicas o clínicas) o debidas a la administración de medicamentos, anestesia o presencia de trastornos tales como desmayos o hemorragias.</p>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="responsabilidadCheck" required>
+                            <label class="form-check-label required" for="responsabilidadCheck">
+                                Acepto haber respondido sinceramente a todas las preguntas de mi historia clínica.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 5: Consentimiento para Anestesia -->
+                <div class="card section-card">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">5. Consentimiento para Anestesia</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Doy el consentimiento para la administración de los anestésicos que se consideren necesarios, se me ha explicado y he comprendido que el tipo de anestesia, la técnica empleada y las molestias provocadas como resultado de su administración son temporales. Comprendo que cualquier forma de anestesia entraña un riesgo y la posibilidad de complicaciones, lesiones y muy raramente la muerte.</p>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="anestesiaCheck" required>
+                            <label class="form-check-label required" for="anestesiaCheck">
+                                Conozco y acepto los riesgos asociados a la anestesia y doy mi consentimiento para su uso.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 6: Condiciones Adicionales -->
+                <div class="card section-card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">6. Condiciones Adicionales</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Soy consciente de que, durante el tratamiento pueden darse condiciones imprevistas que requieran procedimientos diferentes a los propuestos. Por medio del presente documento, autorizo al Dr(a). y a sus colaboradores, a realizar estos procedimientos. La autorización que otorga este párrafo, se extiende hasta cualquier otra condición que requiera tratamiento y que no fuera conocida por el profesional y su equipo en el momento de iniciar el procedimiento, así como los costos que esto genera.</p>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="condicionesCheck" required>
+                            <label class="form-check-label required" for="condicionesCheck">
+                                Autorizo al dentista y su equipo a realizar ajustes necesarios en caso de emergencia o circunstancias imprevistas.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 7: Acuerdo Económico (solo lectura) -->
+                <div class="card section-card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">7. Acuerdo Económico</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Monto acordado:</strong> $8,500.00 MXN</p>
+                        <p>Se me ha informado, que en relación con los pagos estos comprenden única y exclusivamente el tratamiento en cuestión. Que toda cita no cancelada genera el pago de la misma, que todo pago no realizado en la fecha acordada genera cargos adicionales.</p>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="economicoCheck" required>
+                            <label class="form-check-label required" for="economicoCheck">
+                                He sido informado/a sobre las condiciones económicas y acepto cumplirlas.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 8: Ausencia a Citas (solo lectura) -->
+                <div class="card section-card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">8. Ausencia a Citas</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Se me ha informado que en caso de no asistir a mis citas por un período de <strong>30 días</strong>, el tratamiento será suspendido y los resultados del mismo serán estrictamente mi responsabilidad, este párrafo se aplica también a la ausencia de pagos en las fechas convenidas.</p>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="ausenciaCheck" required>
+                            <label class="form-check-label required" for="ausenciaCheck">
+                                Acepto las consecuencias de no asistir a las citas programadas.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 9: Responsabilidad Personal del Paciente -->
+                <div class="card section-card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">9. Responsabilidad Personal del Paciente</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Me hago solidariamente responsable del cuidado de mi boca, a través de una correcta higiene, el control de mi dieta, y el seguimiento de las indicaciones del profesional.</p>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="cuidadoCheck" required>
+                            <label class="form-check-label required" for="cuidadoCheck">
+                                Acepto estar responsable del cuidado de mi salud bucal según las indicaciones proporcionadas.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 10: Comprensión y Consentimiento Final -->
+                <div class="card section-card">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">10. Comprensión y Consentimiento Final</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Yo <input type="text" class="form-control d-inline" style="width: 200px;" placeholder="Nombre completo del paciente" required> he comprendido cabalmente el tipo de procedimiento y características de los materiales empleados para el mismo así como los alcances y limitaciones de estos, teniendo la completa libertad para pedir otra u otras opiniones profesionales, además se me han explicado de manera comprensible y en mi idioma los tratamientos alternos que pueden evitar el tratamiento antes mencionado así como sus inconvenientes y consecuencias. Avalo con mi firma o huella, bajo protesta de decir la verdad, todos los incisos de la presente responsabilidad informada.</p>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="finalCheck" required>
+                            <label class="form-check-label required" for="finalCheck">
+                                He leído, comprendido y acepto todas las cláusulas de este consentimiento informado.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 11: Firmas Electrónicas -->
+                <div class="card section-card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">11. Firmas Electrónicas</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-4">
+                                <label class="form-label required">Firma del Paciente</label>
+                                <div class="signature-area" onclick="alert('Funcionalidad de firma digital - próximamente')">
+                                    <span class="text-muted">Click para firmar</span>
+                                </div>
+                                <small class="text-muted">O subir imagen de firma</small>
+                                <input type="file" class="form-control mt-1" accept="image/*" required>
+                            </div>
+                            <div class="col-md-4 mb-4">
+                                <label class="form-label required">Firma del Dentista</label>
+                                <div class="signature-area" onclick="alert('Funcionalidad de firma digital - próximamente')">
+                                    <span class="text-muted">Click para firmar</span>
+                                </div>
+                                <small class="text-muted">O subir imagen de firma</small>
+                                <input type="file" class="form-control mt-1" accept="image/*" required>
+                            </div>
+                            <div class="col-md-4 mb-4">
+                                <label class="form-label required">Firma de un Testigo</label>
+                                <div class="signature-area" onclick="alert('Funcionalidad de firma digital - próximamente')">
+                                    <span class="text-muted">Click para firmar</span>
+                                </div>
+                                <small class="text-muted">O subir imagen de firma</small>
+                                <input type="file" class="form-control mt-1" accept="image/*" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones de Acción -->
+                <div class="text-center mt-4">
+                    <button type="button" class="btn btn-outline-secondary btn-lg me-2" onclick="showDoctorStep()">
+                        ← Volver
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-lg me-2">
+                        💾 Guardar Borrador
+                    </button>
+                    <button type="submit" class="btn btn-success btn-lg">
+                        📤 Enviar Formulario
+                    </button>
+                    <button type="button" class="btn btn-info btn-lg ms-2">
+                        🖨️ Descargar PDF
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/forms.js"></script>
+</body>
+</html>

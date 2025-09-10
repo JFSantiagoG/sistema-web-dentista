@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦷 Consultorio Dental</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .main-card {
+            height: 150px;
+            transition: transform 0.2s;
+        }
+        .main-card:hover {
+            transform: scale(1.02);
+        }
+        .main-card .card-body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .form-card {
+            height: 120px;
+        }
+        .form-card .card-body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <!-- Encabezado -->
+        <div class="text-center mb-5">
+            <h1 class="display-4">🦷 Consultorio Dental</h1>
+            <p class="lead">Sistema de gestión clínica dental</p>
+        </div>
+
+        <!-- Menú principal -->
+        <div class="row g-4 mb-5">
+            <div class="col-12 col-md-6">
+                <a href="agenda.html" class="card main-card text-decoration-none text-dark shadow-sm border-primary">
+                    <div class="card-body">
+                        <h2 class="card-title mb-2">📅 Agenda</h2>
+                        <p class="card-text text-muted">Gestión de citas y calendario</p>
+                    </div>
+                </a>
+            </div>
+            <div class="col-12 col-md-6">
+                <a href="pacientes.html" class="card main-card text-decoration-none text-dark shadow-sm border-success">
+                    <div class="card-body">
+                        <h2 class="card-title mb-2">👤 Pacientes</h2>
+                        <p class="card-text text-muted">Búsqueda y ficha de pacientes</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Sección de formularios (acceso directo) -->
+        <div class="text-center mb-4">
+            <h3>📋 Formularios Médicos</h3>
+            <p class="text-muted">Acceso rápido a los formularios más utilizados</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-6 col-md-4 col-lg-3">
+                <a href="menu-formularios.html" class="card form-card text-decoration-none text-dark shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">📋 Todos los Formularios</h5>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3">
+                <a href="forms/receta.html" class="card form-card text-decoration-none text-dark shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">💊 Receta Médica</h5>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3">
+                <a href="forms/presupuesto.html" class="card form-card text-decoration-none text-dark shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">💰 Presupuesto</h5>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3">
+                <a href="forms/evolucion.html" class="card form-card text-decoration-none text-dark shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">📋 Hoja de Evolución</h5>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Botón para ver todos los formularios -->
+        <div class="text-center mt-4">
+            <a href="menu-formularios.html" class="btn btn-outline-primary">
+                Ver todos los 11 formularios →
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

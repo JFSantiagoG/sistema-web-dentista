@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✅ Presupuesto Dental - Consultorio Dental</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../css/forms.css" rel="stylesheet"> <!-- CSS estandarizado -->
+    <style>
+        /* Estilos específicos para el presupuesto dental */
+        .dientes-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Línea central horizontal */
+        .linea-central {
+            width: 60%;
+            height: 2px;
+            background-color: black;
+            position: relative;
+            margin: 1% 5%; /* separa visualmente la línea del contenido */
+        }
+
+        /* Línea vertical */
+        .linea-vertical {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: black;
+        }
+
+        /* Etiquetas de derecha/izquierda */
+        .label-lado {
+            position: absolute;
+            font-weight: bold;
+        }
+
+        .label-derecho {
+            left: 10%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .label-izquierdo {
+            right: 10%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Etiquetas de superior/inferior */
+        .label-superior {
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            position: absolute;
+            font-weight: bold;
+        }
+
+        .label-inferior {
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            position: absolute;
+            font-weight: bold;
+        }
+
+        /* Fila de dientes */
+        .dientes-fila {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin: 5px 0;
+        }
+
+        .diente.tratamiento-asignado {
+            background-color: #28a745;
+        }
+
+        .dientes-label {
+            font-size: 12px;
+            font-weight: bold;
+            width: 50px;
+            text-align: center;
+        }
+
+        .diente {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #ccc; /* Color inicial (gris) */
+            margin: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .diente.tratamiento-asignado {
+            background-color: #28a745; /* Verde para tratamientos asignados */
+        }
+        .tratamientos-tabla {
+            margin-top: 2rem;
+        }
+        .tratamientos-tabla th, .tratamientos-tabla td {
+            text-align: center;
+        }
+        .general-treatments {
+            margin-top: 2rem;
+        }
+        .general-treatment-checkbox {
+            margin-right: 10px;
+        }
+        .calculator-section {
+            margin-top: 2rem;
+        }
+        .total-cost {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-4">
+        <!-- Encabezado -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2>✅ Presupuesto Dental</h2>
+                <p class="text-muted">Este formulario permite registrar los tratamientos dentales específicos para cada diente, así como tratamientos generales, y calcular el presupuesto total.</p>
+            </div>
+            <button class="btn btn-outline-secondary" onclick="window.history.back()">
+                ← Volver
+            </button>
+        </div>
+
+        <form id="presupuestoForm" class="step-form">
+            <!-- Sección 1: Identificación del Paciente -->
+            <div class="card section-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">1. Identificación del Paciente</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Nombre del Paciente</label>
+                            <select class="form-select" id="pacienteSelect" required>
+                                <option value="">Seleccionar paciente...</option>
+                                <option value="1">Ana García López</option>
+                                <option value="2">Carlos Rodríguez Martínez</option>
+                                <option value="3">María Fernández Sánchez</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label required">Fecha</label>
+                            <input type="date" class="form-control" id="fechaInput" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Número de paciente</label>
+                            <input type="text" class="form-control" id="numeroPacienteInput" readonly placeholder="Se asigna automáticamente">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección 2: Odontograma -->
+            <div class="card section-card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">2. Odontograma</h5>
+                </div>
+                <div class="card-body">
+                    <div class="dientes-container">
+                        <div class="label-superior">SUPERIOR</div>
+                        <div class="label-inferior">INFERIOR</div>
+                        <div class="label-derecho label-lado">DERECHO</div>
+                        <div class="label-izquierdo label-lado">IZQUIERDO</div>
+
+                        <div class="linea-vertical"></div>
+                        
+                        <!-- Arcada superior fila 1 -->
+                        <div class="dientes-fila">
+                            <div class="diente" data-diente="18"></div>
+                            <div class="diente" data-diente="17"></div>
+                            <div class="diente" data-diente="16"></div>
+                            <div class="diente" data-diente="15"></div>
+                            <div class="diente" data-diente="14"></div>
+                            <div class="diente" data-diente="13"></div>
+                            <div class="diente" data-diente="12"></div>
+                            <div class="diente" data-diente="11"></div>
+                            <div class="diente" data-diente="21"></div>
+                            <div class="diente" data-diente="22"></div>
+                            <div class="diente" data-diente="23"></div>
+                            <div class="diente" data-diente="24"></div>
+                            <div class="diente" data-diente="25"></div>
+                            <div class="diente" data-diente="26"></div>
+                            <div class="diente" data-diente="27"></div>
+                            <div class="diente" data-diente="28"></div>
+                        </div>
+
+                        <!-- Arcada superior fila 2 -->
+                        <div class="dientes-fila">
+                            <div class="diente" data-diente="55"></div>
+                            <div class="diente" data-diente="54"></div>
+                            <div class="diente" data-diente="53"></div>
+                            <div class="diente" data-diente="52"></div>
+                            <div class="diente" data-diente="51"></div>
+                            <div class="diente" data-diente="61"></div>
+                            <div class="diente" data-diente="62"></div>
+                            <div class="diente" data-diente="63"></div>
+                            <div class="diente" data-diente="64"></div>
+                            <div class="diente" data-diente="65"></div>
+                        </div>
+
+                        <div class="linea-central"></div>
+
+                        <!-- Arcada inferior fila 1 -->
+                        <div class="dientes-fila">
+                            <div class="diente" data-diente="85"></div>
+                            <div class="diente" data-diente="84"></div>
+                            <div class="diente" data-diente="83"></div>
+                            <div class="diente" data-diente="82"></div>
+                            <div class="diente" data-diente="81"></div>
+                            <div class="diente" data-diente="71"></div>
+                            <div class="diente" data-diente="72"></div>
+                            <div class="diente" data-diente="73"></div>
+                            <div class="diente" data-diente="74"></div>
+                            <div class="diente" data-diente="75"></div>
+                        </div>
+
+                        <!-- Arcada inferior fila 2 -->
+                        <div class="dientes-fila">
+                            <div class="diente" data-diente="48"></div>
+                            <div class="diente" data-diente="47"></div>
+                            <div class="diente" data-diente="46"></div>
+                            <div class="diente" data-diente="45"></div>
+                            <div class="diente" data-diente="44"></div>
+                            <div class="diente" data-diente="43"></div>
+                            <div class="diente" data-diente="42"></div>
+                            <div class="diente" data-diente="41"></div>
+                            <div class="diente" data-diente="31"></div>
+                            <div class="diente" data-diente="32"></div>
+                            <div class="diente" data-diente="33"></div>
+                            <div class="diente" data-diente="34"></div>
+                            <div class="diente" data-diente="35"></div>
+                            <div class="diente" data-diente="36"></div>
+                            <div class="diente" data-diente="37"></div>
+                            <div class="diente" data-diente="38"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sección 3: Tabla de Tratamientos -->
+            <div class="card section-card tratamientos-tabla">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">3. Detalle de Tratamientos por Diente</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Diente</th>
+                                <th>Tratamiento</th>
+                                <th>Costo ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tratamientosTablaBody">
+                            <!-- Filas se agregan dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Sección 4: Tratamientos Generales -->
+            <div class="card section-card general-treatments">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">4. Tratamientos Generales</h5>
+                </div>
+                <div class="card-body">
+                    <p>Seleccione los tratamientos generales que no están asociados a un diente específico:</p>
+                    <div class="form-check">
+                        <input class="form-check-input general-treatment-checkbox" type="checkbox" id="limpiezaCheckbox" data-costo="500">
+                        <label class="form-check-label" for="limpiezaCheckbox">
+                            Limpieza
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input general-treatment-checkbox" type="checkbox" id="resinaCheckbox" data-costo="1500">
+                        <label class="form-check-label" for="resinaCheckbox">
+                            Resina
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input general-treatment-checkbox" type="checkbox" id="incrustacionesMetlicasCheckbox" data-costo="1200">
+                        <label class="form-check-label" for="incrustacionesMetlicasCheckbox">
+                            Incrustaciones Metálicas (INC. MET.)
+                        </label>
+                    </div>
+                    <!-- Agregar más tratamientos generales aquí -->
+                </div>
+            </div>
+
+            <!-- Sección 5: Calculadora de Presupuesto -->
+            <div class="card section-card calculator-section">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">5. Calculadora de Presupuesto</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Detalles del Presupuesto:</strong></p>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Tratamiento</th>
+                                <th>Costo ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="costosTablaBody">
+                            <!-- Filas se agregan dinámicamente -->
+                        </tbody>
+                    </table>
+                    <div class="mt-3">
+                        <label for="mesesInput">Cantidad de meses para dividir el pago:</label>
+                        <input type="number" class="form-control" id="mesesInput" min="1" value="1">
+                    </div>
+                    <div class="mt-3">
+                        <p><strong>Presupuesto Total:</strong> <span id="totalCosto">$0.00</span></p>
+                        <p><strong>Total Mensual:</strong> <span id="mensualidad">$0.00</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="text-center mt-4">
+                <button type="button" class="btn btn-outline-secondary btn-lg me-2">
+                    💾 Guardar Borrador
+                </button>
+                <button type="submit" class="btn btn-success btn-lg">
+                    📤 Enviar Formulario
+                </button>
+                <button type="button" class="btn btn-info btn-lg ms-2">
+                    🖨️ Descargar PDF
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Scripts estandarizados -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/forms.js"></script> <!-- JS estandarizado -->
+    <script>
+        // Variables globales
+        const tratamientosPorDiente = {};
+        const tratamientosGenerales = [];
+        let totalCosto = 0;
+
+        // Función para actualizar la tabla de tratamientos
+        function actualizarTablaTratamientos() {
+            const tbody = document.getElementById('tratamientosTablaBody');
+            tbody.innerHTML = '';
+
+            Object.entries(tratamientosPorDiente).forEach(([dienteId, tratamiento]) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${dienteId}</td>
+                    <td>${tratamiento.nombre || 'Sin tratamiento'}</td>
+                    <td>${tratamiento.costo || '$0.00'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Función para actualizar la calculadora de presupuesto
+        function actualizarCalculadora() {
+            const costosTablaBody = document.getElementById('costosTablaBody');
+            costosTablaBody.innerHTML = '';
+
+            // Agregar tratamientos por diente
+            Object.values(tratamientosPorDiente).forEach(tratamiento => {
+                if (tratamiento.costo > 0) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${tratamiento.nombre}</td>
+                        <td>${tratamiento.costo}</td>
+                    `;
+                    costosTablaBody.appendChild(row);
+                }
+            });
+
+            // Agregar tratamientos generales
+            tratamientosGenerales.forEach(tratamiento => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${tratamiento.nombre}</td>
+                    <td>${tratamiento.costo}</td>
+                `;
+                costosTablaBody.appendChild(row);
+            });
+
+            // Calcular el total
+            totalCosto = Object.values(tratamientosPorDiente)
+                .filter(t => t.costo > 0)
+                .reduce((acc, t) => acc + parseFloat(t.costo), 0);
+
+            tratamientosGenerales.forEach(t => {
+                totalCosto += parseFloat(t.costo);
+            });
+
+            document.getElementById('totalCosto').textContent = `$${totalCosto.toFixed(2)}`;
+
+            // Calcular mensualidad
+            const meses = parseInt(document.getElementById('mesesInput').value) || 1;
+            const mensualidad = totalCosto / meses;
+            document.getElementById('mensualidad').textContent = `$${mensualidad.toFixed(2)}`;
+        }
+
+        // Manejar clic en dientes
+        document.querySelectorAll('.diente').forEach(diente => {
+            diente.addEventListener('click', () => {
+                const dienteId = diente.getAttribute('data-diente');
+                const tratamiento = prompt(`Selecciona el tratamiento ${dienteId}:`);
+                const costo = parseFloat(prompt(`Ingresa el costo ${dienteId}:`));
+
+                if (tratamiento && !isNaN(costo)) {
+                    tratamientosPorDiente[dienteId] = { nombre: tratamiento, costo };
+                    diente.classList.add('tratamiento-asignado');
+                    actualizarTablaTratamientos();
+                    actualizarCalculadora();
+                }
+            });
+        });
+
+        // Manejar checkboxes de tratamientos generales
+        document.querySelectorAll('.general-treatment-checkbox').forEach(check => {
+            check.addEventListener('change', () => {
+                const tratamientoId = check.id;
+                const costo = parseFloat(check.dataset.costo);
+                const nombre = check.nextElementSibling.textContent.trim();
+
+                if (check.checked) {
+                    tratamientosGenerales.push({ nombre, costo });
+                } else {
+                    tratamientosGenerales = tratamientosGenerales.filter(t => t.nombre !== nombre);
+                }
+
+                actualizarCalculadora();
+            });
+        });
+
+        // Validación del formulario
+        document.getElementById('presupuestoForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Validar campos requeridos
+            const pacienteSelect = document.getElementById('pacienteSelect');
+            const fechaInput = document.getElementById('fechaInput');
+
+            if (!pacienteSelect.value || !fechaInput.value) {
+                alert('❌ Por favor, complete todos los campos requeridos antes de enviar.');
+                return;
+            }
+
+            // Mostrar mensaje de éxito
+            alert('✅ Formulario enviado correctamente!\n(En una implementación real, aquí se guardarían los datos)');
+        });
+    </script>
+</body>
+</html>
