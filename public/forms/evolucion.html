@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📋 Hoja de Evolución - Consultorio Dental</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../css/forms.css" rel="stylesheet">
+    <style>
+        .header-profesional {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+        .evolucion-table th {
+            background-color: #0d6efd;
+            color: white;
+        }
+        .signature-area {
+            border: 2px dashed #ccc;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background-color: #f8f9fa;
+            border-radius: 0.375rem;
+        }
+        .signature-area:hover {
+            background-color: #e9ecef;
+        }
+        .btn-add-row {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        .btn-add-row:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+        }
+        .btn-remove-row {
+            background-color: #dc3545;
+            border-color: #dc3545;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+        .btn-remove-row:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        .date-filter-section {
+            background-color: #e9ecef;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-4">
+        <!-- Encabezado -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2>📋 Hoja de Evolución Clínica</h2>
+                <p class="text-muted">Este formulario registra las evoluciones del paciente durante el tratamiento dental, permitiendo anotar observaciones, tratamientos realizados, costos, próximas citas y firmas.</p>
+            </div>
+            <button class="btn btn-outline-secondary" onclick="window.history.back()">
+                ← Volver
+            </button>
+        </div>
+
+        <!-- Sección de Identificación del Profesional -->
+        <div class="header-profesional mb-4">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Información del Dentista</h5>
+                    <p class="mb-1"><strong>Nombre completo:</strong> Cirujano Dentista Nancy A. Hernández López</p>
+                    <p class="mb-1"><strong>Especialidad:</strong> Especialista en Ortodoncia y Ortopedia Maxilar</p>
+                    <p class="mb-1"><strong>Cédulas:</strong> CED. 4680024, CED. ESP. 7817313</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-1"><strong>Dirección:</strong> Puerto Ciudad Madero 148, Casas Alemán, G.A.M.</p>
+                    <p class="mb-1"><strong>Teléfono:</strong> 56 30 54 49 81</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección 1: Identificación del Paciente -->
+        <div class="card section-card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Identificación del Paciente</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label required">Nombre del Paciente</label>
+                        <select class="form-select" id="pacienteSelect" required>
+                            <option value="">Seleccionar paciente...</option>
+                            <option value="1">Ana García López</option>
+                            <option value="2">Carlos Rodríguez Martínez</option>
+                            <option value="3">María Fernández Sánchez</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Número de paciente</label>
+                        <input type="text" class="form-control" id="numeroPacienteInput" readonly placeholder="Se asigna automáticamente">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Fecha de Registro</label>
+                        <input type="text" class="form-control" id="fechaRegistroInput" readonly>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección de Filtros -->
+        <div class="date-filter-section">
+            <div class="row">
+                <div class="col-md-5">
+                    <label class="form-label">Filtrar por rango de fechas:</label>
+                    <div class="input-group">
+                        <input type="date" class="form-control" id="fechaInicio">
+                        <span class="input-group-text">a</span>
+                        <input type="date" class="form-control" id="fechaFin">
+                    </div>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-outline-primary me-2" onclick="filtrarPorFechas()">
+                        🔍 Filtrar
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="limpiarFiltros()">
+                        🔄 Limpiar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección 2: Tabla de Evolución -->
+        <div class="card section-card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Registro de Evolución Clínica</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered evolucion-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tratamiento</th>
+                                <th>Costo ($)</th>
+                                <th>A/C</th>
+                                <th>Próxima cita y TX a realizar</th>
+                                <th>Firma del Paciente</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="evolucionTableBody">
+                            <!-- Las filas se agregarán dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <button type="button" class="btn btn-add-row btn-lg" onclick="agregarFila()">
+                        ➕ Agregar Nueva Evolución
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="text-center mt-4">
+            <button type="button" class="btn btn-outline-primary btn-lg me-2">
+                💾 Guardar Borrador
+            </button>
+            <button type="button" class="btn btn-success btn-lg me-2" onclick="guardarEvoluciones()">
+                📤 Enviar Formulario
+            </button>
+            <button type="button" class="btn btn-info btn-lg">
+                🖨️ Descargar PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal para firma digital (simulado) -->
+    <div class="modal fade" id="firmaModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Firma del Paciente</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="filaFirmaActual">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Opción 1: Firmar digitalmente</label>
+                        <div class="signature-area" onclick="alert('Funcionalidad de firma digital - próximamente')">
+                            <span class="text-muted">Click para firmar aquí</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Opción 2: Subir imagen de firma</label>
+                        <input type="file" class="form-control" id="imagenFirma" accept="image/*">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="guardarFirma()">
+                        Guardar Firma
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Variables globales
+        let evoluciones = [];
+        let contadorFilas = 0;
+        let filaFirmaActual = null;
+        const firmaModal = new bootstrap.Modal(document.getElementById('firmaModal'));
+
+        // Inicializar fecha de registro
+        document.addEventListener('DOMContentLoaded', function() {
+            const hoy = new Date().toISOString().split('T')[0];
+            document.getElementById('fechaRegistroInput').value = hoy;
+            
+            // Agregar primera fila vacía
+            agregarFila();
+        });
+
+        // Función para agregar nueva fila
+        function agregarFila() {
+            contadorFilas++;
+            const tbody = document.getElementById('evolucionTableBody');
+            const filaId = `fila-${contadorFilas}`;
+            
+            const row = document.createElement('tr');
+            row.id = filaId;
+            row.innerHTML = `
+                <td>
+                    <input type="date" class="form-control form-control-sm required-field" required>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm tratamiento-select">
+                        <option value="">Seleccionar tratamiento...</option>
+                        <option value="Limpieza">Limpieza</option>
+                        <option value="Resina">Resina</option>
+                        <option value="Ortodoncia">Ortodoncia</option>
+                        <option value="Cirugía">Cirugía</option>
+                        <option value="Endodoncia">Endodoncia</option>
+                        <option value="Corona">Corona</option>
+                        <option value="Extracción">Extracción</option>
+                        <option value="Blanqueamiento">Blanqueamiento</option>
+                        <option value="Otro">Otro (especificar)</option>
+                    </select>
+                    <input type="text" class="form-control form-control-sm mt-1 otro-tratamiento" placeholder="Especificar tratamiento..." style="display: none;">
+                </td>
+                <td>
+                    <input type="number" class="form-control form-control-sm costo-input" placeholder="0.00" min="0" step="0.01">
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm" placeholder="Antecedentes/Comentarios">
+                </td>
+                <td>
+                    <textarea class="form-control form-control-sm" rows="2" placeholder="Próxima cita y tratamiento a realizar..."></textarea>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-outline-secondary btn-sm w-100 firma-btn" onclick="abrirModalFirma('${filaId}')">
+                        📝 Firmar
+                    </button>
+                    <div class="firma-indicador mt-1 text-success" style="display: none; font-size: 0.8rem;">
+                        ✅ Firmado
+                    </div>
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-remove-row" onclick="eliminarFila('${filaId}')" title="Eliminar entrada">
+                        🗑️
+                    </button>
+                </td>
+            `;
+            
+            tbody.appendChild(row);
+            
+            // Agregar evento para mostrar campo "Otro" cuando se seleccione
+            const tratamientoSelect = row.querySelector('.tratamiento-select');
+            const otroInput = row.querySelector('.otro-tratamiento');
+            
+            tratamientoSelect.addEventListener('change', function() {
+                if (this.value === 'Otro') {
+                    otroInput.style.display = 'block';
+                } else {
+                    otroInput.style.display = 'none';
+                }
+            });
+        }
+
+        // Función para eliminar fila
+        function eliminarFila(filaId) {
+            if (confirm('¿Está seguro de que desea eliminar esta entrada de evolución?')) {
+                const row = document.getElementById(filaId);
+                if (row) {
+                    row.remove();
+                }
+            }
+        }
+
+        // Función para abrir modal de firma
+        function abrirModalFirma(filaId) {
+            filaFirmaActual = filaId;
+            document.getElementById('filaFirmaActual').value = filaId;
+            document.getElementById('imagenFirma').value = '';
+            firmaModal.show();
+        }
+
+        // Función para guardar firma
+        function guardarFirma() {
+            const imagenFirma = document.getElementById('imagenFirma');
+            if (imagenFirma.files.length > 0 || confirm('¿Desea guardar la firma digital?')) {
+                // Actualizar indicador de firma en la fila
+                const fila = document.getElementById(filaFirmaActual);
+                if (fila) {
+                    const firmaBtn = fila.querySelector('.firma-btn');
+                    const firmaIndicador = fila.querySelector('.firma-indicador');
+                    
+                    firmaBtn.style.display = 'none';
+                    firmaIndicador.style.display = 'block';
+                }
+                
+                firmaModal.hide();
+                alert('✅ Firma guardada correctamente');
+            }
+        }
+
+        // Función para guardar todas las evoluciones
+        function guardarEvoluciones() {
+            // Validar campos requeridos
+            const requiredFields = document.querySelectorAll('.required-field');
+            let allValid = true;
+            
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    allValid = false;
+                    field.classList.add('is-invalid');
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+            
+            if (!allValid) {
+                alert('❌ Por favor, complete todos los campos requeridos (fecha) en cada entrada.');
+                return;
+            }
+            
+            // Recolectar datos
+            const filas = document.querySelectorAll('#evolucionTableBody tr');
+            const evolucionesData = [];
+            
+            filas.forEach(fila => {
+                const fecha = fila.querySelector('input[type="date"]').value;
+                const tratamientoSelect = fila.querySelector('.tratamiento-select');
+                const otroTratamiento = fila.querySelector('.otro-tratamiento');
+                const costo = fila.querySelector('.costo-input').value;
+                const ac = fila.querySelector('input[placeholder="Antecedentes/Comentarios"]').value;
+                const proximaCita = fila.querySelector('textarea').value;
+                const tieneFirma = fila.querySelector('.firma-indicador').style.display !== 'none';
+                
+                let tratamiento = tratamientoSelect.value;
+                if (tratamiento === 'Otro' && otroTratamiento.value.trim()) {
+                    tratamiento = otroTratamiento.value.trim();
+                }
+                
+                evolucionesData.push({
+                    fecha,
+                    tratamiento,
+                    costo: costo || 0,
+                    ac,
+                    proximaCita,
+                    tieneFirma
+                });
+            });
+            
+            if (evolucionesData.length === 0) {
+                alert('❌ No hay entradas de evolución para guardar.');
+                return;
+            }
+            
+            // Ordenar por fecha (más reciente primero)
+            evolucionesData.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+            
+            console.log('Evoluciones guardadas:', evolucionesData);
+            alert('✅ Hoja de evolución guardada correctamente!\n(En una implementación real, aquí se guardarían los datos)');
+        }
+
+        // Función para filtrar por fechas
+        function filtrarPorFechas() {
+            const fechaInicio = document.getElementById('fechaInicio').value;
+            const fechaFin = document.getElementById('fechaFin').value;
+            
+            if (!fechaInicio || !fechaFin) {
+                alert('❌ Por favor, seleccione ambas fechas para filtrar.');
+                return;
+            }
+            
+            if (new Date(fechaInicio) > new Date(fechaFin)) {
+                alert('❌ La fecha de inicio no puede ser posterior a la fecha de fin.');
+                return;
+            }
+            
+            const filas = document.querySelectorAll('#evolucionTableBody tr');
+            filas.forEach(fila => {
+                const fechaFila = fila.querySelector('input[type="date"]').value;
+                if (fechaFila) {
+                    const fecha = new Date(fechaFila);
+                    const inicio = new Date(fechaInicio);
+                    const fin = new Date(fechaFin);
+                    
+                    if (fecha >= inicio && fecha <= fin) {
+                        fila.style.display = '';
+                    } else {
+                        fila.style.display = 'none';
+                    }
+                }
+            });
+            
+            alert(`✅ Filtrado aplicado: ${Array.from(filas).filter(f => f.style.display !== 'none').length} entradas encontradas.`);
+        }
+
+        // Función para limpiar filtros
+        function limpiarFiltros() {
+            document.getElementById('fechaInicio').value = '';
+            document.getElementById('fechaFin').value = '';
+            
+            const filas = document.querySelectorAll('#evolucionTableBody tr');
+            filas.forEach(fila => {
+                fila.style.display = '';
+            });
+        }
+
+        // Validación del formulario al enviar
+        document.addEventListener('submit', function(e) {
+            e.preventDefault();
+            guardarEvoluciones();
+        });
+    </script>
+</body>
+</html>
