@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📋 Hoja de Evolución - Consultorio Dental</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../css/forms.css" rel="stylesheet">
+  <link href="../css/evolucion.css" rel="stylesheet"> <!-- Tu CSS separado -->
+</head>
+<body class="bg-light">
+  <div class="container py-4">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h2>📋 Hoja de Evolución Clínica</h2>
+        <p class="text-muted">
+          Este formulario registra las evoluciones del paciente durante el tratamiento dental, 
+          permitiendo anotar observaciones, tratamientos realizados, costos, próximas citas y firmas.
+        </p>
+      </div>
+      <button class="btn btn-outline-secondary" onclick="window.history.back()">← Volver</button>
+    </div>
+
+    <!-- Sección de Identificación del Profesional -->
+    <div class="header-profesional mb-4">
+      <div class="row">
+        <div class="col-md-6">
+          <h5>Información del Dentista</h5>
+          <p class="mb-1"><strong>Nombre completo:</strong> Cirujano Dentista Nancy A. Hernández López</p>
+          <p class="mb-1"><strong>Especialidad:</strong> Especialista en Ortodoncia y Ortopedia Maxilar</p>
+          <p class="mb-1"><strong>Cédulas:</strong> CED. 4680024, CED. ESP. 7817313</p>
+        </div>
+        <div class="col-md-6">
+          <p class="mb-1"><strong>Dirección:</strong> Puerto Ciudad Madero 148, Casas Alemán, G.A.M.</p>
+          <p class="mb-1"><strong>Teléfono:</strong> 56 30 54 49 81</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección 1: Identificación del Paciente -->
+    <div class="card section-card mb-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Identificación del Paciente</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label required">Nombre del Paciente</label>
+            <select class="form-select" id="pacienteSelect" required>
+              <option value="">Seleccionar paciente...</option>
+              <option value="1">Ana García López</option>
+              <option value="2">Carlos Rodríguez Martínez</option>
+              <option value="3">María Fernández Sánchez</option>
+            </select>
+          </div>
+          <div class="col-md-3 mb-3">
+            <label class="form-label">Número de paciente</label>
+            <input type="text" class="form-control" id="numeroPacienteInput" readonly placeholder="Se asigna automáticamente">
+          </div>
+          <div class="col-md-3 mb-3">
+            <label class="form-label">Fecha de Registro</label>
+            <input type="text" class="form-control" id="fechaRegistroInput" readonly>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección de Filtros -->
+    <div class="date-filter-section">
+      <div class="row">
+        <div class="col-md-5">
+          <label class="form-label">Filtrar por rango de fechas:</label>
+          <div class="input-group">
+            <input type="date" class="form-control" id="fechaInicio">
+            <span class="input-group-text">a</span>
+            <input type="date" class="form-control" id="fechaFin">
+          </div>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <button class="btn btn-outline-primary me-2" onclick="filtrarPorFechas()">🔍 Filtrar</button>
+          <button class="btn btn-outline-secondary" onclick="limpiarFiltros()">🔄 Limpiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección 2: Tabla de Evolución -->
+    <div class="card section-card">
+      <div class="card-header bg-info text-white">
+        <h5 class="mb-0">Registro de Evolución Clínica</h5>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-bordered evolucion-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tratamiento</th>
+                <th>Costo ($)</th>
+                <th>A/C</th>
+                <th>Próxima cita y TX a realizar</th>
+                <th>Firma del Paciente</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="evolucionTableBody">
+              <!-- Filas dinámicas -->
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="text-center mt-3">
+          <button type="button" class="btn btn-add-row btn-lg" onclick="agregarFila()">➕ Agregar Nueva Evolución</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botones de Acción -->
+    <div class="text-center mt-4">
+      <button type="button" class="btn btn-outline-primary btn-lg me-2">💾 Guardar Borrador</button>
+      <button type="button" class="btn btn-success btn-lg me-2" onclick="guardarEvoluciones()">📤 Enviar Formulario</button>
+      <button type="button" class="btn btn-info btn-lg" onclick="generarPDFEvolucion()">🖨️ Descargar PDF</button>
+    </div>
+  </div>
+
+  <!-- Modal para firma digital -->
+  <div class="modal fade" id="firmaModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">Firma del Paciente</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="filaFirmaActual">
+          <div class="mb-3">
+            <label class="form-label">Opción 1: Firmar digitalmente</label>
+            <div class="signature-area" onclick="alert('Funcionalidad de firma digital - próximamente')">
+              <span class="text-muted">Click para firmar aquí</span>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Opción 2: Subir imagen de firma</label>
+            <input type="file" class="form-control" id="imagenFirma" accept="image/*">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="guardarFirma()">Guardar Firma</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/evolucion.js"></script>
+</body>
+</html>
