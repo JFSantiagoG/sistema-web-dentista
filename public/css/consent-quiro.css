@@ -1,3 +1,4 @@
+/* === Indicador de pasos === */
 .step-indicator {
   display: flex;
   justify-content: center;
@@ -32,6 +33,36 @@
   background-color: #dee2e6;
 }
 
+/* === Tarjetas de secciones === */
 .section-card {
   margin-bottom: 20px;
+  border-radius: 10px;
 }
+/* Igual que receta/evolución */
+.firma-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+#signature-pad-paciente,
+#signature-pad-medico {
+  width: 360px;
+  height: 120px;
+  border: 2px dashed #6c757d;
+  border-radius: 8px;
+  background: #fff;
+  cursor: crosshair;
+  display: block;
+}
+
+.overlay-text {
+  position: absolute;
+  color: #6c757d;
+  font-size: 16px;
+  font-weight: bold;
+  pointer-events: none; /* No bloquea el click */
+  text-align: center;
+}
+

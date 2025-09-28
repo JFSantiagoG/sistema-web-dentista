@@ -57,6 +57,7 @@ document.getElementById("consentForm").addEventListener("submit", function (e) {
 
 
 //Generar PDF
+//Generar PDF
 document.querySelector('.btn-info').addEventListener('click', async () => {
   const nombrePaciente = document.getElementById('confirmNombrePaciente').value;
   const fecha = document.getElementById('confirmFecha').value;
@@ -65,15 +66,16 @@ document.querySelector('.btn-info').addEventListener('click', async () => {
   const monto = document.getElementById('confirmMonto').textContent;
   const ausencia = document.getElementById('confirmAusencia').textContent;
 
+  // 👇 Capturar firma del paciente
+  const canvas = document.getElementById('signature-pad');
+  const firmaPaciente = canvas ? canvas.toDataURL("image/png") : null;
+
   const data = {
-    paciente: {
-      nombre: nombrePaciente,
-      fecha,
-      numeroPaciente
-    },
+    paciente: { nombre: nombrePaciente, fecha, numeroPaciente },
     tratamiento,
     monto,
-    ausencia
+    ausencia,
+    firmaPaciente // 👈 enviamos la firma al backend
   };
 
   const res = await fetch('/api/pdf/consentimiento/generate', {

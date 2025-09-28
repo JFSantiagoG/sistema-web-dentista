@@ -1,4 +1,4 @@
-// Ir al paso 2
+// === Paso 1 → Paso 2 ===
 function showPatientStep() {
   const pacienteSelect = document.getElementById("pacienteSelect");
   const nombrePaciente = pacienteSelect.options[pacienteSelect.selectedIndex].text;
@@ -9,7 +9,7 @@ function showPatientStep() {
   const recuperacion = document.getElementById("recuperacionInput").value;
   const acuerdo = document.getElementById("acuerdoInput").value;
 
-  // Pasar datos a confirmación
+  // Pasar datos a la confirmación
   document.getElementById("confirmNombrePaciente").value = nombrePaciente;
   document.getElementById("confirmFecha").value = fechaRegistro;
   document.getElementById("confirmNumeroPaciente").value = numeroPaciente;
@@ -25,7 +25,7 @@ function showPatientStep() {
   document.getElementById("step2-indicator").classList.add("active");
 }
 
-// Volver al paso 1
+// === Volver a paso 1 ===
 function showDoctorStep() {
   document.getElementById("patient-step").style.display = "none";
   document.getElementById("doctor-step").style.display = "block";
@@ -33,51 +33,67 @@ function showDoctorStep() {
   document.getElementById("step1-indicator").classList.add("active");
 }
 
-// Enviar formulario
+// === Enviar formulario ===
 document.getElementById("consentForm").addEventListener("submit", function (e) {
   e.preventDefault();
 
   const data = {
-    nombrePaciente: document.getElementById("confirmNombrePaciente").value,
-    fechaRegistro: document.getElementById("confirmFecha").value,
-    numeroPaciente: document.getElementById("confirmNumeroPaciente").value,
+    paciente: {
+      nombre: document.getElementById("confirmNombrePaciente").value,
+      fecha: document.getElementById("confirmFecha").value,
+      numeroPaciente: document.getElementById("confirmNumeroPaciente").value
+    },
+    historiaClinica: document.getElementById("historiaCheck").checked,
+    anestesia: document.getElementById("anestesiaCheck").checked,
     pronostico: document.getElementById("confirmPronostico").value,
     condiciones: document.getElementById("confirmCondiciones").value,
+    pronosticoAceptado: document.getElementById("pronosticoCheck").checked,
     recuperacion: document.getElementById("confirmRecuperacion").textContent,
+    recuperacionAceptada: document.getElementById("recuperacionCheck").checked,
+    responsabilidad: document.getElementById("responsabilidadCheck").checked,
     acuerdo: document.getElementById("confirmAcuerdo").textContent,
+    acuerdoAceptado: document.getElementById("economicoCheck").checked,
+
+    // ✅ Firmas
+    firmaPaciente: typeof getSignaturePadPaciente === "function" ? getSignaturePadPaciente() : null,
+    firmaMedico: typeof getSignaturePadMedico === "function" ? getSignaturePadMedico() : null
   };
 
   console.log("📄 Datos capturados:", data);
-  alert("Formulario enviado (simulación). Revisa la consola.");
+  alert("Formulario enviado. Revisa la consola.");
 });
 
-//Generar PDF
-document.querySelector('.btn-info').addEventListener('click', async () => {
+// === Generar PDF ===
+document.querySelector(".btn-info").addEventListener("click", async () => {
   const data = {
     paciente: {
-      nombre: document.getElementById('confirmNombrePaciente').value,
-      fecha: document.getElementById('confirmFecha').value,
-      numeroPaciente: document.getElementById('confirmNumeroPaciente').value
+      nombre: document.getElementById("confirmNombrePaciente").value,
+      fecha: document.getElementById("confirmFecha").value,
+      numeroPaciente: document.getElementById("confirmNumeroPaciente").value
     },
-    historiaClinica: document.getElementById('historiaCheck').checked,
-    anestesia: document.getElementById('anestesiaCheck').checked,
-    pronostico: document.getElementById('confirmPronostico').value,
-    condiciones: document.getElementById('confirmCondiciones').value,
-    pronosticoAceptado: document.getElementById('pronosticoCheck').checked,
-    recuperacion: document.getElementById('confirmRecuperacion').textContent,
-    recuperacionAceptada: document.getElementById('recuperacionCheck').checked,
-    responsabilidad: document.getElementById('responsabilidadCheck').checked,
-    acuerdo: document.getElementById('confirmAcuerdo').textContent,
-    acuerdoAceptado: document.getElementById('economicoCheck').checked
+    historiaClinica: document.getElementById("historiaCheck").checked,
+    anestesia: document.getElementById("anestesiaCheck").checked,
+    pronostico: document.getElementById("confirmPronostico").value,
+    condiciones: document.getElementById("confirmCondiciones").value,
+    pronosticoAceptado: document.getElementById("pronosticoCheck").checked,
+    recuperacion: document.getElementById("confirmRecuperacion").textContent,
+    recuperacionAceptada: document.getElementById("recuperacionCheck").checked,
+    responsabilidad: document.getElementById("responsabilidadCheck").checked,
+    acuerdo: document.getElementById("confirmAcuerdo").textContent,
+    acuerdoAceptado: document.getElementById("economicoCheck").checked,
+
+    // ✅ Firmas en base64
+    firmaPaciente: typeof getSignaturePadPaciente === "function" ? getSignaturePadPaciente() : null,
+    firmaMedico: typeof getSignaturePadMedico === "function" ? getSignaturePadMedico() : null
   };
 
-  const res = await fetch('/api/pdf/quirurgico/generate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  const res = await fetch("/api/pdf/quirurgico/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data)
   });
 
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+  window.open(url, "_blank");
 });

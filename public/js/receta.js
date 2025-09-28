@@ -1,16 +1,18 @@
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('recetaForm');
+  const canvas = document.getElementById('signature-pad');
+
   form.addEventListener('submit', async e => {
     e.preventDefault();
 
-    // 1. Armar JSON
     const data = {
       nombrePaciente: form.nombrePaciente.value,
       fecha:           form.fecha.value,
       edad:            form.edad.value,
       nombreMedico:    form.nombreMedico.value,
       cedula:          form.cedula.value,
-      medicamentos:    []
+      medicamentos:    [],
+      firmaMedico:     canvas ? canvas.toDataURL("image/png") : null
     };
 
     document.querySelectorAll('#tablaMedicamentos tbody tr')
@@ -24,10 +26,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
 
-    console.log('Datos a enviar:', data);
+    // ✅ Log limpio (sin firma)
+    const { firmaMedico, ...dataSinFirma } = data;
+    console.log('Datos a enviar (sin firma):', dataSinFirma);
+
+    if (firmaMedico) {
+      const bytes = Math.round((firmaMedico.length * 3 / 4) / 1024);
+      console.log(`🖊️ Firma presente (aprox. ${bytes} KB)`);
+    } else {
+      console.log('❌ Firma no presente');
+    }
 
     try {
-      // 2. Llamada al gateway
       const res = await fetch('/api/pdf/receta/generate', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -36,7 +46,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!res.ok) throw new Error(`Status ${res.status}`);
 
-      // 3. Abrir PDF en nueva pestaña
       const blob = await res.blob();
       const url  = window.URL.createObjectURL(blob);
       window.open(url, '_blank');

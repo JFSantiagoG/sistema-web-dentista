@@ -1,14 +1,13 @@
 //PDF PRESUPUESTO
-const express     = require('express');
-const PDFDocument = require('pdfkit');
-const path        = require('path');
-const fs          = require('fs');
+const express     = require("express");
+const PDFDocument = require("pdfkit");
 
-const { insertarEncabezado, insertarPie } = require('../utils/pdfHelpers');
+const { insertarEncabezado, insertarPie } = require("../utils/pdfHelpers");
 const router = express.Router();
-router.post('/generate', (req, res) => {
+
+router.post("/generate", (req, res) => {
   const { odontogramaVisual, ...datosSinImagen } = req.body;
-  console.log('📄 Presupuesto recibido:', datosSinImagen);
+  console.log("📄 Presupuesto recibido:", datosSinImagen);
 
   const {
     paciente,
@@ -18,134 +17,167 @@ router.post('/generate', (req, res) => {
   } = req.body;
 
   const doc = new PDFDocument({
-    size: [612, 776],
+    size: "A4",
     margin: 40
   });
 
   const chunks = [];
-  doc.on('data', c => chunks.push(c));
-  doc.on('end', () => {
-    res.set('Content-Type', 'application/pdf');
+  doc.on("data", (c) => chunks.push(c));
+  doc.on("end", () => {
+    res.set("Content-Type", "application/pdf");
     res.send(Buffer.concat(chunks));
   });
 
-  // Encabezado
-  insertarEncabezado(doc, 'CONSULTORIO DENTAL NIMAFESI', [
-    'Presupuesto de Tratamiento Odontológico']);
+  // === Encabezado ===
+  insertarEncabezado(doc, "CONSULTORIO DENTAL NIMAFESI", [
+    "Presupuesto de Tratamiento Odontológico"
+  ]);
 
-  
-
+  // === Datos paciente ===
   doc
     .fontSize(10)
-    .fillColor('gray')
+    .fillColor("gray")
     .text(`PACIENTE: ${paciente.nombre}`, 50, doc.y, { continued: true })
-    .text(`N°: ${paciente.numeroPaciente}`, { align: 'center', continued: true })
-    .text(`FECHA: ${paciente.fechaRegistro}`, { align: 'right' })
+    .text(`N°: ${paciente.numeroPaciente}`, { align: "center", continued: true })
+    .text(`FECHA: ${paciente.fechaRegistro}`, { align: "right" })
     .moveDown(1.5);
 
+  // === Odontograma visual ===
   if (odontogramaVisual) {
     doc
-      .font('Helvetica-Bold')
+      .font("Helvetica-Bold")
       .fontSize(12)
-      .fillColor('#00457C')
-      .text('Odontograma Visual', { align: 'center' })
+      .fillColor("#00457C")
+      .text("Odontograma Visual", { align: "center" })
       .moveDown(0.5)
       .image(odontogramaVisual, {
-        fit: [580, 380],
-        align: 'center'
+        fit: [500, 300],
+        align: "center"
       })
       .moveDown(1.5);
   }
 
+  // === Tratamientos por Diente ===
   doc
-  .font('Helvetica-Bold')
-  .fontSize(11)
-  .fillColor('#00457C')
-  .text('Tratamientos por Diente', { align: 'left' })
-  .moveDown(0.5);
-
-if (odontograma.length > 40) {
-  // Dividir en dos columnas si hay más de 35 tratamientos
-  const mitad = 35;
-  const izquierda = odontograma.slice(0, mitad);
-  const derecha = odontograma.slice(mitad);
-
-  const startY = doc.y;
-  izquierda.forEach((item, i) => {
-    doc
-      .font('Helvetica')
-      .fontSize(9)
-      .fillColor('black')
-      .text(`Diente ${item.diente}: ${item.tratamiento}`, 50, startY + i * 12, { continued: true })
-      .fillColor('#008000')
-      .text(` - $${item.costo.toFixed(2)}`);
-  });
-
-  derecha.forEach((item, i) => {
-    doc
-      .font('Helvetica')
-      .fontSize(9)
-      .fillColor('black')
-      .text(`Diente ${item.diente}: ${item.tratamiento}`, 300, startY + i * 12, { continued: true })
-      .fillColor('#008000')
-      .text(` - $${item.costo.toFixed(2)}`);
-  });
-  doc.moveDown(1);
-} else {
-  // Columna única si hay 40 o menos
-  odontograma.forEach(item => {
-    doc
-      .font('Helvetica')
-      .fontSize(9)
-      .fillColor('black')
-      .text(`Diente ${item.diente}: ${item.tratamiento}`, { continued: true })
-      .fillColor('#008000')
-      .text(` - $${item.costo.toFixed(2)}`, { align: 'left' });
-  });
-  doc.moveDown(1);
-}
-  if (doc.y > 650) {
-    doc.addPage();
-    insertarEncabezado(doc);
-  }
-  doc
-    .font('Helvetica-Bold')
+    .font("Helvetica-Bold")
     .fontSize(11)
-    .fillColor('#00457C')
-    .text('Tratamientos Generales', { align: 'left' })
+    .fillColor("#00457C")
+    .text("Tratamientos por Diente", { align: "left" })
     .moveDown(0.5);
 
-  tratamientosGenerales.forEach(tx => {
+  const startY = doc.y;
+  let colX = 50; // columna izquierda
+  let colY = startY;
+  const maxY = 700; // límite inferior
+  let inSecondColumn = false;
+
+  odontograma.forEach((item) => {
+    if (colY > maxY) {
+      if (!inSecondColumn) {
+        // pasa a segunda columna
+        colX = 320;
+        colY = startY;
+        inSecondColumn = true;
+      } else {
+        // ya está en segunda columna → nueva página
+        doc.addPage();
+        insertarEncabezado(doc, "CONSULTORIO DENTAL NIMAFESI", [
+          "Presupuesto de Tratamiento Odontológico"
+        ]);
+        colX = 50;
+        colY = 120;
+        inSecondColumn = false;
+      }
+    }
+
     doc
-      .font('Helvetica')
-      .fontSize(10)
-      .fillColor('black')
-      .text(`${tx.nombre}`, { continued: true })
-      .fillColor('#008000')
-      .text(`: $${tx.costo.toFixed(2)}`, { align: 'left' })
-      .moveDown(0.3);
+      .font("Helvetica")
+      .fontSize(9)
+      .fillColor("black")
+      .text(`Diente ${item.diente}: ${item.tratamiento}`, colX, colY, {
+        continued: true
+      })
+      .fillColor("#008000")
+      .text(` - $${item.costo.toFixed(2)}`);
+
+    colY += 12;
   });
+
+  // === Tratamientos Generales & Costo Total ===
+  if (colY > maxY) {
+    if (!inSecondColumn) {
+      // pasa a segunda columna
+      colX = 320;
+      colY = startY;
+      inSecondColumn = true;
+    } else {
+      // ya usaste ambas columnas → nueva hoja
+      doc.addPage();
+      insertarEncabezado(doc, "CONSULTORIO DENTAL NIMAFESI", [
+        "Presupuesto de Tratamiento Odontológico"
+      ]);
+      colX = 50;
+      colY = 120;
+      inSecondColumn = false;
+    }
+  }
+
+  // --- Tratamientos Generales ---
+  if (tratamientosGenerales.length > 0) {
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(11)
+      .fillColor("#00457C")
+      .text("Tratamientos Generales", colX, colY);
+
+    colY += 15;
+
+    tratamientosGenerales.forEach((tx) => {
+      doc
+        .font("Helvetica")
+        .fontSize(10)
+        .fillColor("black")
+        .text(`${tx.nombre}`, colX, colY, { continued: true })
+        .fillColor("#008000")
+        .text(`: $${tx.costo.toFixed(2)}`);
+      colY += 14;
+    });
+  }
+
+  // --- Costo Total ---
+  colY += 10;
   doc
-    .font('Helvetica-Bold')
+    .font("Helvetica-Bold")
     .fontSize(11)
-    .fillColor('#00457C')
-    .text('Costo Total', { align: 'left' })
-    .moveDown(0.3);
+    .fillColor("#00457C")
+    .text("Costo Total", colX, colY);
+
+  colY += 15;
   doc
-    .font('Helvetica')
+    .font("Helvetica")
     .fontSize(10)
-    .fillColor('black')
-    .text(`Total estimado: `, { continued: true })
-    .fillColor('#B22222')
-    .text(`$${presupuesto.total.toFixed(2)}`, { align: 'left' })
-    .fillColor('black')
-    .text(`Duración: ${presupuesto.meses} meses`, { align: 'left' })
-    .text(`Mensualidad estimada: `, { continued: true })
-    .fillColor('#B22222')
-    .text(`$${presupuesto.mensualidad.toFixed(2)}`, { align: 'left' })
-    .moveDown(2);
-  // Firma
+    .fillColor("black")
+    .text(`Total estimado: `, colX, colY, { continued: true })
+    .fillColor("#B22222")
+    .text(`$${presupuesto.total.toFixed(2)}`);
+
+  colY += 15;
+  doc
+    .fillColor("black")
+    .text(`Duración: ${presupuesto.meses} meses`, colX, colY);
+
+  colY += 15;
+  doc
+    .fillColor("black")
+    .text(`Mensualidad estimada: `, colX, colY, { continued: true })
+    .fillColor("#B22222")
+    .text(`$${presupuesto.mensualidad.toFixed(2)}`);
+
+  // === Pie institucional ===
+  doc.moveDown(2);
   insertarPie(doc, true);
+
   doc.end();
-});//END PDF PRESUPUESTO
+}); // END PDF PRESUPUESTO
+
 module.exports = router;

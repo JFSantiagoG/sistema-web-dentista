@@ -1,4 +1,4 @@
-//PDF CONSENTIMIENTO
+// PDF CONSENTIMIENTO
 const express     = require('express');
 const PDFDocument = require('pdfkit');
 const path        = require('path');
@@ -6,11 +6,24 @@ const fs          = require('fs');
 
 const router = express.Router();
 const { insertarEncabezado, insertarPie } = require('../utils/pdfHelpers');
+const { insertarFirma } = require('../utils/pdffirma'); // ✅ usamos tu helper de firma
 
 router.post('/generate', (req, res) => {
-  console.log('📋 Consentimiento recibida:', req.body)
+  // ✅ No saturamos logs con la firma
+  const { firmaPaciente, ...dataSinFirma } = req.body;
+  console.log('📋 Consentimiento recibido (sin firma):', dataSinFirma);
+
+  if (firmaPaciente) {
+    const bytes = Math.round((firmaPaciente.length * 3 / 4) / 1024);
+    console.log(`🖊️ Firma recibida (aprox. ${bytes} KB)`);
+  } else {
+    console.log('⚠️ No se recibió firma del paciente');
+  }
+
   const { paciente, tratamiento, monto, ausencia } = req.body;
+
   const doc = new PDFDocument({ size: 'A4', margin: 50 });
+
   const chunks = [];
   doc.on('data', chunk => chunks.push(chunk));
   doc.on('end', () => {
@@ -18,11 +31,10 @@ router.post('/generate', (req, res) => {
     res.send(Buffer.concat(chunks));
   });
 
-  // Encabezado
   insertarEncabezado(doc, 'CONSULTORIO DENTAL NIMAFESI', [
-    'CONSENTIMIENTO INFORMADO ODONTOLÓGICO']);
+    'CONSENTIMIENTO INFORMADO ODONTOLÓGICO'
+  ]);
 
-  // Datos del paciente
   doc
     .moveDown(1.5)
     .fontSize(10)
@@ -32,7 +44,6 @@ router.post('/generate', (req, res) => {
     .text(`Número de paciente: ${paciente.numeroPaciente}`)
     .moveDown(1);
 
-  // Tratamiento
   doc
     .font('Helvetica-Bold')
     .fontSize(12)
@@ -45,7 +56,6 @@ router.post('/generate', (req, res) => {
     .text(tratamiento)
     .moveDown(1);
 
-  // Acuerdo económico
   doc
     .font('Helvetica-Bold')
     .fontSize(12)
@@ -58,7 +68,6 @@ router.post('/generate', (req, res) => {
     .text(`Monto acordado: $${monto} MXN`)
     .moveDown(1);
 
-  // Ausencia a citas
   doc
     .font('Helvetica-Bold')
     .fontSize(12)
@@ -69,10 +78,11 @@ router.post('/generate', (req, res) => {
     .fontSize(10)
     .fillColor('black')
     .text(`Se informa que en caso de ausencia por más de ${ausencia} días, el tratamiento será suspendido.`)
-    .moveDown(4);
+    .moveDown(3);
 
-  // Firma
-  insertarPie(doc, true);
+  insertarFirma(doc, firmaPaciente, { label: `Firma del Paciente: ${paciente.nombre}` });
+  insertarPie(doc, false);
+
   doc.end();
-});// Endpoint para generar PDF de consentimiento informado
+});
 module.exports = router;

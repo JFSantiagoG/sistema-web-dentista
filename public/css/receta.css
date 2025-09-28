@@ -1,3 +1,6 @@
+/* ===========================
+   Estilos generales
+=========================== */
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -32,4 +35,26 @@ h2 {
 
 #btnImprimir:hover {
   background-color: #157347;
+}
+
+/* ===========================
+   Firma
+=========================== */
+
+/* Contenedor centrado */
+.firma-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  margin-top: 10px;
+}
+
+/* Canvas con tamaño REAL (definido en HTML con width/height) */
+#signature-pad {
+  border: 2px dashed #6c757d;
+  border-radius: 8px;
+  background: #fff;
+  cursor: crosshair;
+  display: block;
 }

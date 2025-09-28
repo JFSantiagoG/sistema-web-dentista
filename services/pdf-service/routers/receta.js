@@ -1,23 +1,24 @@
 const express     = require('express');
 const PDFDocument = require('pdfkit');
-const path        = require('path');
-const fs          = require('fs');
+const { insertarEncabezado, insertarPie } = require('../utils/pdfHelpers');
+const { insertarFirma } = require('../utils/pdffirma');
 
-const { insertarEncabezado, insertarPie } = require('../utils/pdfHelpers');// Importar funciones de encabezado y pie de página
 const router = express.Router();
 
 router.post('/generate', (req, res) => {
-  console.log('📄 Receta recibida:', req.body);
+  // ✅ Log sin saturar con la firma
+  const { firmaMedico, ...dataSinFirma } = req.body;
+  console.log('📄 Receta recibida (sin firma):', dataSinFirma);
+  if (firmaMedico) {
+    const bytes = Math.round((firmaMedico.length * 3 / 4) / 1024);
+    console.log(`🖊️ Firma recibida (aprox. ${bytes} KB)`);
+  }
+
   const {
     nombrePaciente, fecha, edad,
     nombreMedico, cedula,
     medicamentos = []
   } = req.body;
-
-  const baseHeight   = 420;
-  const rowHeight    = 22;
-  const extraSpace   = 120;
-  const totalHeight  = baseHeight + (medicamentos.length * rowHeight) + extraSpace;
 
   const doc = new PDFDocument({
     size: [595.28, 420],
@@ -30,10 +31,13 @@ router.post('/generate', (req, res) => {
     res.set('Content-Type', 'application/pdf');
     res.send(Buffer.concat(chunks));
   });
-  insertarEncabezado(doc, 'CIRUJANO DENTISTA NANCY HERNÁNDEZ LÓPEZ',[
+
+  // Encabezado
+  insertarEncabezado(doc, 'CIRUJANO DENTISTA NANCY HERNÁNDEZ LÓPEZ', [
     'ESPECIALISTA EN CIRUGÍA Y ORTOPEDIA MAXILAR'
   ]);
 
+  // Datos paciente
   doc
     .font('Helvetica')
     .fontSize(10)
@@ -44,6 +48,7 @@ router.post('/generate', (req, res) => {
     .text(`EDAD: ${edad}`, { align: 'right' })
     .moveDown(1);
 
+  // Tabla medicamentos
   const headers = ['Medicamento', 'Dosis', 'Frecuencia', 'Duración', 'Indicaciones'];
   const widths  = [110, 80, 80, 80, 150];
   const startX  = 50;
@@ -74,24 +79,14 @@ router.post('/generate', (req, res) => {
     doc.moveDown(0.5);
   });
 
-  doc.moveDown(1.5);
+  doc.moveDown(2);
 
-  const centerX = (doc.page.width / 4) - 100;
+  // 👇 Insertar firma del médico
+  insertarFirma(doc, firmaMedico, { label: `${nombreMedico} · Cédula: ${cedula}` });
 
-  doc
-    .moveDown(1)
-    .font('Helvetica')
-    .fontSize(10)
-    .fillColor('black')
-    .text(`Médico/Dentista: ${nombreMedico}`, centerX, doc.y, { align: 'center' })
-    .text(`Cédula Profesional: ${cedula}`, centerX, doc.y, { align: 'center' })
-    .moveDown(1)
-    .text('____________________________', centerX, doc.y, { align: 'center' })
-    .text('Firma del Médico', centerX, doc.y, { align: 'center' })
-    .moveDown(1);
-
-  doc.moveDown(1.5);
+  // Pie de página
   insertarPie(doc, false);
+
   doc.end();
 });
 

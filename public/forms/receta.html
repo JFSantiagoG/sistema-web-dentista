@@ -17,6 +17,7 @@
     <div class="card shadow-sm">
       <div class="card-body">
         <form id="recetaForm" novalidate>
+          <!-- DATOS PACIENTE -->
           <div class="row mb-3">
             <div class="col-md-6">
               <label class="form-label">Nombre del Paciente</label>
@@ -32,6 +33,7 @@
             </div>
           </div>
 
+          <!-- TABLA DE MEDICAMENTOS -->
           <div class="mb-4">
             <h5>Medicamentos</h5>
             <div class="table-responsive">
@@ -53,19 +55,13 @@
                     <td><input type="text" class="form-control" name="duracion[]"></td>
                     <td><input type="text" class="form-control" name="indicaciones[]"></td>
                   </tr>
-                  <tr>
-                    <td><input type="text" class="form-control" name="medicamento[]"></td>
-                    <td><input type="text" class="form-control" name="dosis[]"></td>
-                    <td><input type="text" class="form-control" name="frecuencia[]"></td>
-                    <td><input type="text" class="form-control" name="duracion[]"></td>
-                    <td><input type="text" class="form-control" name="indicaciones[]"></td>
-                  </tr>
                 </tbody>
               </table>
             </div>
           </div>
 
-          <div class="row">
+          <!-- DATOS MÉDICO -->
+          <div class="row mb-4">
             <div class="col-md-6">
               <label class="form-label">Nombre del Médico/Dentista</label>
               <input type="text" class="form-control" name="nombreMedico" value="Dr. Juan Pérez Martínez">
@@ -75,7 +71,22 @@
               <input type="text" class="form-control" name="cedula" value="CED123456">
             </div>
           </div>
+          
+          <!-- Bloque de Firma -->
+          <div class="mb-4">
+            <h5 class="text-center">Firma</h5>
+            <div class="firma-wrap">
+              <canvas id="signature-pad" width="360" height="120"></canvas>
+            </div>
+            <div class="mt-2 d-flex justify-content-center">
+              <!-- 🔧 Cambiado de "clearSignature" a "clearSignature-pad" -->
+              <button type="button" class="btn btn-sm btn-outline-danger" id="clearSignature-pad">
+                🧹 Limpiar
+              </button>
+            </div>
+          </div>
 
+          <!-- BOTÓN -->
           <div class="mt-4 text-center">
             <button type="submit" class="btn btn-primary">💾 Guardar Receta en PDF</button>
           </div>
@@ -84,7 +95,9 @@
     </div>
   </div>
 
-  <script src="../js/receta.js"></script>
+  <!-- JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/receta.js"></script>
+  <script src="../js/firma.js"></script>
 </body>
 </html>

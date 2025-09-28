@@ -8,7 +8,7 @@
   <link href="../css/forms.css" rel="stylesheet">
   <link href="../css/consent-odont.css" rel="stylesheet">
 </head>
-<body>
+<body class="bg-light">
   <div class="container py-4">
     <!-- Encabezado -->
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -20,6 +20,7 @@
       </div>
       <button class="btn btn-outline-secondary" onclick="window.history.back()">← Volver</button>
     </div>
+
     <!-- Indicador de pasos -->
     <div class="step-indicator">
       <div class="text-center">
@@ -34,6 +35,7 @@
         <div class="step-label">Confirmación del Paciente</div>
       </div>
     </div>
+
     <!-- Formulario -->
     <form id="consentForm">
       <!-- Paso 1: Doctor -->
@@ -82,7 +84,7 @@
         <!-- Acuerdo Económico -->
         <div class="card section-card">
           <div class="card-header bg-success text-white">
-            <h5 class="mb-0">7. Acuerdo Económico</h5>
+            <h5 class="mb-0">3. Acuerdo Económico</h5>
           </div>
           <div class="card-body">
             <div class="row">
@@ -92,7 +94,8 @@
               </div>
             </div>
             <p>
-              Se me ha informado, que en relación con los pagos estos comprenden única y exclusivamente el tratamiento en cuestión. Que toda cita no cancelada genera el pago de la misma, que todo pago no realizado en la fecha acordada genera cargos adicionales.
+              Se me ha informado, que en relación con los pagos estos comprenden única y exclusivamente el tratamiento en cuestión. 
+              Que toda cita no cancelada genera el pago de la misma, que todo pago no realizado en la fecha acordada genera cargos adicionales.
             </p>
           </div>
         </div>
@@ -100,13 +103,13 @@
         <!-- Ausencia a Citas -->
         <div class="card section-card">
           <div class="card-header bg-warning text-dark">
-            <h5 class="mb-0">8. Ausencia a Citas</h5>
+            <h5 class="mb-0">4. Ausencia a Citas</h5>
           </div>
           <div class="card-body">
             <p>
               Se me ha informado que en caso de no asistir a mis citas por un período de 
               <input type="number" id="ausenciaInput" class="form-control d-inline" style="width: 80px;" min="1" max="365" placeholder="30" required> 
-              días, el tratamiento será suspendido y los resultados del mismo serán estrictamente mi responsabilidad, este párrafo se aplica también a la ausencia de pagos en las fechas convenidas.
+              días, el tratamiento será suspendido y los resultados del mismo serán estrictamente mi responsabilidad.
             </p>
           </div>
         </div>
@@ -119,7 +122,7 @@
 
       <!-- Paso 2: Paciente -->
       <div id="patient-step" class="patient-section" style="display: none;">
-        <!-- Identificación -->
+        <!-- Confirmación de Datos -->
         <div class="card section-card">
           <div class="card-header bg-primary text-white">
             <h5 class="mb-0">1. Confirmación de Datos del Paciente</h5>
@@ -142,7 +145,7 @@
           </div>
         </div>
 
-        <!-- Tratamiento -->
+        <!-- Tratamiento Autorizado -->
         <div class="card section-card">
           <div class="card-header bg-info text-white">
             <h5 class="mb-0">2. Tratamiento Autorizado</h5>
@@ -191,6 +194,27 @@
           </div>
         </div>
 
+          <!-- Bloque de Firma -->
+          <div class="card section-card">
+            <div class="card-header bg-secondary text-white">
+              <h5 class="mb-0">Firma del Paciente</h5>
+            </div>
+            <div class="card-body text-center">
+              <div class="firma-wrap">
+                <canvas id="signature-pad" width="360" height="120"></canvas>
+              </div>
+              <div class="mt-2 d-flex justify-content-center">
+                <!-- 🔧 Cambiado de "clearSignature" a "clearSignature-pad" -->
+                <button type="button" class="btn btn-sm btn-outline-danger" id="clearSignature-pad">
+                  🧹 Limpiar
+                </button>
+              </div>
+            </div>
+          </div>
+
+
+
+
         <!-- Botones -->
         <div class="text-center mt-4">
           <button type="button" class="btn btn-outline-secondary btn-lg me-2" onclick="showDoctorStep()">← Volver</button>
@@ -200,7 +224,10 @@
       </div>
     </form>
   </div>
+
+  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="../js/consent-odont.js"></script>
+  <script src="../js/firma.js"></script>
 </body>
 </html>

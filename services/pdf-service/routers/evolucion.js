@@ -1,4 +1,4 @@
-//PDF EVOLUCION
+// PDF EVOLUCION
 const express     = require('express');
 const PDFDocument = require('pdfkit');
 const path        = require('path');
@@ -6,18 +6,26 @@ const fs          = require('fs');
 
 const router = express.Router();
 const { insertarEncabezado, insertarPie } = require('../utils/pdfHelpers');
+const { insertarFirma } = require('../utils/pdffirma'); // 👈 importamos helper de firma
 
-router.post('/generate', (req, res) =>{
-  console.log('📋 Evolución recibida:', req.body)
+router.post('/generate', (req, res) => {
+  console.log('📋 Evolución recibida (sin firma):', {
+    nombrePaciente: req.body.nombrePaciente,
+    numeroPaciente: req.body.numeroPaciente,
+    fechaRegistro: req.body.fechaRegistro,
+    evoluciones: req.body.evoluciones?.length || 0
+  });
+
   const {
     nombrePaciente,
     numeroPaciente,
     fechaRegistro,
-    evoluciones = []
+    evoluciones = [],
+    firmaPaciente // 👈 ahora recibimos la firma
   } = req.body;
 
   const doc = new PDFDocument({
-    size: [612, 776], // formato receta vertical compacta 612 x 792
+    size: [612, 776], // formato vertical carta
     margin: 40
   });
 
@@ -32,7 +40,9 @@ router.post('/generate', (req, res) =>{
   insertarEncabezado(doc, 'CONSULTORIO DENTAL NIMAFESI', [
     'CIRUJANO DENTISTA NANCY HERNÁNDEZ LÓPEZ',
     'ESPECIALISTA EN CIRUGÍA Y ORTOPEDIA MAXILAR',
-    'CED. 4808022 | CED. ESP. 7873133']);
+    'CED. 4808022 | CED. ESP. 7873133'
+  ]);
+
   // Datos del paciente
   doc
     .fontSize(12)
@@ -44,18 +54,20 @@ router.post('/generate', (req, res) =>{
 
   // Tabla de evolución
   const headers = ['Fecha', 'Tratamiento', 'Costo ($)', 'A/C', 'Próxima cita y TX'];
-  const widths  = [80, 100, 70, 80, 140]; // Redistribuye el ancho si lo deseas
+  const widths  = [80, 100, 70, 80, 140];
   const startX  = 40;
   const headerY = doc.y;
+
   headers.forEach((h, i) => {
-  const x = startX + widths.slice(0, i).reduce((a, b) => a + b, 0);
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(13) // ← antes era 12
-    .fillColor('black')
-    .text(h, x, headerY, { width: widths[i], align: 'center' });
+    const x = startX + widths.slice(0, i).reduce((a, b) => a + b, 0);
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(13)
+      .fillColor('black')
+      .text(h, x, headerY, { width: widths[i], align: 'center' });
   });
-  doc.moveDown(1); // ← antes era 0.5
+  doc.moveDown(1);
+
   evoluciones.forEach(evo => {
     const valores = [evo.fecha, evo.tratamiento, evo.costo, evo.ac, evo.proxima];
     const rowY = doc.y;
@@ -68,22 +80,18 @@ router.post('/generate', (req, res) =>{
         .text(v || '-', x, rowY, { width: widths[i], align: 'center' });
     });
 
-    doc.moveDown(5); // Espacio amplio debajo de la tabla
-    const centerX = (doc.page.width / 4) - 80;
-    doc
-      .fontSize(12)
-      .fillColor('black')
-      .text('____________________________',  centerX,
-        doc.y,
-        { align: 'center' })
-      .text('Firma del Paciente',  centerX,
-        doc.y,
-        { align: 'center' })
-      .moveDown(2);
-    });// End tabla evolución
-    const centerX = (doc.page.width / 4) - 90;
+    doc.moveDown(0.5);
+  });
+
+  doc.moveDown(2);
+
+  // 👇 Firma del paciente centrada
+  insertarFirma(doc, firmaPaciente, { label: `${nombrePaciente}` });
+
   // Pie de página
   insertarPie(doc, false);
-    doc.end();
-  });// End PDF evolución
+
+  doc.end();
+});
+
 module.exports = router;

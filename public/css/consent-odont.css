@@ -29,3 +29,29 @@
 .section-card {
   margin-bottom: 20px;
 }
+/* Contenedor que centra el canvas */
+.firma-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+/* Canvas con borde punteado y fondo blanco */
+#signature-pad {
+  border: 2px dashed #6c757d;
+  border-radius: 8px;
+  background: #fff;
+  cursor: crosshair;
+  display: block;
+}
+
+/* Texto superpuesto sobre el canvas */
+.overlay-text {
+  position: absolute;
+  color: #6c757d;
+  font-size: 16px;
+  font-weight: bold;
+  pointer-events: none; /* no bloquea el click */
+  text-align: center;
+}
