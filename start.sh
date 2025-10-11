@@ -7,6 +7,10 @@ echo "🔄 Iniciando servicios clínicos..."
 echo "🚪 Iniciando Gateway..."
 cd "$BASE/gateway" && npm install && node server.js &
 
+# Auth Service
+echo "🔐 Iniciando Auth Service..."
+cd "$BASE/services/auth-service" && npm install && node server.js &
+
 # Forms Service
 echo "📋 Iniciando Forms Service..."
 cd "$BASE/services/forms-service" && npm install && node server.js &

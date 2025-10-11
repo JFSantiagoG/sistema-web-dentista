@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>📅 Panel del Doctor</title>
+  <link rel="stylesheet" href="css/doctor.css" />
+  <script src="js/doctor.js" defer></script>
+</head>
+<body>
+  <header>
+    <h1>📅 Citas del día</h1>
+    <button onclick="logout()">Cerrar sesión</button>
+  </header>
+
+  <main>
+    <section>
+      <table id="tabla-citas">
+        <thead>
+          <tr><th>Hora</th><th>Paciente</th><th>Motivo</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Herramientas clínicas</h2>
+      <button onclick="location.href='../forms/evolucion.html'">📋 Evolución</button>
+      <button onclick="location.href='../forms/receta.html'">💊 Receta</button>
+      <button onclick="location.href='../menu-formularios.html'">📋 Formularios</button>
+    </section>
+  </main>
+</body>
+</html>

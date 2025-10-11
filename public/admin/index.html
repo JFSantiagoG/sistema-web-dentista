@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>👤 Panel Administrativo</title>
+  <link rel="stylesheet" href="css/admin.css" />
+  <script src="js/admin.js" defer></script>
+</head>
+<body>
+  <header>
+    <h1>👤 Gestión de Pacientes</h1>
+    <button onclick="logout()">Cerrar sesión</button>
+  </header>
+
+  <main>
+    <section>
+      <table id="tabla-pacientes">
+        <thead>
+          <tr><th>Nombre</th><th>Edad</th><th>Teléfono</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Acciones</h2>
+      <button onclick="location.href='../agenda.html'">📅 Ver agenda</button>
+      <button onclick="location.href='../menu-formularios.html'">📋 Formularios</button>
+    </section>
+  </main>
+</body>
+</html>
