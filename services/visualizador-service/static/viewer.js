@@ -1106,4 +1106,8 @@ function calcAngle(p1, c, p2) {
   return (Math.acos(dot / (m1 * m2)) * 180) / Math.PI;
 }
 
+function goBack() {
+  window.history.back();
+}
+
 window.setFilter = setFilter;

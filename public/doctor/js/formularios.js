@@ -7,5 +7,9 @@ if (!token || !roles.includes('doctor')) {
 
 function logout() {
   localStorage.clear();
-  location.href = '/index.html';
+  location.href = '/login.html';
+}
+
+function goBack() {
+  window.history.back();
 }

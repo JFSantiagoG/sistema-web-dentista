@@ -20,9 +20,11 @@ app.use('/api/forms', createProxyMiddleware({
 
 // 📅 Appointments Service
 app.use('/api/appointments', createProxyMiddleware({
-  target: 'http://localhost:3002',
-  changeOrigin: true
+  target: 'http://localhost:3002/appointments',
+  changeOrigin: true,
+  pathRewrite: { '^/api/appointments': '' }
 }));
+
 
 // 👤 Patients Service
 app.use('/api/patients', createProxyMiddleware({
