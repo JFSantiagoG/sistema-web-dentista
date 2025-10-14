@@ -1,11 +1,17 @@
 import express from 'express';
 import cors from 'cors';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
 import { pool } from './db.js';
 
-const app = express();
+dotenv.config(); // ← carga .env
+
+const app = express(); // ← define app antes de usarla
+
 app.use(cors());
 app.use(express.json());
 
+// Aquí ya puedes usar app.post(...)
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -22,8 +28,16 @@ app.post('/login', async (req, res) => {
       [user.id]
     );
 
+    const payload = {
+      id: user.id,
+      email: user.email,
+      rol: roles[0]?.name || 'sin-rol'
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '2h' });
+
     res.json({
-      accessToken: 'FAKE-TOKEN',
+      accessToken: token,
       user: {
         id: user.id,
         email: user.email,
@@ -31,7 +45,7 @@ app.post('/login', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('Error en login:', err);
+    console.error('Error en login:', err.message, err.stack);
     res.status(500).json({ msg: 'Error interno del servidor' });
   }
 });

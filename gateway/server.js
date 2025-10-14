@@ -28,9 +28,12 @@ app.use('/api/appointments', createProxyMiddleware({
 
 // 👤 Patients Service
 app.use('/api/patients', createProxyMiddleware({
-  target: 'http://localhost:3003',
-  changeOrigin: true
+  target: 'http://localhost:3003/patients',
+  changeOrigin: true,
+  pathRewrite: { '^/api/patients': '' }
 }));
+
+
 
 // 📁 Files Service
 app.use('/api/files', createProxyMiddleware({

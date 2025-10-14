@@ -23,9 +23,9 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     localStorage.setItem('roles', JSON.stringify(data.user.roles));
 
     const rol = data.user.roles[0];
-    if (rol === 'doctor') location.href = 'doctor/index.html';
-    else if (rol === 'admin') location.href = 'admin/index.html';
-    else if (rol === 'asistente') location.href = 'asistente/index.html';
+    if (rol === 'doctor') location.href = 'menu.html';
+    else if (rol === 'admin') location.href = 'menu.html';
+    else if (rol === 'asistente') location.href = 'menu.html';
   } catch (err) {
     errorMsg.textContent = 'Error de conexión con el servidor';
     console.error(err);

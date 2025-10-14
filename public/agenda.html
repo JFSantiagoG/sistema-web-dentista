@@ -1,25 +1,50 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📅 Agenda - Consultorio Dental</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📅 Agenda - Consultorio Dental</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="css/citas.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="js/agenda.js" defer></script>
 </head>
 <body class="bg-light">
-    <div class="container py-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>📅 Agenda de Citas</h2>
-            <button class="btn btn-outline-secondary" onclick="window.history.back()">
-                ← Volver
-            </button>
-        </div>
-        <div class="card">
-            <div class="card-body text-center py-5">
-                <h4>🗓️ Próximamente: Sistema de Agenda</h4>
-                <p class="text-muted">Aquí se mostrarán las citas programadas</p>
-            </div>
-        </div>
+  <div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2>📅 Agenda de Citas</h2>
+      <button class="btn btn-outline-secondary" onclick="window.history.back()">← Volver</button>
     </div>
+
+    <!-- 🔍 Filtro por fecha -->
+    <div class="mb-4">
+      <label for="filtro-fecha" class="form-label">Filtrar por fecha:</label>
+      <input type="date" id="filtro-fecha" class="form-control" onchange="filtrarPorFecha()" />
+    </div>
+
+    <!-- 📋 Tabla de citas -->
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover" id="tabla-citas">
+        <thead class="table-light">
+          <tr>
+            <th><input type="checkbox" id="check-todos" onclick="seleccionarTodos(this)" /></th>
+            <th>ID</th>
+            <th>Paciente</th>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Motivo</th>
+            <th class="col-acciones">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="citas-body"></tbody>
+      </table>
+    </div>
+
+    <!-- 🛠️ Acciones masivas -->
+    <div id="acciones-masivas" class="text-end mt-3" style="display: none;">
+      <button class="btn btn-danger me-2" id="btn-eliminar" onclick="eliminarSeleccionadas()">🗑️ Eliminar seleccionadas</button>
+      <button class="btn btn-primary" id="btn-reenviar" onclick="reenviarSeleccionadas()">📤 Reenviar seleccionadas</button>
+    </div>
+  </div>
 </body>
 </html>

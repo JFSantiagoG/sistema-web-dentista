@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perfil del Paciente</title>
+  <link rel="stylesheet" href="css/paciente.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body class="bg-light">
+  <div class="container py-5">
+    <!-- Encabezado -->
+    <div class="text-center mb-5">
+      <h2 class="fw-bold text-primary">👤 Perfil del Paciente</h2>
+      <p class="text-muted">Información general y formularios clínicos</p>
+    </div>
+
+    <!-- Tarjeta de perfil -->
+    <div class="card shadow-sm mb-5">
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <p><strong>Nombre:</strong> Ana Gómez</p>
+            <p><strong>Edad:</strong> 32 años</p>
+            <p><strong>Sexo:</strong> Femenino</p>
+          </div>
+          <div class="col-md-6">
+            <p><strong>Email:</strong> ana.gomez@correo.com</p>
+            <p><strong>Teléfono principal:</strong> 55 1234 5678</p>
+            <p><strong>Teléfono secundario:</strong> 55 8765 4321</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Secciones de formularios -->
+    <div class="formularios">
+
+      <!-- 📈 Evoluciones -->
+      <section class="mb-5">
+        <h4 class="text-secondary mb-3">📈 Evoluciones</h4>
+        <div class="table-responsive mb-2">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Descripción</th>
+                <th>Doctor</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>12/10/2025</td>
+                <td>Revisión general y limpieza</td>
+                <td>Dr. Ramírez</td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary me-1">👁️ Visualizar</button>
+                  <button class="btn btn-sm btn-outline-secondary me-1">✏️ Editar</button>
+                  <button class="btn btn-sm btn-outline-success">📤 Enviar</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button class="btn btn-success btn-sm">➕ Crear nueva evolución</button>
+      </section>
+
+      <!-- 💊 Recetas -->
+      <section class="mb-5">
+        <h4 class="text-secondary mb-3">💊 Recetas</h4>
+        <div class="table-responsive mb-2">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Medicamento</th>
+                <th>Indicaciones</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>10/10/2025</td>
+                <td>Ibuprofeno 400mg</td>
+                <td>1 cada 8h por 3 días</td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary me-1">👁️ Visualizar</button>
+                  <button class="btn btn-sm btn-outline-secondary me-1">✏️ Editar</button>
+                  <button class="btn btn-sm btn-outline-success">📤 Enviar</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button class="btn btn-success btn-sm">➕ Crear nueva receta</button>
+      </section>
+
+      <!-- 💰 Presupuestos -->
+      <section class="mb-5">
+        <h4 class="text-secondary mb-3">💰 Presupuestos Dentales</h4>
+        <div class="table-responsive mb-2">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Tratamiento</th>
+                <th>Costo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>08/10/2025</td>
+                <td>Ortodoncia completa</td>
+                <td>$12,500 MXN</td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary me-1">👁️ Visualizar</button>
+                  <button class="btn btn-sm btn-outline-secondary me-1">✏️ Editar</button>
+                  <button class="btn btn-sm btn-outline-success">📤 Enviar</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button class="btn btn-success btn-sm">➕ Crear nuevo presupuesto</button>
+      </section>
+
+      <!-- 📝 Consentimiento Odontológico -->
+      <section class="mb-5">
+        <h4 class="text-secondary mb-3">📝 Consentimiento Odontológico</h4>
+        <div class="table-responsive mb-2">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Procedimiento</th>
+                <th>Firmado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>05/10/2025</td>
+                <td>Extracción de muela</td>
+                <td>Sí</td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary me-1">👁️ Visualizar</button>
+                  <button class="btn btn-sm btn-outline-secondary me-1">✏️ Editar</button>
+                  <button class="btn btn-sm btn-outline-success">📤 Enviar</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button class="btn btn-success btn-sm">➕ Crear nuevo consentimiento</button>
+      </section>
+
+      <!-- 📝 Consentimiento Quirúrgico -->
+      <section class="mb-5">
+        <h4 class="text-secondary mb-3">📝 Consentimiento Quirúrgico</h4>
+        <div class="table-responsive mb-2">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Intervención</th>
+                <th>Firmado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>03/10/2025</td>
+                <td>Implante dental</td>
+                <td>Sí</td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary me-1">👁️ Visualizar</button>
+                  <button class="btn btn-sm btn-outline-secondary me-1">✏️ Editar</button>
+                  <button class="btn btn-sm btn-outline-success">📤 Enviar</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button class="btn btn-success btn-sm">➕ Crear nuevo consentimiento</button>
+      </section>
+    </div>
+
+    <!-- Botones finales -->
+    <div class="d-flex justify-content-center mt-5 gap-3 flex-wrap">
+      <button class="btn btn-outline-dark px-4">← Regresar</button>
+      <button class="btn btn-primary px-4">📋 Crear historial médico</button>
+      <button class="btn btn-warning px-4">✏️ Editar datos del paciente</button>
+      <button class="btn btn-success px-4">📤 Enviar historial médico al paciente</button>
+    </div>
+  </div>
+</body>
+</html>

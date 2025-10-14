@@ -1,5 +1,6 @@
 const express = require('express');
 const appointmentsRoutes = require('./routes/appointments.routes');
+require('dotenv').config();
 
 const app = express();
 app.use(express.json());

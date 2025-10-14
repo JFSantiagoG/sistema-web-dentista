@@ -19,6 +19,10 @@ cd "$BASE/services/forms-service" && npm install && node server.js &
 echo "📄 Iniciando PDF Service..."
 cd "$BASE/services/pdf-service" && npm install && node server.js &
 
+# Appointments Service
+echo "📅 Iniciando Appointments Service..."
+cd "$BASE/services/appointments-service" && npm install && node server.js &
+
 # Visualizador Service (Python Flask)
 echo "🖼️ Iniciando Visualizador Service..."
 cd "$BASE/services/visualizador-service"

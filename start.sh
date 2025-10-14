@@ -3,27 +3,31 @@ BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "🔄 Iniciando servicios clínicos..."
 
-# Gateway
+# 🚪 Gateway
 echo "🚪 Iniciando Gateway..."
 cd "$BASE/gateway" && npm install && node server.js &
 
-# Auth Service
+# 🔐 Auth Service
 echo "🔐 Iniciando Auth Service..."
 cd "$BASE/services/auth-service" && npm install && node server.js &
 
-# Forms Service
+# 📋 Forms Service
 echo "📋 Iniciando Forms Service..."
 cd "$BASE/services/forms-service" && npm install && node server.js &
 
-# PDF Service
+# 📄 PDF Service
 echo "📄 Iniciando PDF Service..."
 cd "$BASE/services/pdf-service" && npm install && node server.js &
 
-# Appointments Service
+# 📅 Appointments Service
 echo "📅 Iniciando Appointments Service..."
 cd "$BASE/services/appointments-service" && npm install && node server.js &
 
-# Visualizador Service (Python Flask)
+# 👤 Patients Service
+echo "👤 Iniciando Patients Service..."
+cd "$BASE/services/patients-service" && npm install && node server.js &
+
+# 🖼️ Visualizador Service (Python Flask)
 echo "🖼️ Iniciando Visualizador Service..."
 cd "$BASE/services/visualizador-service"
 
@@ -39,6 +43,6 @@ fi
 
 python app.py &
 
-# Manejo de cierre limpio
+# 🧹 Manejo de cierre limpio
 trap "echo '⛔ Deteniendo servicios...'; pkill -P $$; exit" SIGINT SIGTERM
 wait

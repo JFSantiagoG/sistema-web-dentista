@@ -35,10 +35,24 @@ async function resendInfo(id) {
   return { success: true, message: `Información reenviada para cita #${id}` };
 }
 
+async function getAppointmentById(id) {
+  const [rows] = await db.query(`
+    SELECT a.id, p.id AS pacienteId, CONCAT(p.nombre, ' ', p.apellido) AS nombre,
+           a.fecha, a.hora, a.motivo, a.medico_id AS medicoId
+    FROM appointments a
+    JOIN pacientes p ON a.paciente_id = p.id
+    WHERE a.id = ?
+  `, [id]);
+  return rows[0];
+}
+
+
+
 module.exports = {
   getTodayAppointments,
   getAppointmentsByDate,
   cancelAppointment,
   postponeAppointment,
-  resendInfo
+  resendInfo,
+  getAppointmentById
 };
