@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🦷 Odontograma Final - Consultorio Dental</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="../css/forms.css" rel="stylesheet" />
+  <style>
+    /* Estilos específicos para este formulario */
+    .required::after {
+      content: " *";
+      color: red;
+    }
+    .dientes-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+    .linea-central {
+      width: 60%;
+      height: 2px;
+      background-color: black;
+      position: relative;
+      margin: 1% 5%;
+    }
+    .linea-vertical {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background-color: black;
+    }
+    .label-lado {
+      position: absolute;
+      font-weight: bold;
+    }
+    .label-derecho {
+      left: 10%;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .label-izquierdo {
+      right: 10%;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .label-superior {
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      position: absolute;
+      font-weight: bold;
+    }
+    .label-inferior {
+      bottom: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      position: absolute;
+      font-weight: bold;
+    }
+    .dientes-fila {
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+      margin: 5px 0;
+    }
+    .diente {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-color: #ccc; /* Color inicial (gris) */
+      margin: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .diente.tratamiento-asignado {
+      background-color: #28a745; /* Verde para tratamientos completos */
+    }
+    .diente.pendiente {
+      background-color: #ffc107; /* Amarillo para pendientes */
+    }
+    .tratamientos-tabla {
+      margin-top: 2rem;
+    }
+    .tratamientos-tabla th, .tratamientos-tabla td {
+      text-align: center;
+      vertical-align: middle;
+    }
+    .encia-table {
+      margin-top: 2rem;
+    }
+    .section-title {
+      font-weight: bold;
+      margin-top: 1.5rem;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body class="bg-light">
+  <div class="container py-4">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h2>🦷 Odontograma Final</h2>
+        <p class="text-muted">
+          Este formulario registra el estado final de los dientes del paciente, incluyendo tratamientos realizados y condiciones específicas de la encía, para documentar el resultado del tratamiento dental.
+        </p>
+      </div>
+      <button class="btn btn-outline-secondary" onclick="window.history.back()">
+        ← Volver
+      </button>
+    </div>
+
+    <!-- Formulario -->
+    <form id="odontogramaForm" class="step-form">
+      <!-- 1. Identificación del Paciente -->
+      <div class="card section-card">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">1. Identificación del Paciente</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label required">Nombre del Paciente</label>
+              <input type="text" class="form-control" required />
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label required">Fecha de Término</label>
+              <input type="date" class="form-control" required />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Visualización Gráfica de Dientes -->
+      <div class="card section-card">
+        <div class="card-header bg-info text-white">
+          <h5 class="mb-0">2. Visualización Gráfica de Dientes</h5>
+        </div>
+        <div class="card-body">
+          <div class="dientes-container">
+            <div class="label-superior">SUPERIOR</div>
+            <div class="label-inferior">INFERIOR</div>
+            <div class="label-derecho label-lado">DERECHO</div>
+            <div class="label-izquierdo label-lado">IZQUIERDO</div>
+            <div class="linea-vertical"></div>
+            <!-- Arcada superior fila 1 -->
+            <div class="dientes-fila">
+              <div class="diente" data-diente="18"></div>
+              <div class="diente" data-diente="17"></div>
+              <div class="diente" data-diente="16"></div>
+              <div class="diente" data-diente="15"></div>
+              <div class="diente" data-diente="14"></div>
+              <div class="diente" data-diente="13"></div>
+              <div class="diente" data-diente="12"></div>
+              <div class="diente" data-diente="11"></div>
+              <div class="diente" data-diente="21"></div>
+              <div class="diente" data-diente="22"></div>
+              <div class="diente" data-diente="23"></div>
+              <div class="diente" data-diente="24"></div>
+              <div class="diente" data-diente="25"></div>
+              <div class="diente" data-diente="26"></div>
+              <div class="diente" data-diente="27"></div>
+              <div class="diente" data-diente="28"></div>
+            </div>
+            <!-- Arcada superior fila 2 -->
+            <div class="dientes-fila">
+              <div class="diente" data-diente="55"></div>
+              <div class="diente" data-diente="54"></div>
+              <div class="diente" data-diente="53"></div>
+              <div class="diente" data-diente="52"></div>
+              <div class="diente" data-diente="51"></div>
+              <div class="diente" data-diente="61"></div>
+              <div class="diente" data-diente="62"></div>
+              <div class="diente" data-diente="63"></div>
+              <div class="diente" data-diente="64"></div>
+              <div class="diente" data-diente="65"></div>
+            </div>
+            <div class="linea-central"></div>
+            <!-- Arcada inferior fila 1 -->
+            <div class="dientes-fila">
+              <div class="diente" data-diente="85"></div>
+              <div class="diente" data-diente="84"></div>
+              <div class="diente" data-diente="83"></div>
+              <div class="diente" data-diente="82"></div>
+              <div class="diente" data-diente="81"></div>
+              <div class="diente" data-diente="71"></div>
+              <div class="diente" data-diente="72"></div>
+              <div class="diente" data-diente="73"></div>
+              <div class="diente" data-diente="74"></div>
+              <div class="diente" data-diente="75"></div>
+            </div>
+            <!-- Arcada inferior fila 2 -->
+            <div class="dientes-fila">
+              <div class="diente" data-diente="48"></div>
+              <div class="diente" data-diente="47"></div>
+              <div class="diente" data-diente="46"></div>
+              <div class="diente" data-diente="45"></div>
+              <div class="diente" data-diente="44"></div>
+              <div class="diente" data-diente="43"></div>
+              <div class="diente" data-diente="42"></div>
+              <div class="diente" data-diente="41"></div>
+              <div class="diente" data-diente="31"></div>
+              <div class="diente" data-diente="32"></div>
+              <div class="diente" data-diente="33"></div>
+              <div class="diente" data-diente="34"></div>
+              <div class="diente" data-diente="35"></div>
+              <div class="diente" data-diente="36"></div>
+              <div class="diente" data-diente="37"></div>
+              <div class="diente" data-diente="38"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Tabla de Tratamientos Específicos -->
+      <div class="card section-card tratamientos-tabla">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0">3. Tabla de Tratamientos Específicos</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th rowspan="2">Tratamiento</th>
+                  <th colspan="8">Derecho Superior (11-28)</th>
+                  <th colspan="8">Izquierdo Superior (31-48)</th>
+                  <th colspan="8">Derecho Inferior (51-68)</th>
+                  <th colspan="8">Izquierdo Inferior (71-88)</th>
+                </tr>
+                <tr>
+                  <!-- Derecho Superior -->
+                  <td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td>
+                  <!-- Izquierdo Superior -->
+                  <td>31</td><td>32</td><td>33</td><td>34</td><td>35</td><td>36</td><td>37</td><td>38</td>
+                  <!-- Derecho Inferior -->
+                  <td>55</td><td>54</td><td>53</td><td>52</td><td>51</td><td>61</td><td>62</td><td>63</td>
+                  <!-- Izquierdo Inferior -->
+                  <td>71</td><td>72</td><td>73</td><td>74</td><td>75</td><td>85</td><td>84</td><td>83</td>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Limpieza</td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="18"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="17"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="16"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="15"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="14"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="13"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="12"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="11"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="31"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="32"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="33"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="34"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="35"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="36"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="37"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="38"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="55"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="54"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="53"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="52"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="51"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="61"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="62"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="63"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="71"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="72"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="73"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="74"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="75"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="85"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="84"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="83"></td>
+                </tr>
+                <tr>
+                  <td>Resina</td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="18"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="17"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="16"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="15"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="14"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="13"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="12"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="11"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="31"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="32"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="33"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="34"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="35"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="36"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="37"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="38"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="55"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="54"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="53"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="52"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="51"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="61"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="62"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="63"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="71"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="72"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="73"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="74"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="75"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="85"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="84"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="83"></td>
+                </tr>
+                <tr>
+                  <td>Incrustaciones Metálicas (INC. MET.)</td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="18"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="17"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="16"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="15"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="14"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="13"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="12"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="11"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="31"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="32"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="33"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="34"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="35"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="36"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="37"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="38"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="55"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="54"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="53"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="52"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="51"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="61"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="62"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="63"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="71"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="72"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="73"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="74"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="75"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="85"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="84"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="83"></td>
+                </tr>
+                <tr>
+                  <td>Incrustaciones Cerámicas (INC. CER.)</td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="18"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="17"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="16"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="15"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="14"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="13"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="12"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="11"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="31"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="32"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="33"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="34"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="35"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="36"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="37"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="38"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="55"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="54"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="53"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="52"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="51"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="61"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="62"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="63"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="71"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="72"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="73"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="74"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="75"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="85"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="84"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="83"></td>
+                </tr>
+                <tr>
+                  <td>Pulpa Fija Metálica/Porcelana (P.F. MET./PORCE)</td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="18"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="17"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="16"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="15"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="14"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="13"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="12"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="11"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="31"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="32"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="33"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="34"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="35"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="36"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="37"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="38"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="55"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="54"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="53"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="52"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="51"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="61"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="62"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="63"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="71"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="72"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="73"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="74"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="75"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="85"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="84"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="83"></td>
+                </tr>
+                <tr>
+                  <td>Pulpa Fija Cerámica (P.F. CER.)</td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="18"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="17"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="16"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="15"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="14"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="13"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="12"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="11"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="31"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="32"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="33"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="34"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="35"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="36"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="37"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="38"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="55"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="54"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="53"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="52"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="51"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="61"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="62"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="63"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="71"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="72"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="73"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="74"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="75"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="85"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="84"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="83"></td>
+                </tr>
+                <tr>
+                  <td>Protésico Removible Unilateral (PROT. REM. UNI)</td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="18"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="17"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="16"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="15"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="14"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="13"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="12"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="11"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="31"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="32"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="33"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="34"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="35"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="36"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="37"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="38"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="55"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="54"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="53"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="52"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="51"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="61"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="62"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="63"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="71"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="72"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="73"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="74"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="75"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="85"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="84"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="83"></td>
+                </tr>
+                <tr>
+                  <td>Protésico Removible Bilateral (PROT. REM. BIL)</td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="18"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="17"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="16"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="15"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="14"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="13"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="12"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="11"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="31"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="32"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="33"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="34"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="35"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="36"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="37"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="38"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="55"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="54"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="53"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="52"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="51"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="61"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="62"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="63"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="71"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="72"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="73"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="74"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="75"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="85"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="84"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="83"></td>
+                </tr>
+                <tr>
+                  <td>Prostodoncia (PROSTO)</td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="18"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="17"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="16"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="15"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="14"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="13"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="12"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="11"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="31"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="32"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="33"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="34"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="35"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="36"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="37"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="38"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="55"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="54"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="53"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="52"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="51"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="61"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="62"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="63"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="71"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="72"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="73"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="74"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="75"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="85"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="84"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="83"></td>
+                </tr>
+                <tr>
+                  <td>Ortodoncia/Ortopedia (TRAT. ORTODONCIA/ORTOPEDIA)</td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="18"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="17"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="16"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="15"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="14"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="13"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="12"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="11"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="31"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="32"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="33"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="34"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="35"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="36"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="37"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="38"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="55"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="54"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="53"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="52"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="51"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="61"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="62"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="63"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="71"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="72"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="73"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="74"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="75"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="85"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="84"></td>
+                  <td><input type="checkbox" class="form-check-input" data-diente="83"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Estado de la Encía -->
+      <div class="card section-card encia-table">
+        <div class="card-header bg-warning text-dark">
+          <h5 class="mb-0">4. Estado de la Encía</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Condición</th>
+                  <th>Valoración</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Encía</td>
+                  <td><input type="text" class="form-control" placeholder="Ej: Sana, inflamada, etc."></td>
+                </tr>
+                <tr>
+                  <td>Inflamación</td>
+                  <td><input type="text" class="form-control" placeholder="Ej: Leve, moderada, severa"></td>
+                </tr>
+                <tr>
+                  <td>Migración</td>
+                  <td><input type="text" class="form-control" placeholder="Ej: Presente, ausente"></td>
+                </tr>
+                <tr>
+                  <td>Secreción</td>
+                  <td><input type="text" class="form-control" placeholder="Ej: Ausente, purulenta"></td>
+                </tr>
+                <tr>
+                  <td>Cálculo</td>
+                  <td><input type="text" class="form-control" placeholder="Ej: Ligero, abundante"></td>
+                </tr>
+                <tr>
+                  <td>Bolsa*</td>
+                  <td><input type="text" class="form-control" placeholder="Ej: Profundidad en mm"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="text-center mt-4">
+        <button type="button" class="btn btn-outline-secondary btn-lg me-2">
+          💾 Guardar Borrador
+        </button>
+        <button type="submit" class="btn btn-success btn-lg">
+          📤 Enviar Formulario
+        </button>
+        <button type="button" class="btn btn-info btn-lg ms-2">
+          🖨️ Descargar PDF
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/forms.js"></script>
+  <script>
+    // Interacción para cambiar el color de los dientes al hacer clic
+    document.querySelectorAll('.diente').forEach(diente => {
+      diente.addEventListener('click', () => {
+        // Alternar entre 'tratamiento-asignado' y sin clase
+        if (diente.classList.contains('tratamiento-asignado')) {
+          diente.classList.remove('tratamiento-asignado');
+          diente.classList.remove('pendiente');
+        } else {
+          diente.classList.add('tratamiento-asignado');
+        }
+      });
+    });
+
+    // Sincronizar la tabla de tratamientos con los dientes
+    document.querySelectorAll('.tratamientos-tabla input[type="checkbox"]').forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        const dienteId = this.getAttribute('data-diente');
+        const dienteElement = document.querySelector(`.diente[data-diente="${dienteId}"]`);
+        if (dienteElement) {
+          if (this.checked) {
+            dienteElement.classList.add('tratamiento-asignado');
+          } else {
+            dienteElement.classList.remove('tratamiento-asignado');
+          }
+        }
+      });
+    });
+
+    // Validación básica del formulario
+    document.getElementById('odontogramaForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      alert('✅ Odontograma final enviado correctamente.\n(En producción, aquí se guardarían los datos)');
+    });
+  </script>
+</body>
+</html>

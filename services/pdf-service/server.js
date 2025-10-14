@@ -12,6 +12,10 @@ app.use('/quirurgico', require('./routers/consent-quiro'));
 app.use('/consentimiento', require('./routers/consent-odont'));
 app.use('/presupuesto', require('./routers/presupuesto'));
 app.use('/evolucion', require('./routers/evolucion'));
+app.use('/justificante', require('./routers/justificante'));
+app.use('/historia', require('./routers/historia'));
+
+
 app.listen(3006, () =>// Puerto 3006 para evitar conflicto con otros servicios
   console.log('📄 PDF Evolución corriendo en puerto 3006')
 );

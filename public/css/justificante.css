@@ -1,0 +1,54 @@
+/* Estilos generales */
+body {
+  background-color: #f8f9fa;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.header-section {
+  margin-bottom: 2rem;
+}
+
+.professional-info {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #343a40;
+}
+
+/* Tarjeta del formulario */
+.section-card {
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border: none;
+}
+
+.card-header h5 {
+  font-weight: 600;
+}
+
+/* Campos en línea dentro del párrafo */
+.justificante-body input.form-control {
+  display: inline-block;
+  margin: 0 4px;
+  vertical-align: middle;
+}
+
+/* Firma */
+.firma-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+canvas#signature-pad-justificante {
+  background-color: #fff;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  transition: cursor 0.2s ease;
+}
+
+/* Botones finales */
+.text-center button {
+  min-width: 180px;
+}

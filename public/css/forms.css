@@ -5,6 +5,11 @@
     transition: box-shadow 0.2s;
 }
 
+.bg-purple { background-color: #6f42c1 !important; color: white !important; }
+.bg-orange { background-color: #fd7e14 !important; color: white !important; }
+.bg-teal   { background-color: #20c997 !important; color: white !important; }
+.bg-brown  { background-color: #8b4513 !important; color: white !important; }
+
 .section-card:hover {
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
 }

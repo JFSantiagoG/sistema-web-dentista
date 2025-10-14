@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🦷 Historia Clínica de Ortodoncia - Consultorio Dental</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="../css/forms.css" rel="stylesheet" />
+  <style>
+    .required::after {
+      content: " *";
+      color: red;
+    }
+    .table th, .table td {
+      vertical-align: middle;
+    }
+    .section-title {
+      font-weight: bold;
+      margin-top: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .form-label {
+      font-weight: 500;
+    }
+    .card-header {
+      font-weight: bold;
+    }
+    .input-number {
+      width: 100px;
+    }
+    .text-center-sm {
+      text-align: center;
+    }
+    @media (max-width: 768px) {
+      .input-number {
+        width: 80px;
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body class="bg-light">
+  <div class="container py-4">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h2>🦷 Historia Clínica de Ortodoncia</h2>
+        <p class="text-muted">
+          Este formulario recopila datos específicos para el diagnóstico y planificación de tratamientos de ortodoncia, incluyendo análisis clínicos, funcionales, de modelos, cefalométricos y valorativos.
+        </p>
+      </div>
+      <button class="btn btn-outline-secondary" onclick="window.history.back()">
+        ← Volver
+      </button>
+    </div>
+
+    <!-- Formulario -->
+    <form id="ortodonciaForm" class="step-form">
+      <!-- 1. Identificación del Paciente -->
+      <div class="card section-card">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">1. Identificación del Paciente</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label required">Nombre</label>
+              <input type="text" class="form-control" required />
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label required">Fecha de Ingreso</label>
+              <input type="date" class="form-control" required />
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Fecha de Alta</label>
+              <input type="date" class="form-control" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Examen Clínico -->
+      <div class="card section-card">
+        <div class="card-header bg-info text-white">
+          <h5 class="mb-0">2. Examen Clínico</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Característica</th>
+                  <th>Valoración</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Tipo de cuerpo</td>
+                  <td><input type="text" class="form-control" placeholder="Ej: Ectomorfo"></td>
+                </tr>
+                <tr>
+                  <td>Tipo de cara</td>
+                  <td><input type="text" class="form-control" placeholder="Ej: Braquifacial"></td>
+                </tr>
+                <tr>
+                  <td>Tipo de cráneo</td>
+                  <td><input type="text" class="form-control" placeholder="Ej: Mesocefálico"></td>
+                </tr>
+                <tr>
+                  <td>Otros</td>
+                  <td><input type="text" class="form-control" placeholder="Especificar"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Análisis Funcional -->
+      <div class="card section-card">
+        <div class="card-header bg-warning text-dark">
+          <h5 class="mb-0">3. Análisis Funcional</h5>
+        </div>
+        <div class="card-body">
+          <!-- a) Funciones Básicas -->
+          <h6 class="mt-3">a) Funciones Básicas</h6>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Respiración</label>
+              <textarea class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Deglución</label>
+              <textarea class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Masticación</label>
+              <textarea class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Fonación</label>
+              <textarea class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+
+          <!-- b) Salud Articular -->
+          <h6 class="mt-4">b) Salud Articular</h6>
+          <div class="mb-3">
+            <label class="form-label">Problemas en la Actualidad</label>
+            <textarea class="form-control" rows="2"></textarea>
+          </div>
+          <div class="table-responsive mb-3">
+            <table class="table table-bordered text-center-sm">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Sí</th>
+                  <th>No</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Dolor</td>
+                  <td><input type="radio" name="dolor_atm" value="si"></td>
+                  <td><input type="radio" name="dolor_atm" value="no"></td>
+                </tr>
+                <tr>
+                  <td>Ruidos</td>
+                  <td><input type="radio" name="ruidos_atm" value="si"></td>
+                  <td><input type="radio" name="ruidos_atm" value="no"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Dolor a la Palpación</label>
+            <textarea class="form-control" rows="2"></textarea>
+          </div>
+          <div class="row">
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Máxima Apertura (mm)</label>
+              <input type="number" class="form-control input-number">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Lateralidad Izq. (mm)</label>
+              <input type="number" class="form-control input-number">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Protrusión (mm)</label>
+              <input type="number" class="form-control input-number">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Lateralidad Der. (mm)</label>
+              <input type="number" class="form-control input-number">
+            </div>
+          </div>
+
+          <!-- c) Discrepancia OC-RC -->
+          <h6 class="mt-4">c) Discrepancia OC-RC</h6>
+          <div class="table-responsive mb-3">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Vertical (mm)</th>
+                  <th>Horizontal (mm)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Algún otro dato</label>
+            <textarea class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Análisis de Modelos -->
+      <div class="card section-card">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0">4. Análisis de Modelos</h5>
+        </div>
+        <div class="card-body">
+          <!-- I. Relaciones Dentarias -->
+          <h6 class="mt-3">I. Relaciones Dentarias</h6>
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Relación</th>
+                  <th>Der. (mm)</th>
+                  <th>Izq. (mm)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Oclusión de molares</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Oclusión de caninos</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Resalte horizontal (mm)</td><td colspan="2"><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Resalte vertical (mm)</td><td colspan="2"><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Línea media superior (mm)</td><td colspan="2"><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Línea media inferior (mm)</td><td colspan="2"><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Mordida cruzada posterior derecha (mm)</td><td colspan="2"><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Mordida cruzada posterior izquierda (mm)</td><td colspan="2"><input type="number" class="form-control input-number"></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- II. Anomalías Dentarias -->
+          <h6 class="mt-4">II. Anomalías Dentarias</h6>
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Anomalía</th>
+                  <th>Valoración</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Dientes ausentes</td><td><input type="text" class="form-control"></td></tr>
+                <tr><td>Dientes con malformación</td><td><input type="text" class="form-control"></td></tr>
+                <tr><td>Dientes con giroversión</td><td><input type="text" class="form-control"></td></tr>
+                <tr><td>Dientes en infraversión</td><td><input type="text" class="form-control"></td></tr>
+                <tr><td>Dientes en supraversión</td><td><input type="text" class="form-control"></td></tr>
+                <tr><td>Dientes pigmentados</td><td><input type="text" class="form-control"></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- III. Arcadas Individuales -->
+          <h6 class="mt-4">III. Arcadas Individuales</h6>
+          <div class="table-responsive">
+            <table class="table table-bordered text-center-sm">
+              <thead>
+                <tr>
+                  <th>Arcada</th>
+                  <th>Oval</th>
+                  <th>Cuadrada</th>
+                  <th>Triangular</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Arcada Superior</td>
+                  <td><input type="radio" name="arcada_sup" value="oval"></td>
+                  <td><input type="radio" name="arcada_sup" value="cuadrada"></td>
+                  <td><input type="radio" name="arcada_sup" value="triangular"></td>
+                </tr>
+                <tr>
+                  <td>Arcada Inferior</td>
+                  <td><input type="radio" name="arcada_inf" value="oval"></td>
+                  <td><input type="radio" name="arcada_inf" value="cuadrada"></td>
+                  <td><input type="radio" name="arcada_inf" value="triangular"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Índices Valorativos -->
+      <div class="card section-card">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0">5. Índices Valorativos</h5>
+        </div>
+        <div class="card-body">
+          <!-- Análisis de Pont -->
+          <h6>Análisis de Pont</h6>
+          <div class="table-responsive mb-3">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Colapso Maxilar</th>
+                  <th>N.C.</th>
+                  <th>Pac.</th>
+                  <th>Dif.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Premaxila</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Premolares</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Molares</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-responsive mb-3">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Colapso Mandibular</th>
+                  <th>Pac.</th>
+                  <th>Dif.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Premolares</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Molares</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Suma de los Incisivos</label>
+            <input type="number" class="form-control" placeholder="Valor numérico">
+          </div>
+
+          <!-- Análisis de Bolton -->
+          <h6 class="mt-4">Análisis de Bolton</h6>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Dientes Superiores (16–26)</label>
+              <div class="d-flex flex-wrap gap-2">
+                <!-- 12 inputs -->
+                <input type="number" class="form-control input-number" placeholder="16">
+                <input type="number" class="form-control input-number" placeholder="15">
+                <input type="number" class="form-control input-number" placeholder="14">
+                <input type="number" class="form-control input-number" placeholder="13">
+                <input type="number" class="form-control input-number" placeholder="12">
+                <input type="number" class="form-control input-number" placeholder="11">
+                <input type="number" class="form-control input-number" placeholder="21">
+                <input type="number" class="form-control input-number" placeholder="22">
+                <input type="number" class="form-control input-number" placeholder="23">
+                <input type="number" class="form-control input-number" placeholder="24">
+                <input type="number" class="form-control input-number" placeholder="25">
+                <input type="number" class="form-control input-number" placeholder="26">
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Dientes Inferiores (46–36)</label>
+              <div class="d-flex flex-wrap gap-2">
+                <input type="number" class="form-control input-number" placeholder="46">
+                <input type="number" class="form-control input-number" placeholder="45">
+                <input type="number" class="form-control input-number" placeholder="44">
+                <input type="number" class="form-control input-number" placeholder="43">
+                <input type="number" class="form-control input-number" placeholder="42">
+                <input type="number" class="form-control input-number" placeholder="41">
+                <input type="number" class="form-control input-number" placeholder="31">
+                <input type="number" class="form-control input-number" placeholder="32">
+                <input type="number" class="form-control input-number" placeholder="33">
+                <input type="number" class="form-control input-number" placeholder="34">
+                <input type="number" class="form-control input-number" placeholder="35">
+                <input type="number" class="form-control input-number" placeholder="36">
+              </div>
+            </div>
+          </div>
+          <div class="alert alert-info">
+            <strong>Global:</strong> 91.3 ± 3 &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>Parcial:</strong> 77.2 ± 1 &nbsp;&nbsp;|&nbsp;&nbsp;
+            Los dientes inferiores son <input type="number" class="form-control d-inline input-number" style="width:80px;"> mm más que los superiores.
+          </div>
+
+          <!-- Análisis de Longitud de Arco -->
+          <h6 class="mt-4">Análisis de Longitud de Arco</h6>
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Apinamiento (mm)</th>
+                  <th>Protrusión Dental (mm)</th>
+                  <th>Curva de Spee (mm)</th>
+                  <th>Total (mm)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. Plan de Tratamiento -->
+      <div class="card section-card">
+        <div class="card-header bg-secondary text-white">
+          <h5 class="mb-0">6. Plan de Tratamiento</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Ortopedia - Maxilar</label>
+              <textarea class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Ortopedia - Mandíbula</label>
+              <textarea class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Dientes Inferiores - Incisivo</label>
+              <textarea class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Dientes Inferiores - Molar</label>
+              <textarea class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Dientes Superiores - Molar</label>
+              <textarea class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Dientes Superiores - Incisivo</label>
+              <textarea class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Dientes Superiores - Estética</label>
+              <textarea class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+          <h6 class="mt-3">Anclaje</h6>
+          <div class="table-responsive">
+            <table class="table table-bordered text-center-sm">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Máximo</th>
+                  <th>Moderado</th>
+                  <th>Mínimo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Maxilar</td>
+                  <td><input type="radio" name="anclaje_max" value="maximo"></td>
+                  <td><input type="radio" name="anclaje_max" value="moderado"></td>
+                  <td><input type="radio" name="anclaje_max" value="minimo"></td>
+                </tr>
+                <tr>
+                  <td>Mandibular</td>
+                  <td><input type="radio" name="anclaje_man" value="maximo"></td>
+                  <td><input type="radio" name="anclaje_man" value="moderado"></td>
+                  <td><input type="radio" name="anclaje_man" value="minimo"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7. Análisis Cefalométrico -->
+      <div class="card section-card">
+        <div class="card-header bg-dark text-white">
+          <h5 class="mb-0">7. Análisis Cefalométrico</h5>
+        </div>
+        <div class="card-body">
+          <!-- Biotipo Facial -->
+          <h6>Biotipo Facial</h6>
+          <div class="table-responsive mb-3">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Factor</th>
+                  <th>N.C.</th>
+                  <th>Paciente</th>
+                  <th>Diferencia</th>
+                  <th>D.C.</th>
+                  <th>Resultado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Profundidad facial</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="text" class="form-control"></td></tr>
+                <tr><td>Eje Facial</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="text" class="form-control"></td></tr>
+                <tr><td>Altura Facial Inf.</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="text" class="form-control"></td></tr>
+                <tr><td>Plano Mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="text" class="form-control"></td></tr>
+                <tr><td>Arco Mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="text" class="form-control"></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Clase Esquelética -->
+          <h6 class="mt-4">Clase Esquelética</h6>
+          <div class="table-responsive mb-3">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Factor</th>
+                  <th>N.C.</th>
+                  <th>Paciente</th>
+                  <th>D.C.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Convexidad Facial</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Profundidad Maxilar</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Profundidad facial</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Problemas Verticales -->
+          <h6 class="mt-4">Problemas Verticales</h6>
+          <div class="table-responsive mb-3">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Factor</th>
+                  <th>N.C.</th>
+                  <th>Paciente</th>
+                  <th>D.C.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Altura Facial Inferior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Plano Mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Altura Maxilar</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Factores Dentales -->
+          <h6 class="mt-4">Factores Dentales</h6>
+          <div class="table-responsive mb-3">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Factor</th>
+                  <th>N.C.</th>
+                  <th>Paciente</th>
+                  <th>D.C.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Posición del molar sup.</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Relación Molar</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Posición del incisivo Inf.</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Inclinación del Incisivo</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Ángulo interincisivo</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Protrusión Labial</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Diagnóstico</label>
+            <textarea class="form-control" rows="3" placeholder="Resumen diagnóstico..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- 8. Factores Complementarios -->
+      <div class="card section-card">
+        <div class="card-header bg-purple text-white">
+          <h5 class="mb-0">8. Factores Complementarios</h5>
+        </div>
+        <div class="card-body">
+          <!-- Clase II -->
+          <h6>Clase II</h6>
+          <div class="table-responsive mb-3">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Factor</th>
+                  <th>N.C.</th>
+                  <th>Paciente</th>
+                  <th>D.C.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Longitud craneal anterior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Posición de la rama mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Longitud del cuerpo mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Clase III -->
+          <h6 class="mt-4">Clase III</h6>
+          <div class="table-responsive mb-3">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Factor</th>
+                  <th>N.C.</th>
+                  <th>Paciente</th>
+                  <th>D.C.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Longitud craneal anterior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Posición de la rama mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Longitud del cuerpo mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Deflexion craneal</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Localización del porion</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Factores Complementarios Verticales -->
+          <h6 class="mt-4">Factores Complementarios Verticales</h6>
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Factor</th>
+                  <th>N.C.</th>
+                  <th>Paciente</th>
+                  <th>D.C.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Altura Facial Posterior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Inclinacion del plano palatino</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Arco mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 9. Análisis Cefalométrico de Jaraback -->
+      <div class="card section-card">
+        <div class="card-header bg-orange text-white">
+          <h5 class="mb-0">9. Análisis Cefalométrico de Jaraback</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Factor</th>
+                  <th>N.C.</th>
+                  <th>Paciente</th>
+                  <th>D.C.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Angulo Silla</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Angulo Articular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Angulo Goniaco Total</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Suma Total</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Angulo Goniaco Superior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Angulo Goniaco Inferior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Angulo S-NA NA-A</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Angulo S-NA NA-B</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Angulo A-NA-B</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Inclinacion del Incisivo Superior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Inclinacion del Incisivo Inferior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 10. Medidas Lineales -->
+      <div class="card section-card">
+        <div class="card-header bg-teal text-white">
+          <h5 class="mb-0">10. Medidas Lineales</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Factor</th>
+                  <th>N.C.</th>
+                  <th>Paciente</th>
+                  <th>D.C.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Base Craneal Anterior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Longitud del Cuerpo Mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Base Craneal Posterior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Altura de la Rama</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Relacion entre la altura facial post. y la altura facial ant.</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 11. Análisis de McNamara -->
+      <div class="card section-card">
+        <div class="card-header bg-brown text-white">
+          <h5 class="mb-0">11. Análisis de McNamara</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Factor</th>
+                  <th>N.C.</th>
+                  <th>Paciente</th>
+                  <th>D.C.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Altura Facial Anteroinferior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Longitud Maxilar</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr><td>Longitud Mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="text-center mt-4">
+        <button type="button" class="btn btn-outline-secondary btn-lg me-2">
+          💾 Guardar Borrador
+        </button>
+        <button type="submit" class="btn btn-success btn-lg">
+          📤 Enviar Formulario
+        </button>
+        <button type="button" class="btn btn-info btn-lg ms-2">
+          🖨️ Descargar PDF
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/forms.js"></script>
+  <script>
+    // Validación básica
+    document.getElementById('ortodonciaForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      alert('✅ Historia clínica de ortodoncia enviada correctamente.\n(En producción, aquí se guardarían los datos)');
+    });
+  </script>
+</body>
+</html>

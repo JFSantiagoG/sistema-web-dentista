@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📄 Justificante Médico - Consultorio Dental</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="../css/forms.css" rel="stylesheet" />
+  <link href="../css/justificante.css" rel="stylesheet" />
+</head>
+<body class="bg-light">
+  <div class="container py-4 position-relative">
+    <!-- Encabezado profesional -->
+    <div class="header-section mb-4">
+      <div class="professional-info text-center">
+        <strong>Cirujano Dentista Nancy A. Hernández López</strong><br />
+        Especialista en Ortodoncia y Ortopedia Maxilar<br />
+        CED. 4680024, CED. ESP. 7817313<br />
+        Av. Cuitláhuac No. 285, Col. Pro-Hogar, México D.F.<br />
+        Teléfono: 6308.2174 / 04455.6076.8157
+      </div>
+    </div>
+
+    <!-- Formulario -->
+    <form id="justificanteForm" class="step-form">
+      <div class="card section-card mb-4">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">📄 Justificante Médico</h5>
+        </div>
+        <div class="card-body">
+          <!-- Fecha -->
+          <div class="mb-3 d-flex align-items-center gap-2">
+            <span>México D.F. a</span>
+            <input type="date" id="fechaEmision" class="form-control" required style="max-width: 200px;" />
+            <span>.</span>
+          </div>
+
+          <!-- Cuerpo -->
+          <div class="mb-4">
+            <label class="form-label">A quien corresponda:</label>
+          </div>
+
+          <div class="justificante-body">
+            <p>
+              Por medio de la presente le informo que el paciente
+              <input type="text" id="nombrePaciente" class="form-control d-inline-block" placeholder="Nombre del paciente" required style="max-width: 300px;" />
+              fue sometido a un procedimiento odontológico quirúrgico denominado:
+              <input type="text" id="procedimiento" class="form-control d-inline-block" placeholder="Nombre del procedimiento" required style="max-width: 300px;" />
+              los días
+              <input type="text" id="fechaProcedimiento" class="form-control d-inline-block" placeholder="Ej: 10 y 12 de octubre" required style="max-width: 200px;" />
+              del año en curso, por lo que necesita guardar reposo, por
+              <input type="number" id="diasReposo" class="form-control d-inline-block" min="1" placeholder="Núm. días" required style="width: 80px;" />
+              días, por lo cual requerirá de un mayor número de citas.
+            </p>
+
+            <p class="mt-4">
+              Se extiende la presente para los fines del interesado. Por su atención, Gracias.
+            </p>
+
+            <p class="mt-4 text-end">
+              <strong>Atte. C.D. Esp. Nancy Alejandra Hernández López.</strong>
+            </p>
+          </div>
+
+          <!-- Firma digital -->
+          <div class="mt-5">
+            <h5 class="text-center">Firma del Profesional</h5>
+            <div class="firma-wrap">
+              <canvas id="signature-pad-justificante" width="360" height="120"></canvas>
+              <button type="button" class="btn btn-sm btn-outline-danger" id="clearSignature-pad-justificante">🧹 Limpiar Firma</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botones -->
+      <div class="text-center mt-4">
+        <button type="button" class="btn btn-outline-secondary btn-lg me-2">💾 Guardar Borrador</button>
+        <button type="submit" class="btn btn-success btn-lg">📤 Enviar Justificante</button>
+        <button type="button" id="descargarPDF" class="btn btn-info btn-lg ms-2">🖨️ Descargar PDF</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/firma.js"></script>
+  <script src="../js/justificante.js"></script>
+</body>
+</html>
