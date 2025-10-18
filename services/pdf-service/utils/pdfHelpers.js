@@ -87,4 +87,25 @@ function insertarPie(doc, firma = true) {
   doc.x = prevX;
   doc.y = prevY;
 }
-module.exports = { insertarEncabezado, insertarPie };
+/**
+ * Verifica si hay espacio suficiente en la página actual.
+ * Si no lo hay, agrega una nueva página con encabezado y pie.
+ * @param {PDFDocument} doc - Instancia de PDFKit
+ * @param {number} alturaNecesaria - Altura estimada del contenido que se va a insertar
+ * @param {string} tituloPrincipal - Título del encabezado
+ * @param {string[]} subtitulos - Subtítulos del encabezado
+ */
+function verificarEspacioYAgregarPagina(doc, alturaNecesaria = 100, tituloPrincipal = 'CONSULTORIO DENTAL NIMAFESI', subtitulos = []) {
+  const margenInferior = doc.page.height - doc.page.margins.bottom;
+  if (doc.y + alturaNecesaria > margenInferior) {
+    doc.addPage();
+    insertarEncabezado(doc, tituloPrincipal, subtitulos);
+    insertarPie(doc, false);
+  }
+}
+
+module.exports = {
+  insertarEncabezado,
+  insertarPie,
+  verificarEspacioYAgregarPagina
+};

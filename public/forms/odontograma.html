@@ -5,100 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🦷 Odontograma Final - Consultorio Dental</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link href="../css/forms.css" rel="stylesheet" />
-  <style>
-    /* Estilos específicos para este formulario */
-    .required::after {
-      content: " *";
-      color: red;
-    }
-    .dientes-container {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-bottom: 2rem;
-    }
-    .linea-central {
-      width: 60%;
-      height: 2px;
-      background-color: black;
-      position: relative;
-      margin: 1% 5%;
-    }
-    .linea-vertical {
-      position: absolute;
-      left: 50%;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background-color: black;
-    }
-    .label-lado {
-      position: absolute;
-      font-weight: bold;
-    }
-    .label-derecho {
-      left: 10%;
-      top: 50%;
-      transform: translateY(-50%);
-    }
-    .label-izquierdo {
-      right: 10%;
-      top: 50%;
-      transform: translateY(-50%);
-    }
-    .label-superior {
-      top: -20px;
-      left: 50%;
-      transform: translateX(-50%);
-      position: absolute;
-      font-weight: bold;
-    }
-    .label-inferior {
-      bottom: -20px;
-      left: 50%;
-      transform: translateX(-50%);
-      position: absolute;
-      font-weight: bold;
-    }
-    .dientes-fila {
-      display: flex;
-      justify-content: center;
-      gap: 5px;
-      margin: 5px 0;
-    }
-    .diente {
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
-      background-color: #ccc; /* Color inicial (gris) */
-      margin: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-    .diente.tratamiento-asignado {
-      background-color: #28a745; /* Verde para tratamientos completos */
-    }
-    .diente.pendiente {
-      background-color: #ffc107; /* Amarillo para pendientes */
-    }
-    .tratamientos-tabla {
-      margin-top: 2rem;
-    }
-    .tratamientos-tabla th, .tratamientos-tabla td {
-      text-align: center;
-      vertical-align: middle;
-    }
-    .encia-table {
-      margin-top: 2rem;
-    }
-    .section-title {
-      font-weight: bold;
-      margin-top: 1.5rem;
-      margin-bottom: 1rem;
-    }
-  </style>
+  <link href="../css/odontograma.css" rel="stylesheet" />
 </head>
 <body class="bg-light">
   <div class="container py-4">
@@ -126,11 +33,11 @@
           <div class="row">
             <div class="col-md-6 mb-3">
               <label class="form-label required">Nombre del Paciente</label>
-              <input type="text" class="form-control" required />
+              <input type="text" name="nombrePaciente" class="form-control" required />
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label required">Fecha de Término</label>
-              <input type="date" class="form-control" required />
+              <input type="date" name="fechaTermino" class="form-control" required />
             </div>
           </div>
         </div>
@@ -663,41 +570,7 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="../js/forms.js"></script>
-  <script>
-    // Interacción para cambiar el color de los dientes al hacer clic
-    document.querySelectorAll('.diente').forEach(diente => {
-      diente.addEventListener('click', () => {
-        // Alternar entre 'tratamiento-asignado' y sin clase
-        if (diente.classList.contains('tratamiento-asignado')) {
-          diente.classList.remove('tratamiento-asignado');
-          diente.classList.remove('pendiente');
-        } else {
-          diente.classList.add('tratamiento-asignado');
-        }
-      });
-    });
-
-    // Sincronizar la tabla de tratamientos con los dientes
-    document.querySelectorAll('.tratamientos-tabla input[type="checkbox"]').forEach(checkbox => {
-      checkbox.addEventListener('change', function() {
-        const dienteId = this.getAttribute('data-diente');
-        const dienteElement = document.querySelector(`.diente[data-diente="${dienteId}"]`);
-        if (dienteElement) {
-          if (this.checked) {
-            dienteElement.classList.add('tratamiento-asignado');
-          } else {
-            dienteElement.classList.remove('tratamiento-asignado');
-          }
-        }
-      });
-    });
-
-    // Validación básica del formulario
-    document.getElementById('odontogramaForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      alert('✅ Odontograma final enviado correctamente.\n(En producción, aquí se guardarían los datos)');
-    });
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="../js/odontograma.js"></script>
 </body>
 </html>

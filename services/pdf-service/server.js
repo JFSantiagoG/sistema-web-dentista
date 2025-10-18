@@ -14,6 +14,9 @@ app.use('/presupuesto', require('./routers/presupuesto'));
 app.use('/evolucion', require('./routers/evolucion'));
 app.use('/justificante', require('./routers/justificante'));
 app.use('/historia', require('./routers/historia'));
+app.use('/ortodoncia', require('./routers/ortodoncia'));
+app.use('/odontograma', require('./routers/odontograma'));
+app.use('/diag-infantil', require('./routers/diag-infantil'));
 
 
 app.listen(3006, () =>// Puerto 3006 para evitar conflicto con otros servicios

@@ -1,6 +1,6 @@
 const express = require('express');
 const PDFDocument = require('pdfkit');
-const { insertarEncabezado, insertarPie } = require('../utils/pdfHelpers');
+const { insertarEncabezado, insertarPie, verificarEspacioYAgregarPagina } = require('../utils/pdfHelpers');
 const { insertarFirma } = require('../utils/pdffirma');
 
 const router = express.Router();
@@ -33,39 +33,36 @@ router.post('/generate', (req, res) => {
     firmaPaciente
   } = req.body;
 
+  // 🔒 Log limpio (sin base64 de la firma)
   console.log('📋 Historia clínica recibida:');
-console.log({
-  nombrePaciente,
-  domicilioPaciente,
-  telefonoPaciente,
-  sexoPaciente,
-  fechaNacimiento,
-  edadPaciente,
-  estadoCivil,
-  ocupacionPaciente,
-  motivoConsulta,
-  tratamientoMedico,
-  tratamientoMedicoCual,
-  medicamento,
-  medicamentoCual,
-  problemaDental,
-  problemaDentalCual,
-  antecedentesPatologicos,
-  antecedentesMujeres,
-  antecedentesNoPatologicos,
-  antecedentesFamiliares,
-  interrogatorioSistemas,
-  exploracionClinica,
-  observacionesGenerales,
-  hallazgosRadiograficos,
-  firmaPaciente: firmaPaciente ? `🖊️ Firma recibida (${Math.round(firmaPaciente.length * 3 / 4 / 1024)} KB)` : '❌ Sin firma'
-});
-
-  const doc = new PDFDocument({
-    size: 'A4',
-    margin: 40
+  console.log({
+    nombrePaciente,
+    domicilioPaciente,
+    telefonoPaciente,
+    sexoPaciente,
+    fechaNacimiento,
+    edadPaciente,
+    estadoCivil,
+    ocupacionPaciente,
+    motivoConsulta,
+    tratamientoMedico,
+    tratamientoMedicoCual,
+    medicamento,
+    medicamentoCual,
+    problemaDental,
+    problemaDentalCual,
+    antecedentesPatologicos,
+    antecedentesMujeres,
+    antecedentesNoPatologicos,
+    antecedentesFamiliares,
+    interrogatorioSistemas,
+    exploracionClinica,
+    observacionesGenerales,
+    hallazgosRadiograficos,
+    firmaPaciente: firmaPaciente ? `🖊️ Firma recibida (${Math.round(firmaPaciente.length * 3 / 4 / 1024)} KB)` : '❌ Sin firma'
   });
 
+  const doc = new PDFDocument({ size: 'A4', margin: 40 });
   const chunks = [];
   doc.on('data', c => chunks.push(c));
   doc.on('end', () => {
@@ -73,54 +70,69 @@ console.log({
     res.send(Buffer.concat(chunks));
   });
 
-  // Página 1
+  // ========= Encabezado / Pie en página 1 =========
   insertarEncabezado(doc, 'CIRUJANO DENTISTA NANCY HERNÁNDEZ LÓPEZ', [
     'ESPECIALISTA EN CIRUGÍA Y ORTOPEDIA MAXILAR'
   ]);
+  insertarPie(doc, false);
 
+  // ========= Reserva contra el pie y estilos consistentes =========
+  const FOOTER_RESERVE = 80; // ajusta si tu pie mide distinto
+  const HEADER_TITLE = 'CIRUJANO DENTISTA NANCY HERNÁNDEZ LÓPEZ';
+  const HEADER_SUBS = ['ESPECIALISTA EN CIRUGÍA Y ORTOPEDIA MAXILAR'];
 
+  const setTitleStyle = () => {
+    doc.font('Helvetica-Bold').fontSize(12).fillColor('#111'); // siempre el mismo color
+  };
+  const setBodyStyle = () => {
+    doc.font('Helvetica').fontSize(10).fillColor('#111'); // siempre el mismo color
+  };
 
+  // wrapper de tu helper que considera el pie
+  const vspace = (needed) => {
+    // suma reserva para no bajar hasta el pie
+    verificarEspacioYAgregarPagina(doc, needed + FOOTER_RESERVE, HEADER_TITLE, HEADER_SUBS);
+  };
+
+  // ========= Sección 1 =========
+  setTitleStyle();
+  doc.text('1. Datos Generales del Paciente', { underline: true }).moveDown(0.5);
+
+  setBodyStyle();
   doc
-    .font('Helvetica-Bold')
-    .fontSize(12)
-    .text('1. Datos Generales del Paciente', { underline: true })
-    .moveDown(0.5)
-    .font('Helvetica')
-    .fontSize(10)
-    .text(`Nombre: ${nombrePaciente}`)
-    .text(`Domicilio: ${domicilioPaciente}`)
-    .text(`Teléfono: ${telefonoPaciente}`)
-    .text(`Sexo: ${sexoPaciente}`)
-    .text(`Fecha de nacimiento: ${fechaNacimiento}`)
-    .text(`Edad: ${edadPaciente}`)
-    .text(`Estado civil: ${estadoCivil}`)
-    .text(`Ocupación: ${ocupacionPaciente}`)
-    .moveDown(0.5)
-    .text(`Motivo de la consulta:`, { underline: true })
-    .text(motivoConsulta, { align: 'justify' })
-    .moveDown(1);
-
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(12)
-    .text('2. Antecedentes Personales Patológicos', { underline: true })
+    .text(`Nombre: ${nombrePaciente || '-'}`)
+    .text(`Domicilio: ${domicilioPaciente || '-'}`)
+    .text(`Teléfono: ${telefonoPaciente || '-'}`)
+    .text(`Sexo: ${sexoPaciente || '-'}`)
+    .text(`Fecha de nacimiento: ${fechaNacimiento || '-'}`)
+    .text(`Edad: ${edadPaciente || '-'}`)
+    .text(`Estado civil: ${estadoCivil || '-'}`)
+    .text(`Ocupación: ${ocupacionPaciente || '-'}`)
     .moveDown(0.5);
 
+  setTitleStyle();
+  doc.text('Motivo de la consulta:', { underline: true });
+  setBodyStyle();
+  doc.text(motivoConsulta || '-', { align: 'justify' });
+
+  // ========= Sección 2 =========
+  vspace(100);
+  setTitleStyle();
+  doc.moveDown(1).text('2. Antecedentes Personales Patológicos', { underline: true });
+
   antecedentesPatologicos.forEach(p => {
-    doc
-      .font('Helvetica')
-      .fontSize(10)
-      .text(`• ${p.patologia}: ${p.si ? 'Sí' : p.no ? 'No' : 'Sin respuesta'}${p.fecha ? ` (Fecha: ${p.fecha})` : ''}`);
+    vspace(20);
+    setBodyStyle();
+    doc.text(`• ${p.patologia}: ${p.si ? 'Sí' : p.no ? 'No' : 'Sin respuesta'}${p.fecha ? ` (Fecha: ${p.fecha})` : ''}`);
   });
 
+  // ========= Sección 3 =========
+  vspace(100);
+  setTitleStyle();
+  doc.moveDown(1).text('3. Tratamiento Médico', { underline: true }).moveDown(0.5);
+
+  setBodyStyle();
   doc
-    .moveDown(1)
-    .font('Helvetica-Bold')
-    .fontSize(12)
-    .text('3. Tratamiento Médico', { underline: true })
-    .moveDown(0.5)
-    .font('Helvetica')
-    .fontSize(10)
     .text(`¿Está bajo tratamiento médico?: ${tratamientoMedico ? 'Sí' : 'No'}`)
     .text(`¿Cuál?: ${tratamientoMedicoCual || 'No especificado'}`)
     .text(`¿Toma medicamentos?: ${medicamento ? 'Sí' : 'No'}`)
@@ -128,115 +140,85 @@ console.log({
     .text(`¿Problema dental previo?: ${problemaDental ? 'Sí' : 'No'}`)
     .text(`¿Cuál?: ${problemaDentalCual || 'No especificado'}`);
 
+  // ========= Sección 4 (Solo Mujeres) =========
   if (sexoPaciente === 'Femenino') {
-    doc
-      .moveDown(1)
-      .font('Helvetica-Bold')
-      .fontSize(12)
-      .text('4. Condiciones (Solo Mujeres)', { underline: true })
-      .moveDown(0.5);
-
+    vspace(100);
+    setTitleStyle();
+    doc.moveDown(1).text('4. Condiciones (Solo Mujeres)', { underline: true });
     antecedentesMujeres.forEach(c => {
-      doc
-        .font('Helvetica')
-        .fontSize(10)
-        .text(`• ${c.condicion}: ${c.si ? 'Sí' : c.no ? 'No' : 'Sin respuesta'}${c.fecha ? ` (Fecha: ${c.fecha})` : ''}`);
+      vspace(20);
+      setBodyStyle();
+      doc.text(`• ${c.condicion}: ${c.si ? 'Sí' : c.no ? 'No' : 'Sin respuesta'}${c.fecha ? ` (Fecha: ${c.fecha})` : ''}`);
     });
   }
 
-  doc
-    .moveDown(1)
-    .font('Helvetica-Bold')
-    .fontSize(12)
-    .text('5. Antecedentes Personales No Patológicos', { underline: true })
-    .moveDown(0.5);
+  // ========= Sección 5 =========
+  vspace(100);
+  setTitleStyle();
+  doc.moveDown(1).text('5. Antecedentes Personales No Patológicos', { underline: true });
 
   antecedentesNoPatologicos.forEach(h => {
-    doc
-      .font('Helvetica')
-      .fontSize(10)
-      .text(`• ${h.habito}: ${h.si ? 'Sí' : h.no ? 'No' : 'Sin respuesta'}${h.cantidad ? ` (Cantidad: ${h.cantidad})` : ''}`);
+    vspace(20);
+    setBodyStyle();
+    doc.text(`• ${h.habito}: ${h.si ? 'Sí' : h.no ? 'No' : 'Sin respuesta'}${h.cantidad ? ` (Cantidad: ${h.cantidad})` : ''}`);
   });
-  insertarPie(doc, false);
-  // Página 2
-  doc.addPage();
-  insertarEncabezado(doc, 'CIRUJANO DENTISTA NANCY HERNÁNDEZ LÓPEZ', [
-    'ESPECIALISTA EN CIRUGÍA Y ORTOPEDIA MAXILAR'
-  ]);
 
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(12)
-    .text('6. Antecedentes Heredofamiliares', { underline: true })
-    .moveDown(0.5);
+  // ========= Sección 6 =========
+  vspace(100);
+  setTitleStyle();
+  doc.moveDown(1).text('6. Antecedentes Heredofamiliares', { underline: true });
 
   const miembros = ['Madre', 'Abuela Materna', 'Abuelo Materno', 'Padre', 'Abuela Paterna', 'Abuelo Paterna', 'Hermano', 'Otros'];
-
   antecedentesFamiliares.forEach(f => {
-    const presentes = f.miembros
-      .map((v, idx) => v ? miembros[idx] : null)
-      .filter(Boolean)
-      .join(', ');
-    doc
-      .font('Helvetica')
-      .fontSize(10)
-      .text(`• ${f.patologia}: ${presentes || 'Sin antecedentes reportados'}`);
+    vspace(20);
+    const presentes = (f.miembros || []).map((v, idx) => v ? miembros[idx] : null).filter(Boolean).join(', ');
+    setBodyStyle();
+    doc.text(`• ${f.patologia}: ${presentes || 'Sin antecedentes reportados'}`);
   });
 
-  doc
-    .moveDown(1)
-    .font('Helvetica-Bold')
-    .fontSize(12)
-    .text('7. Interrogatorio por Aparatos y Sistemas', { underline: true })
-    .moveDown(0.5);
+  // ========= Sección 7 =========
+  vspace(100);
+  setTitleStyle();
+  doc.moveDown(1).text('7. Interrogatorio por Aparatos y Sistemas', { underline: true });
 
   Object.entries(interrogatorioSistemas).forEach(([sistema, respuesta]) => {
-    doc
-      .font('Helvetica')
-      .fontSize(10)
-      .text(`• ${sistema}: ${respuesta || 'Sin observaciones'}`);
+    vspace(20);
+    setBodyStyle();
+    doc.text(`• ${sistema}: ${respuesta || 'Sin observaciones'}`);
   });
 
-  doc
-    .moveDown(1)
-    .font('Helvetica-Bold')
-    .fontSize(12)
-    .text('8. Exploración Clínica (Patologías observadas)', { underline: true })
-    .moveDown(0.5);
+  // ========= Sección 8 =========
+  vspace(100);
+  setTitleStyle();
+  doc.moveDown(1).text('8. Exploración Clínica (Patologías observadas)', { underline: true });
 
   Object.entries(exploracionClinica).forEach(([zona, observacion]) => {
-    doc
-      .font('Helvetica')
-      .fontSize(10)
-      .text(`• ${zona}: ${observacion || 'Sin hallazgos'}`);
+    vspace(20);
+    setBodyStyle();
+    doc.text(`• ${zona}: ${observacion || 'Sin hallazgos'}`);
   });
 
-  doc
-    .moveDown(1)
-    .font('Helvetica-Bold')
-    .fontSize(12)
-    .text('9. Observaciones Generales', { underline: true })
-    .moveDown(0.5)
-    .font('Helvetica')
-    .fontSize(10)
-    .text(observacionesGenerales || 'Sin observaciones registradas.', { align: 'justify' });
+  // ========= Sección 9 =========
+  vspace(100);
+  setTitleStyle();
+  doc.moveDown(1).text('9. Observaciones Generales', { underline: true }).moveDown(0.5);
+  setBodyStyle();
+  doc.text(observacionesGenerales || 'Sin observaciones registradas.', { align: 'justify' });
 
-  doc
-    .moveDown(1)
-    .font('Helvetica-Bold')
-    .fontSize(12)
-    .text('10. Hallazgos Radiográficos y de Laboratorio', { underline: true })
-    .moveDown(0.5)
-    .font('Helvetica')
-    .fontSize(10)
-    .text(hallazgosRadiograficos || 'Sin hallazgos registrados.', { align: 'justify' });
+  // ========= Sección 10 =========
+  vspace(100);
+  setTitleStyle();
+  doc.moveDown(1).text('10. Hallazgos Radiográficos y de Laboratorio', { underline: true }).moveDown(0.5);
+  setBodyStyle();
+  doc.text(hallazgosRadiograficos || 'Sin hallazgos registrados.', { align: 'justify' });
 
-  doc.moveDown(2);
+  // ========= Sección 11: Firma =========
+  vspace(120);
   insertarFirma(doc, firmaPaciente, {
-    label: 'Firma del Paciente'
+    label: `${nombrePaciente || ''}`
   });
 
-  insertarPie(doc, false);
+  // ⚠️ No dibujar pie aquí: ya se dibuja al crear/avanzar de página mediante insertarPie(...)
   doc.end();
 });
 

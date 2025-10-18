@@ -6,38 +6,7 @@
   <title>🦷 Historia Clínica de Ortodoncia - Consultorio Dental</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="../css/forms.css" rel="stylesheet" />
-  <style>
-    .required::after {
-      content: " *";
-      color: red;
-    }
-    .table th, .table td {
-      vertical-align: middle;
-    }
-    .section-title {
-      font-weight: bold;
-      margin-top: 1.5rem;
-      margin-bottom: 1rem;
-    }
-    .form-label {
-      font-weight: 500;
-    }
-    .card-header {
-      font-weight: bold;
-    }
-    .input-number {
-      width: 100px;
-    }
-    .text-center-sm {
-      text-align: center;
-    }
-    @media (max-width: 768px) {
-      .input-number {
-        width: 80px;
-        font-size: 0.9rem;
-      }
-    }
-  </style>
+  <link href="../css/ortodoncia.css" rel="stylesheet" />
 </head>
 <body class="bg-light">
   <div class="container py-4">
@@ -65,15 +34,15 @@
           <div class="row">
             <div class="col-md-6 mb-3">
               <label class="form-label required">Nombre</label>
-              <input type="text" class="form-control" required />
+              <input name="nombrePaciente" type="text" class="form-control"/>
             </div>
             <div class="col-md-3 mb-3">
               <label class="form-label required">Fecha de Ingreso</label>
-              <input type="date" class="form-control" required />
+              <input name="fechaIngreso" type="date" class="form-control"/>
             </div>
             <div class="col-md-3 mb-3">
               <label class="form-label">Fecha de Alta</label>
-              <input type="date" class="form-control" />
+              <input name="fechaAlta" type="date" class="form-control" />
             </div>
           </div>
         </div>
@@ -749,7 +718,7 @@
         <button type="submit" class="btn btn-success btn-lg">
           📤 Enviar Formulario
         </button>
-        <button type="button" class="btn btn-info btn-lg ms-2">
+        <button type="button" id="descargarPDF" class="btn btn-info btn-lg ms-2">
           🖨️ Descargar PDF
         </button>
       </div>
@@ -758,13 +727,6 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="../js/forms.js"></script>
-  <script>
-    // Validación básica
-    document.getElementById('ortodonciaForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      alert('✅ Historia clínica de ortodoncia enviada correctamente.\n(En producción, aquí se guardarían los datos)');
-    });
-  </script>
+  <script src="../js/ortodoncia.js"></script>
 </body>
 </html>

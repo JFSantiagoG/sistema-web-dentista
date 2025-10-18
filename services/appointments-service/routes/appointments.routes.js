@@ -13,4 +13,6 @@ router.post('/:id/resend', ctrl.resend);
 router.get('/available-dates', ctrl.getAvailableDates);
 router.get('/available-hours/:fecha', ctrl.getAvailableHours);
 
+router.post('/range', ctrl.createRange);
+
 module.exports = router;

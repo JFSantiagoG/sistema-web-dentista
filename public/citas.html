@@ -2,23 +2,25 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Citas del día</title>
+  <title>📅 Citas del día - SmileWorks</title>
   <link rel="stylesheet" href="css/citas.css" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="js/citas.js" defer></script>
 </head>
 <body>
-  <h1>📅 Citas del día</h1>
+  <header>
+    <h1>📅 Citas del día</h1>
+    <div class="acciones-header">
+      <label for="filtro-fecha">Filtrar por fecha:</label>
+      <input type="date" id="filtro-fecha" />
+      <button id="btn-nueva-cita" class="btn btn-primary">➕ Nueva cita</button>
+    </div>
+  </header>
 
-  <div class="filtro-fecha">
-    <label for="filtro-fecha">Filtrar por fecha:</label>
-    <input type="date" id="filtro-fecha" onchange="filtrarPorFecha()" />
-  </div>
-
+  <!-- Tabla de citas -->
   <table id="tabla-citas">
     <thead>
       <tr>
-        <th><input type="checkbox" id="check-todos" onclick="seleccionarTodos(this)" /></th>
+        <th><input type="checkbox" id="check-todos" /></th>
         <th>ID</th>
         <th>Paciente</th>
         <th>Fecha</th>
@@ -27,12 +29,61 @@
         <th class="col-acciones">Acciones</th>
       </tr>
     </thead>
-    <tbody id="citas-body"></tbody>
+    <tbody id="citas-body"><!-- Se inyectan dinámicamente --></tbody>
   </table>
 
-  <div id="acciones-masivas" style="display: none; margin-top: 20px; text-align: right;">
-    <button class="btn btn-danger" id="btn-eliminar" onclick="eliminarSeleccionadas()">🗑️ Eliminar seleccionadas</button>
-    <button class="btn btn-primary" id="btn-reenviar" onclick="reenviarSeleccionadas()">📤 Reenviar seleccionadas</button>
+  <!-- Acciones masivas -->
+  <div id="acciones-masivas" class="acciones-masivas">
+    <button class="btn btn-danger" id="btn-eliminar">🗑️ Eliminar seleccionadas</button>
+    <button class="btn btn-primary" id="btn-reenviar">📤 Reenviar seleccionadas</button>
   </div>
+
+  <!-- Modal: Nueva cita -->
+  <div id="modal-cita" class="modal">
+    <div class="modal-content">
+      <button id="btn-cerrar-modal" class="cerrar">✖</button>
+      <h2>➕ Nueva cita</h2>
+
+      <!-- Buscar paciente -->
+      <label for="paciente-q">Buscar paciente:</label>
+      <div class="buscador">
+        <input type="text" id="paciente-q" placeholder="Nombre, teléfono o correo" />
+        <button id="btn-buscar-paciente" class="btn btn-secondary">🔍 Buscar</button>
+      </div>
+      <ul id="pacientes-list" class="lista-pacientes"></ul>
+      <div id="paciente-seleccionado" class="paciente-seleccionado" style="display:none;"></div>
+
+      <hr />
+
+      <!-- Fecha y horas -->
+      <label for="nueva-fecha">📅 Fecha:</label>
+      <input type="date" id="nueva-fecha" />
+      <button id="btn-cargar-horas" class="btn btn-secondary">⏰ Cargar horas disponibles</button>
+
+      <div class="horas">
+        <div>
+          <label for="hora-inicio">Hora inicio:</label>
+          <select id="hora-inicio"></select>
+        </div>
+        <div>
+          <label for="hora-fin">Hora fin:</label>
+          <select id="hora-fin"></select>
+        </div>
+      </div>
+
+      <hr />
+
+      <!-- Motivo -->
+      <label for="motivo">🦷 Motivo de la cita:</label>
+      <input type="text" id="motivo" placeholder="Motivo del tratamiento o revisión" />
+
+      <div class="acciones-modal">
+        <button id="btn-guardar-cita" class="btn btn-success">💾 Guardar cita</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tu JS (controla botones, modal, fetch de horas y creación de citas) -->
+  <script src="js/citas.js"></script>
 </body>
 </html>

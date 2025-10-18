@@ -1,0 +1,111 @@
+ /* Estilos específicos para el presupuesto dental */
+        .dientes-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Línea central horizontal */
+        .linea-central {
+            width: 60%;
+            height: 2px;
+            background-color: black;
+            position: relative;
+            margin: 1% 5%; /* separa visualmente la línea del contenido */
+        }
+
+        /* Línea vertical */
+        .linea-vertical {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: black;
+        }
+
+        /* Etiquetas de derecha/izquierda */
+        .label-lado {
+            position: absolute;
+            font-weight: bold;
+        }
+
+        .label-derecho {
+            left: 10%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .label-izquierdo {
+            right: 10%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Etiquetas de superior/inferior */
+        .label-superior {
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            position: absolute;
+            font-weight: bold;
+        }
+
+        .label-inferior {
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            position: absolute;
+            font-weight: bold;
+        }
+
+        /* Fila de dientes */
+        .dientes-fila {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin: 5px 0;
+        }
+
+        .diente.tratamiento-asignado {
+            background-color: #28a745;
+        }
+
+        .dientes-label {
+            font-size: 12px;
+            font-weight: bold;
+            width: 50px;
+            text-align: center;
+        }
+
+        .diente {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #ccc; /* Color inicial (gris) */
+            margin: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .diente.tratamiento-asignado {
+            background-color: #28a745; /* Verde para tratamientos asignados */
+        }
+        .tratamientos-tabla {
+            margin-top: 2rem;
+        }
+        .tratamientos-tabla th, .tratamientos-tabla td {
+            text-align: center;
+        }
+        .general-treatments {
+            margin-top: 2rem;
+        }
+        .general-treatment-checkbox {
+            margin-right: 10px;
+        }
+        .calculator-section {
+            margin-top: 2rem;
+        }
+        .total-cost {
+            font-weight: bold;
+        }

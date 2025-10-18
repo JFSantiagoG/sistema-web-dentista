@@ -15,25 +15,13 @@
       <p class="text-muted">Información general y formularios clínicos</p>
     </div>
 
-    <!-- Tarjeta de perfil -->
+    <!-- Tarjeta -->
     <div class="card shadow-sm mb-5">
-      <div class="card-body">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <p><strong>Nombre:</strong> Ana Gómez</p>
-            <p><strong>Edad:</strong> 32 años</p>
-            <p><strong>Sexo:</strong> Femenino</p>
-          </div>
-          <div class="col-md-6">
-            <p><strong>Email:</strong> ana.gomez@correo.com</p>
-            <p><strong>Teléfono principal:</strong> 55 1234 5678</p>
-            <p><strong>Teléfono secundario:</strong> 55 8765 4321</p>
-          </div>
-        </div>
+      <div class="card-body" id="tarjetaPaciente">
+        <!-- se llena por JS -->
       </div>
     </div>
 
-    <!-- Secciones de formularios -->
     <div class="formularios">
 
       <!-- 📈 Evoluciones -->
@@ -49,21 +37,10 @@
                 <th>Acciones</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td>12/10/2025</td>
-                <td>Revisión general y limpieza</td>
-                <td>Dr. Ramírez</td>
-                <td>
-                  <button class="btn btn-sm btn-outline-primary me-1">👁️ Visualizar</button>
-                  <button class="btn btn-sm btn-outline-secondary me-1">✏️ Editar</button>
-                  <button class="btn btn-sm btn-outline-success">📤 Enviar</button>
-                </td>
-              </tr>
-            </tbody>
+            <tbody id="tb-evoluciones"></tbody>
           </table>
         </div>
-        <button class="btn btn-success btn-sm">➕ Crear nueva evolución</button>
+        <a class="btn btn-success btn-sm" id="btn-nueva-evo">➕ Crear nueva evolución</a>
       </section>
 
       <!-- 💊 Recetas -->
@@ -79,21 +56,10 @@
                 <th>Acciones</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td>10/10/2025</td>
-                <td>Ibuprofeno 400mg</td>
-                <td>1 cada 8h por 3 días</td>
-                <td>
-                  <button class="btn btn-sm btn-outline-primary me-1">👁️ Visualizar</button>
-                  <button class="btn btn-sm btn-outline-secondary me-1">✏️ Editar</button>
-                  <button class="btn btn-sm btn-outline-success">📤 Enviar</button>
-                </td>
-              </tr>
-            </tbody>
+            <tbody id="tb-recetas"></tbody>
           </table>
         </div>
-        <button class="btn btn-success btn-sm">➕ Crear nueva receta</button>
+        <a class="btn btn-success btn-sm" id="btn-nueva-receta">➕ Crear nueva receta</a>
       </section>
 
       <!-- 💰 Presupuestos -->
@@ -109,21 +75,10 @@
                 <th>Acciones</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td>08/10/2025</td>
-                <td>Ortodoncia completa</td>
-                <td>$12,500 MXN</td>
-                <td>
-                  <button class="btn btn-sm btn-outline-primary me-1">👁️ Visualizar</button>
-                  <button class="btn btn-sm btn-outline-secondary me-1">✏️ Editar</button>
-                  <button class="btn btn-sm btn-outline-success">📤 Enviar</button>
-                </td>
-              </tr>
-            </tbody>
+            <tbody id="tb-presupuestos"></tbody>
           </table>
         </div>
-        <button class="btn btn-success btn-sm">➕ Crear nuevo presupuesto</button>
+        <a class="btn btn-success btn-sm" id="btn-nuevo-pres">➕ Crear nuevo presupuesto</a>
       </section>
 
       <!-- 📝 Consentimiento Odontológico -->
@@ -139,21 +94,10 @@
                 <th>Acciones</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td>05/10/2025</td>
-                <td>Extracción de muela</td>
-                <td>Sí</td>
-                <td>
-                  <button class="btn btn-sm btn-outline-primary me-1">👁️ Visualizar</button>
-                  <button class="btn btn-sm btn-outline-secondary me-1">✏️ Editar</button>
-                  <button class="btn btn-sm btn-outline-success">📤 Enviar</button>
-                </td>
-              </tr>
-            </tbody>
+            <tbody id="tb-consent-odont"></tbody>
           </table>
         </div>
-        <button class="btn btn-success btn-sm">➕ Crear nuevo consentimiento</button>
+        <a class="btn btn-success btn-sm" id="btn-nuevo-co">➕ Crear nuevo consentimiento</a>
       </section>
 
       <!-- 📝 Consentimiento Quirúrgico -->
@@ -169,31 +113,91 @@
                 <th>Acciones</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td>03/10/2025</td>
-                <td>Implante dental</td>
-                <td>Sí</td>
-                <td>
-                  <button class="btn btn-sm btn-outline-primary me-1">👁️ Visualizar</button>
-                  <button class="btn btn-sm btn-outline-secondary me-1">✏️ Editar</button>
-                  <button class="btn btn-sm btn-outline-success">📤 Enviar</button>
-                </td>
-              </tr>
-            </tbody>
+            <tbody id="tb-consent-quiro"></tbody>
           </table>
         </div>
-        <button class="btn btn-success btn-sm">➕ Crear nuevo consentimiento</button>
+        <a class="btn btn-success btn-sm" id="btn-nuevo-cq">➕ Crear nuevo consentimiento</a>
       </section>
+
+      <!-- Extras (todas las tablas restantes) -->
+      <section class="mb-5">
+        <h4 class="text-secondary mb-3">🧾 Historia Clínica</h4>
+        <div class="table-responsive mb-2">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Form ID</th>
+                <th>Nombre (snapshot)</th>
+                <th>Creado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tb-historia"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="mb-5">
+        <h4 class="text-secondary mb-3">📄 Justificantes</h4>
+        <div class="table-responsive mb-2">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Emisión</th>
+                <th>Procedimiento</th>
+                <th>Días reposo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tb-justificantes"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="mb-5">
+        <h4 class="text-secondary mb-3">🦷 Odontograma Final</h4>
+        <div class="table-responsive mb-2">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Término</th>
+                <th># Tratamientos</th>
+                <th># Encía</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tb-odont-final"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="mb-5">
+        <h4 class="text-secondary mb-3">🦷 Ortodoncia</h4>
+        <div class="table-responsive mb-2">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Ingreso</th>
+                <th>Alta</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tb-ortodoncia"></tbody>
+          </table>
+        </div>
+      </section>
+
     </div>
 
     <!-- Botones finales -->
     <div class="d-flex justify-content-center mt-5 gap-3 flex-wrap">
-      <button class="btn btn-outline-dark px-4">← Regresar</button>
+      <a class="btn btn-outline-dark px-4" href="pacientes.html">← Regresar</a>
       <button class="btn btn-primary px-4">📋 Crear historial médico</button>
       <button class="btn btn-warning px-4">✏️ Editar datos del paciente</button>
       <button class="btn btn-success px-4">📤 Enviar historial médico al paciente</button>
     </div>
   </div>
+
+  <script src="js/paciente.js"></script>
 </body>
 </html>

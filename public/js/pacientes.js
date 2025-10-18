@@ -93,12 +93,13 @@ function mostrarResultados(pacientes) {
   pacientes.forEach(p => {
     html += `<li class="list-group-item d-flex justify-content-between align-items-center">
       <span><strong>${p.nombre}</strong> (ID: ${p.id})</span>
-      <a href="/pacientes/${p.id}" class="btn btn-sm btn-outline-primary">Ver perfil</a>
+      <a href="/paciente.html?id=${encodeURIComponent(p.id)}" class="btn btn-sm btn-outline-primary">Ver perfil</a>
     </li>`;
   });
   html += '</ul>';
   contenedor.innerHTML = html;
 }
+
 
 document.addEventListener('DOMContentLoaded', () => {
   buscarPacientes(); // ← carga 15 pacientes al entrar

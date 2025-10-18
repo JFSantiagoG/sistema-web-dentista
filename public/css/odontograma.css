@@ -1,0 +1,90 @@
+.required::after {
+      content: " *";
+      color: red;
+    }
+    .dientes-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+    .linea-central {
+      width: 60%;
+      height: 2px;
+      background-color: black;
+      position: relative;
+      margin: 1% 5%;
+    }
+    .linea-vertical {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background-color: black;
+    }
+    .label-lado {
+      position: absolute;
+      font-weight: bold;
+    }
+    .label-derecho {
+      left: 10%;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .label-izquierdo {
+      right: 10%;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .label-superior {
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      position: absolute;
+      font-weight: bold;
+    }
+    .label-inferior {
+      bottom: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      position: absolute;
+      font-weight: bold;
+    }
+    .dientes-fila {
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+      margin: 5px 0;
+    }
+    .diente {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-color: #ccc; /* Color inicial (gris) */
+      margin: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .diente.tratamiento-asignado {
+      background-color: #28a745; /* Verde para tratamientos completos */
+    }
+    .diente.pendiente {
+      background-color: #ffc107; /* Amarillo para pendientes */
+    }
+    .tratamientos-tabla {
+      margin-top: 2rem;
+    }
+    .tratamientos-tabla th, .tratamientos-tabla td {
+      text-align: center;
+      vertical-align: middle;
+    }
+    .encia-table {
+      margin-top: 2rem;
+    }
+    .section-title {
+      font-weight: bold;
+      margin-top: 1.5rem;
+      margin-bottom: 1rem;
+    }
