@@ -288,5 +288,24 @@ async function getFormsSummary(pacienteId) {
     conn.release();
   }
 }
+async function getPatientStudies(pacienteId) {
+  const [rows] = await db.query(
+    `SELECT
+       id,
+       paciente_id,
+       tipo,
+       nombre_archivo,
+       storage_path,
+       size_bytes,
+       mime_type,
+       fecha_subida,
+       notas
+     FROM patient_files
+     WHERE paciente_id = ?
+     ORDER BY fecha_subida DESC, id DESC`,
+    [pacienteId]
+  );
+  return rows;
+}
 
-module.exports = { buscarPacientes, getFormsSummary };
+module.exports = { buscarPacientes, getFormsSummary, getPatientStudies };

@@ -1,5 +1,5 @@
 const db = require('../db/connection');
-const { buscarPacientes, getFormsSummary } = require('../models/pacientes.model');
+const { buscarPacientes, getFormsSummary, getPatientStudies } = require('../models/pacientes.model');
 
 async function buscar(req, res) {
   const q = req.query.q?.trim();
@@ -60,8 +60,23 @@ async function obtenerFormsSummary(req, res) {
   }
 }
 
+async function obtenerStudies(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: 'paciente_id inválido' });
+
+    const rows = await getPatientStudies(id);
+    // Devolver siempre array (aunque esté vacío)
+    res.json(rows);
+  } catch (err) {
+    console.error('getPatientStudies error:', err);
+    res.status(500).json({ error: 'Error al consultar estudios' });
+  }
+}
+
 module.exports = {
   buscar,
   obtenerPorId,
-  obtenerFormsSummary
+  obtenerFormsSummary,
+  obtenerStudies
 };

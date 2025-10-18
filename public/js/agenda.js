@@ -88,6 +88,10 @@ function fmtFechaISO(fechaStr) {
   if (!fechaStr) return '';
   return String(fechaStr).split('T')[0];
 }
+function getSelectedIds() {
+  return Array.from(document.querySelectorAll('.check-cita:checked')).map(c => c.value);
+}
+
 
 // 🧱 Renderizar tabla (ACTUALIZADO para hora_inicio/hora_fin)
 function renderizarCitas(citas) {
@@ -256,17 +260,33 @@ async function posponer(id) {
       return out;
     };
 
-    // 3) Elegir hora de inicio
-    const { value: horaInicio } = await Swal.fire({
-      title: 'Hora de inicio',
-      input: 'select',
-      inputOptions: Object.fromEntries(libres.map(h => [h, h])),
-      showCancelButton: true,
-      confirmButtonText: 'Siguiente'
-    });
-    if (!horaInicio) return;
+    // 3) Elegir hora de inicio (select custom con envoltura .swal2-custom)
+const { value: horaInicio } = await Swal.fire({
+  title: 'Hora de inicio',
+  html: `<div class="swal2-custom">
+           <select id="swal-hi" class="swal2-select"></select>
+         </div>`,
+  focusConfirm: false,
+  showCancelButton: true,
+  confirmButtonText: 'Siguiente',
+  didOpen: () => {
+    const sel = document.getElementById('swal-hi');
+    for (const h of libres) {
+      const opt = document.createElement('option');
+      opt.value = h;
+      opt.textContent = h;
+      sel.appendChild(opt);
+    }
+  },
+  preConfirm: () => {
+    const v = document.getElementById('swal-hi').value;
+    if (!v) Swal.showValidationMessage('Selecciona una hora de inicio');
+    return v;
+  }
+});
+if (!horaInicio) return;
 
-    // 4) Elegir hora de fin (en función de contigüidad)
+    // 4) Elegir hora de fin (custom igual)
     const finales = construirFines(horaInicio);
     if (finales.length === 0) {
       return Swal.fire('Duración no disponible', 'Solo hay 30 minutos o no hay bloques contiguos libres.', 'info');
@@ -274,12 +294,29 @@ async function posponer(id) {
 
     const { value: horaFin } = await Swal.fire({
       title: 'Hora de fin',
-      input: 'select',
-      inputOptions: Object.fromEntries(finales.map(h => [h, h])),
+      html: `<div class="swal2-custom">
+              <select id="swal-hf" class="swal2-select"></select>
+            </div>`,
+      focusConfirm: false,
       showCancelButton: true,
-      confirmButtonText: 'Confirmar'
+      confirmButtonText: 'Confirmar',
+      didOpen: () => {
+        const sel = document.getElementById('swal-hf');
+        for (const h of finales) {
+          const opt = document.createElement('option');
+          opt.value = h;
+          opt.textContent = h;
+          sel.appendChild(opt);
+        }
+      },
+      preConfirm: () => {
+        const v = document.getElementById('swal-hf').value;
+        if (!v) Swal.showValidationMessage('Selecciona una hora de fin');
+        return v;
+      }
     });
     if (!horaFin) return;
+
 
     // 5) Confirmación
     const confirm = await Swal.fire({

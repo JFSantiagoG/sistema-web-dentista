@@ -155,18 +155,121 @@ async function cargarPerfil() {
           <td>${actionBtns(r.formulario_id, 'ortodoncia.html')}</td>
         </tr>`).join('') || `<tr><td colspan="3" class="text-center text-muted">Sin historia de ortodoncia</td></tr>`;
 
-    // Botones "nuevo …" (requieren tener /public/forms/*.html; si no, comenta)
-    document.getElementById('btn-nueva-evo').href  = `forms/evolucion.html?paciente_id=${pacienteId}`;
-    document.getElementById('btn-nueva-receta').href = `forms/receta.html?paciente_id=${pacienteId}`;
-    document.getElementById('btn-nuevo-pres').href   = `forms/presupuesto-dental.html?paciente_id=${pacienteId}`;
-    document.getElementById('btn-nuevo-co').href     = `forms/consent-odont.html?paciente_id=${pacienteId}`;
-    document.getElementById('btn-nuevo-cq').href     = `forms/consent-quiro.html?paciente_id=${pacienteId}`;
+   // Botones 
+    document.getElementById('btn-nueva-evo').href        = `forms/evolucion.html?paciente_id=${pacienteId}`;
+    document.getElementById('btn-nueva-receta').href     = `forms/receta.html?paciente_id=${pacienteId}`;
+    document.getElementById('btn-nuevo-pres').href       = `forms/presupuesto-dental.html?paciente_id=${pacienteId}`;
+    document.getElementById('btn-nuevo-co').href         = `forms/consent-odont.html?paciente_id=${pacienteId}`;
+    document.getElementById('btn-nuevo-cq').href         = `forms/consent-quiro.html?paciente_id=${pacienteId}`;
+    document.getElementById('btn-nueva-historia').href   = `forms/historia.html?paciente_id=${pacienteId}`;
+    document.getElementById('btn-nuevo-justificante').href = `forms/justificante.html?paciente_id=${pacienteId}`;
+    document.getElementById('btn-nuevo-odont').href      = `forms/odontograma.html?paciente_id=${pacienteId}`;
+    document.getElementById('btn-nueva-orto').href       = `forms/ortodoncia.html?paciente_id=${pacienteId}`;
+    document.getElementById('btn-diag-infantil').href    = `forms/diag-infantil.html?paciente_id=${pacienteId}`;
+
 
   } catch (err) {
     console.error('Error cargando perfil del paciente:', err);
     alert('❌ Error cargando perfil del paciente (ver consola).');
   }
 }
+
+// === Estudios del paciente ===
+const tipoLabel = {
+  rx: 'Radiografía',
+  panoramica: 'Panorámica',
+  tac: 'TAC',
+  cbct: 'CBCT',
+  foto: 'Fotografía',
+  otro: 'Otro'
+};
+const tipoBadge = (t) => {
+  const mapClass = {
+    rx: 'badge bg-primary',
+    panoramica: 'badge bg-info',
+    tac: 'badge bg-warning text-dark',
+    cbct: 'badge bg-warning text-dark',
+    foto: 'badge bg-success',
+    otro: 'badge bg-secondary'
+  };
+  const cls = mapClass[t] || mapClass.otro;
+  const txt = tipoLabel[t] || tipoLabel.otro;
+  return `<span class="${cls}">${txt}</span>`;
+};
+const fmtSize = (b) => (b == null ? '—' :
+  (b < 1024 ? `${b} B` :
+  (b < 1024*1024 ? `${(b/1024).toFixed(1)} KB` : `${(b/1024/1024).toFixed(2)} MB`)));
+
+async function cargarEstudios() {
+  if (!pacienteId) return;
+
+  const tbody = document.getElementById('tb-studies');
+  if (!tbody) return;
+
+  try {
+    const url = `/api/patients/${encodeURIComponent(pacienteId)}/studies`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+    });
+
+    // Asegura JSON (evita parsear HTML de error)
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status} en ${url}: ${text.slice(0,200)}...`);
+    }
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      const text = await res.text();
+      throw new Error(`Respuesta no-JSON (${ct}): ${text.slice(0,200)}...`);
+    }
+
+    const rows = await res.json(); // array o []
+    if (!Array.isArray(rows) || rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Sin estudios cargados</td></tr>`;
+      return;
+    }
+
+    // IMPORTANTE:
+    // - visualizador-service está expuesto por el gateway en /visualizador
+    // - archivos estáticos en /uploads (ya mapeado en tu gateway)
+    // Cambia el nombre del query param si tu viewer espera otro (ej: ?path=)
+    const buildVerUrl = (storagePath) =>
+      `/visualizador?file=${encodeURIComponent(storagePath)}`;
+    const buildDescargaUrl = (storagePath) => storagePath; // normalmente /uploads/...
+
+    tbody.innerHTML = rows.map(s => {
+      const fecha = s.fecha_subida ? new Date(s.fecha_subida).toLocaleString() : '—';
+      const nombre = s.nombre_archivo || s.storage_path || '—';
+      const verUrl = buildVerUrl(s.storage_path);
+      const downUrl = buildDescargaUrl(s.storage_path);
+      return `
+        <tr>
+          <td>${fecha}</td>
+          <td>${tipoBadge(s.tipo)}</td>
+          <td title="${s.storage_path || ''}">${nombre}</td>
+          <td>${fmtSize(s.size_bytes)}</td>
+          <td>
+            <a class="btn btn-sm btn-outline-primary me-1" href="${verUrl}" target="_blank" rel="noopener">👁️ Ver</a>
+            <a class="btn btn-sm btn-outline-secondary" href="${downUrl}" download>⬇️ Descargar</a>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+  } catch (err) {
+    console.error('Error cargando estudios:', err);
+    tbody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">❌ Error al cargar estudios</td></tr>`;
+  }
+}
+
+// Llamar también a cargarEstudios junto con cargarPerfil
+document.addEventListener('DOMContentLoaded', () => {
+  // si ya tenías: document.addEventListener('DOMContentLoaded', cargarPerfil);
+  // cambia a:
+  cargarPerfil();
+  cargarEstudios();
+});
+
 
 // === Cuarto: ejecutar tras cargar el DOM ===
 document.addEventListener('DOMContentLoaded', cargarPerfil);

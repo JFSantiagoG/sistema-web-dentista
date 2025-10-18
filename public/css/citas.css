@@ -119,3 +119,18 @@ header, .acciones-header {
   align-items: center !important;
   justify-content: center !important;
 }
+
+/* Evita la barra de scroll horizontal dentro del modal de SweetAlert */
+.swal2-popup .swal2-html-container{
+  overflow-x: hidden !important;   /* <- quita esa barra */
+  padding: 0 !important;           /* limpia padding extra que a veces provoca overflow */
+}
+
+/* Tus selects de horas con ancho controlado y centrados */
+.swal2-popup .swal2-custom .swal2-select{
+  display: block !important;
+  width: 100%;
+  max-width: 480px;                /* igual que el input date visual */
+  margin: 0 auto;
+}
+
