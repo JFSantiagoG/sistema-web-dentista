@@ -47,14 +47,24 @@ async function cargarPerfil() {
 
     const data = await res.json();
 
+    
+
     // Si el servicio aún no tiene datos, asegúrate de siempre tener el shape
     const p = data.paciente || {};
+
+
+    // Normaliza el sexo para mostrar texto completo
+    const sexoTexto = p.sexo
+      ? (p.sexo.toUpperCase() === 'F' ? 'Femenina'
+        : p.sexo.toUpperCase() === 'M' ? 'Masculino'
+        : p.sexo)  // en caso de valores no esperados, muestra tal cual
+      : '—';
     document.getElementById('tarjetaPaciente').innerHTML = `
       <div class="row g-3">
         <div class="col-md-6">
           <p><strong>Nombre:</strong> ${p.nombre ?? '—'} ${p.apellido ?? ''}</p>
           <p><strong>Edad:</strong> ${p.edad != null ? p.edad + ' años' : '—'}</p>
-          <p><strong>Sexo:</strong> ${p.sexo ?? '—'}</p>
+           <p><strong>Sexo:</strong> ${sexoTexto}</p>
         </div>
         <div class="col-md-6">
           <p><strong>Email:</strong> ${p.email ?? '—'}</p>

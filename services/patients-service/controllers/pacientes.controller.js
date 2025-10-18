@@ -1,4 +1,5 @@
-const { buscarPacientes } = require('../models/pacientes.model');
+const db = require('../db/connection');
+const { buscarPacientes, getFormsSummary } = require('../models/pacientes.model');
 
 async function buscar(req, res) {
   const q = req.query.q?.trim();
@@ -13,12 +14,11 @@ async function buscar(req, res) {
   }
 }
 
-
 async function obtenerPorId(req, res) {
   const id = req.params.id;
   try {
     const [rows] = await db.query(`
-      SELECT id, nombre, apellido, email, telefono_principal, telefono_secundario
+      SELECT id, nombre, apellido, sexo, edad, email, telefono_principal, telefono_secundario
       FROM pacientes
       WHERE id = ?
     `, [id]);
@@ -32,7 +32,36 @@ async function obtenerPorId(req, res) {
   }
 }
 
+// NUEVO: /patients/:id/forms
+async function obtenerFormsSummary(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: 'paciente_id inválido' });
+
+    const data = await getFormsSummary(id);
+    if (!data || !data.paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
+
+    // asegura arrays (si no hay datos, el front muestra "Sin ...")
+    res.json({
+      paciente: data.paciente,
+      evoluciones: data.evoluciones || [],
+      recetas: data.recetas || [],
+      presupuestos: data.presupuestos || [],
+      consentimiento_odontologico: data.consentimiento_odontologico || [],
+      consentimiento_quirurgico: data.consentimiento_quirurgico || [],
+      historia_clinica: data.historia_clinica || [],
+      justificantes: data.justificantes || [],
+      odontograma_final: data.odontograma_final || [],
+      ortodoncia: data.ortodoncia || []
+    });
+  } catch (err) {
+    console.error('getFormsSummary error:', err);
+    res.status(500).json({ error: 'Error al consultar formularios' });
+  }
+}
+
 module.exports = {
   buscar,
-  obtenerPorId
+  obtenerPorId,
+  obtenerFormsSummary
 };
