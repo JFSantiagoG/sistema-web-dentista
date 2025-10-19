@@ -9,17 +9,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const fechaProcedimientoEl = document.getElementById('fechaProcedimiento');
   const diasReposoEl         = document.getElementById('diasReposo');
 
-  const canvas   = document.getElementById('signature-pad-justificante');  // firma SOLO PDF
+  // Firma SOLO para PDF
+  const canvas   = document.getElementById('signature-pad-justificante');
   const clearBtn = document.getElementById('clearSignature-pad-justificante');
-  const btnGuardar = form.querySelector('.btn-outline-secondary');         // "Guardar Borrador"
-  const btnDescargar = document.getElementById('descargarPDF');            // "Descargar PDF"
 
-  // Cursor tipo X al activar firma (cosmético)
-  if (canvas) {
-    canvas.addEventListener('click', () => { canvas.style.cursor = 'crosshair'; });
-  }
+  // Botones
+  const btnGuardar   = form.querySelector('.btn-outline-secondary'); // "Guardar Borrador"
+  const btnDescargar = document.getElementById('descargarPDF');      // "Descargar PDF"
 
-  // Helpers SweetAlert (fallback si no está disponible)
+  // SweetAlert helpers (fallback a alert/confirm si no está disponible)
   const hasSwal = typeof window.Swal !== 'undefined';
   async function info(t, m)  { return hasSwal ? Swal.fire({icon:'info',    title:t, text:m})    : alert(`${t}\n${m||''}`); }
   async function ok(t, m)    { return hasSwal ? Swal.fire({icon:'success', title:t, text:m})    : alert(`${t}\n${m||''}`); }
@@ -30,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const r = await Swal.fire({ title:t, text:m, icon:'question', showCancelButton:true, confirmButtonText:confirm, cancelButtonText:cancel });
       return r.isConfirmed;
     } else {
-      return confirm(`${t}\n${m||''}`);
+      return window.confirm(`${t}\n${m||''}`);
     }
   }
 
@@ -40,7 +38,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // auth
   const token = localStorage.getItem('token');
-  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+  const authHeaders = token ? { Authorization: `Bearer ${token}`, Accept: 'application/json' } : {};
 
   // estado: folio (formulario_id) guardado
   const SS_KEY = (pid) => `justificante:formId:${pid}`;
@@ -56,13 +54,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Fecha hoy bloqueada
-  if (fechaEmisionEl) {
+  const hoyISO = (() => {
     const now = new Date();
-    const iso = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-    fechaEmisionEl.value = iso;
+    return new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  })();
+  if (fechaEmisionEl) {
+    fechaEmisionEl.value = hoyISO;
     fechaEmisionEl.readOnly = true;
-    fechaEmisionEl.min = iso;
-    fechaEmisionEl.max = iso;
+    fechaEmisionEl.min = hoyISO;
+    fechaEmisionEl.max = hoyISO;
   }
 
   // Cargar paciente → nombre autollenado y readonly
@@ -84,14 +84,119 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   await cargarPaciente();
 
-  // Firma: limpiar
-  clearBtn?.addEventListener('click', () => {
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  });
+  // ====== Firma en canvas: leyenda interna + trazado manual ======
+  function initSignaturePad(canvasEl) {
+    if (!canvasEl) return { getB64: () => null, clear: () => {} };
 
-  // Helpers de datos
+    // Leyenda dentro del canvas
+    const ctx = canvasEl.getContext('2d');
+    function drawLegend() {
+      const text = 'Haz click aquí para firmar';
+      ctx.save();
+      ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+      ctx.fillStyle = '#6c757d';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, canvasEl.width / 2, canvasEl.height / 2);
+      ctx.restore();
+    }
+    drawLegend();
+
+    let drawing = false; let started = false;
+    let last = { x: 0, y: 0 };
+
+    function pos(evt) {
+      const r = canvasEl.getBoundingClientRect();
+      const x = (evt.touches ? evt.touches[0].clientX : evt.clientX) - r.left;
+      const y = (evt.touches ? evt.touches[0].clientY : evt.clientY) - r.top;
+      return { x, y };
+    }
+    function down(e) {
+      drawing = true;
+      if (!started) {
+        started = true;
+        ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+      }
+      last = pos(e);
+    }
+    function move(e) {
+      if (!drawing) return;
+      const p = pos(e);
+      ctx.beginPath();
+      ctx.moveTo(last.x, last.y);
+      ctx.lineTo(p.x, p.y);
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      last = p;
+    }
+    function up() { drawing = false; }
+
+    canvasEl.addEventListener('mousedown', down);
+    canvasEl.addEventListener('mousemove', move);
+    canvasEl.addEventListener('mouseup', up);
+    canvasEl.addEventListener('mouseleave', up);
+
+    canvasEl.addEventListener('touchstart', (e) => { e.preventDefault(); down(e); }, { passive: false });
+    canvasEl.addEventListener('touchmove',  (e) => { e.preventDefault(); move(e); }, { passive: false });
+    canvasEl.addEventListener('touchend',   (e) => { e.preventDefault(); up(e);   }, { passive: false });
+
+    canvasEl.style.cursor = 'crosshair';
+
+    function isBlank() {
+      const { data } = ctx.getImageData(0, 0, canvasEl.width, canvasEl.height);
+      for (let i = 3; i < data.length; i += 4) if (data[i] !== 0) return false;
+      return true;
+    }
+    function getB64() {
+      if (!started || isBlank()) return null;
+      return canvasEl.toDataURL('image/png');
+    }
+    function clear() {
+      started = false;
+      drawLegend();
+    }
+
+    return { getB64, clear };
+  }
+  const sig = initSignaturePad(canvas);
+
+  // Botón limpiar firma
+  clearBtn?.addEventListener('click', sig.clear);
+
+  // ====== Helpers nombre de archivo ======
+  function stripAccents(str='') {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+  function firstAndLast(full='') {
+    const parts = (full || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return { first: '', last: '' };
+    if (parts.length === 1) return { first: parts[0], last: '' };
+    return { first: parts[0], last: parts[parts.length - 1] };
+  }
+  function yyyymmdd(dStr) {
+    const s = (dStr || '').replaceAll('-', '');
+    if (s && s.length === 8) return s;
+    return hoyISO.replaceAll('-', '');
+  }
+  function buildFilename({ fecha, formKey, fullName }) {
+    const { first, last } = firstAndLast(fullName || '');
+    const base = `${yyyymmdd(fecha)}_${formKey}_${[first, last].filter(Boolean).join('_')}`;
+    return stripAccents(base).replace(/\s+/g, '_');
+  }
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename + '.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // ====== Helpers de datos ======
   function buildData() {
     return {
       fechaEmision:       fechaEmisionEl?.value || '',
@@ -99,23 +204,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       procedimiento:      procedimientoEl?.value || '',
       fechaProcedimiento: fechaProcedimientoEl?.value || '',
       diasReposo:         diasReposoEl?.value || ''
-      // SIN firma para BD
+      // ❌ SIN firma para BD
     };
   }
-  function getFirmaBase64() {
-    if (!canvas) return null;
-    try {
-      const blank = document.createElement('canvas');
-      blank.width = canvas.width; blank.height = canvas.height;
-      const isBlank = canvas.toDataURL() === blank.toDataURL();
-      if (isBlank) return null;
-      return canvas.toDataURL('image/png'); // SOLO PDF
-    } catch {
-      return null;
-    }
-  }
 
-  // Guardar en BD (sin firma)
+  // ====== Guardar en BD (sin firma) ======
   async function guardarEnBD() {
     if (!pacienteId) { await warn('ID faltante', 'La URL debe incluir ?paciente_id=<id>.'); return null; }
     const data = buildData();
@@ -182,17 +275,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     await ok('Justificante enviado', `Folio ${formularioId}`);
   });
 
-  // Descargar PDF — requiere folio; firma SOLO PDF
+  // Descargar / Ver PDF — requiere folio; firma SOLO PDF
   btnDescargar?.addEventListener('click', async () => {
     if (!formularioId) {
       await warn('Primero guarda el justificante', 'Para descargar el PDF debes guardarlo y obtener un folio.');
       return;
     }
+
+    // Aviso previo (abre en otra pestaña)
+    const pre = await info(
+      'Se abrirá el PDF en otra pestaña',
+      'Al regresar, podrás descargarlo desde aquí con un nombre sugerido.'
+    );
+
     const data = buildData();
     data.formularioId = formularioId;
 
-    const firma = getFirmaBase64();
-    if (firma) data.firmaMedico = firma;  // tu generador ya espera "firmaMedico"
+    // Enviar firma SOLO al PDF
+    const firma = sig.getB64();
+    if (firma) data.firmaMedico = firma; // tu generador usa firmaMedico
 
     try {
       const res = await fetch('/api/pdf/justificante/generate', {
@@ -203,11 +304,40 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      await ok('PDF generado', `Folio ${formularioId}`);
-    } catch (err) {
-      console.error('Error al generar PDF:', err);
+
+      // Ver en otra pestaña
+      const viewUrl = URL.createObjectURL(blob);
+      window.open(viewUrl, '_blank');
+
+      // Sugerir descarga con nombre: YYYYMMDD_justificante_Nombre_Apellido.pdf
+      const fullName = (nombrePacienteEl?.value || '').trim();
+      const fecha    = fechaEmisionEl?.value || hoyISO;
+      const filename = buildFilename({ fecha, formKey: 'justificante', fullName });
+
+      if (hasSwal) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'PDF listo',
+          html: `
+            <p>El PDF se abrió en otra pestaña.</p>
+            <p class="mb-1"><small>Nombre sugerido:</small></p>
+            <code style="user-select:all">${filename}.pdf</code>
+          `,
+          showCancelButton: true,
+          confirmButtonText: '⬇️ Descargar PDF',
+          cancelButtonText: 'Cerrar'
+        }).then((r) => {
+          if (r.isConfirmed) downloadBlob(blob, filename);
+        });
+      } else {
+        // Fallback simple
+        const doDl = window.confirm(`PDF listo.\nNombre sugerido: ${filename}.pdf\n\n¿Descargar ahora?`);
+        if (doDl) downloadBlob(blob, filename);
+      }
+
+      URL.revokeObjectURL(viewUrl);
+    } catch (e) {
+      console.error('Error al generar PDF:', e);
       await err('Error', 'No se pudo generar el PDF.');
     }
   });

@@ -4,12 +4,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!form) return console.error('❌ No se encontró #recetaForm');
 
   // --- refs del DOM
-  const nombreEl  = form.querySelector('[name="nombrePaciente"]');
-  const fechaEl   = form.querySelector('[name="fecha"]'); // fecha de emisión (HOY)
-  const edadEl    = form.querySelector('[name="edad"]');
-  const hiddenId  = document.getElementById('pacienteId');
-  const tablaBody = document.querySelector('#tablaMedicamentos tbody');
-  const addBtn    = document.getElementById('addMedicamentoBtn');
+  const nombreEl   = form.querySelector('[name="nombrePaciente"]');
+  const fechaEl    = form.querySelector('[name="fecha"]'); // fecha de emisión (HOY)
+  const edadEl     = form.querySelector('[name="edad"]');
+  const hiddenId   = document.getElementById('pacienteId');
+  const tablaBody  = document.querySelector('#tablaMedicamentos tbody');
+  const addBtn     = document.getElementById('addMedicamentoBtn');
   const btnGuardar = document.getElementById('btnGuardar');
   const btnEnviar  = document.getElementById('btnEnviar');
   const canvas     = document.getElementById('signature-pad'); // firma (solo para PDF)
@@ -35,13 +35,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- bloquear edición de nombre/edad y fijar HOY
   [nombreEl, edadEl].forEach(el => el && (el.readOnly = true));
-  if (fechaEl) {
+  const hoyISO = (() => {
     const now = new Date();
     const iso = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-    fechaEl.value = iso;              // siempre hoy
+    return iso;
+  })();
+  if (fechaEl) {
+    fechaEl.value = hoyISO;              // siempre hoy
     fechaEl.readOnly = true;
-    fechaEl.min = iso;
-    fechaEl.max = iso;
+    fechaEl.min = hoyISO;
+    fechaEl.max = hoyISO;
   }
 
   // --- auth headers (JWT)
@@ -89,10 +92,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     return data;
   };
 
+  // --- helpers nombre de archivo + descarga
+  function stripAccents(str='') {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+  function firstAndLast(full='') {
+    const parts = (full || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return { first: '', last: '' };
+    if (parts.length === 1) return { first: parts[0], last: '' };
+    return { first: parts[0], last: parts[parts.length - 1] };
+  }
+  function yyyymmdd(dStr) {
+    const s = (dStr || '').replaceAll('-', '');
+    if (s && s.length === 8) return s;
+    return hoyISO.replaceAll('-', '');
+  }
+  function buildFilename({ fecha, formKey, fullName }) {
+    const { first, last } = firstAndLast(fullName || '');
+    const base = `${yyyymmdd(fecha)}_${formKey}_${[first, last].filter(Boolean).join('_')}`;
+    return stripAccents(base).replace(/\s+/g, '_');
+  }
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename + '.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   // Firma SOLO para PDF
   function getFirmaBase64() {
     if (!canvas) return null;
     try {
+      // Si usas firma.js para dibujar, esto funciona. Si no, será canvas en blanco y retornará null.
       const blank = document.createElement('canvas');
       blank.width = canvas.width; blank.height = canvas.height;
       const isBlank = canvas.toDataURL() === blank.toDataURL();
@@ -166,7 +201,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         cancelButtonText: 'Cancelar'
       });
       if (!r.isConfirmed) return null;
-      // no usamos el folio anterior para que cree un nuevo formulario
+      // se creará un nuevo registro (no re-usa el folio anterior)
     }
 
     // Anti doble clic durante la petición
@@ -194,7 +229,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await Swal.fire({ icon:'error', title:'Error', text:'No se pudo guardar la receta.' });
       return null;
     } finally {
-      btnGuardar && (btnGuardar.disabled = false); // volver a habilitar pase lo que pase
+      btnGuardar && (btnGuardar.disabled = false);
     }
   }
 
@@ -220,7 +255,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // 👉 Ahora NO guardamos automáticamente:
+    // 👉 NO guardamos automáticamente:
     if (!formularioId) {
       await Swal.fire({
         title: 'Primero guarda la receta',
@@ -231,9 +266,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    // Aviso previo como en quirúrgico
+    const pre = await Swal.fire({
+      icon: 'info',
+      title: 'Se abrirá el PDF en otra pestaña',
+      text: 'Al regresar, podrás descargarlo desde aquí con un nombre sugerido.',
+      confirmButtonText: 'Entendido'
+    });
+    if (!pre.isConfirmed) return;
+
     const data = buildData();
     const firma = getFirmaBase64(); // 👈 solo para PDF (no se guarda)
-
     if (firma) data.firmaMedico = firma;
     data.formularioId = formularioId; // folio para el PDF
 
@@ -246,9 +289,32 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      await Swal.fire({ icon:'success', title:'PDF generado', text:`Folio ${formularioId}` });
+
+      // Ver en otra pestaña
+      const viewUrl = URL.createObjectURL(blob);
+      window.open(viewUrl, '_blank');
+
+      // Sugerir descarga con nombre: YYYYMMDD_receta_Nombre_Apellido.pdf
+      const fullName = (nombreEl?.value || '').trim();
+      const fecha    = fechaEl?.value || hoyISO;
+      const filename = buildFilename({ fecha, formKey: 'receta', fullName });
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'PDF listo',
+        html: `
+          <p>El PDF se abrió en otra pestaña.</p>
+          <p class="mb-1"><small>Nombre sugerido:</small></p>
+          <code style="user-select:all">${filename}.pdf</code>
+        `,
+        showCancelButton: true,
+        confirmButtonText: '⬇️ Descargar PDF',
+        cancelButtonText: 'Cerrar'
+      }).then((r) => {
+        if (r.isConfirmed) downloadBlob(blob, filename);
+      });
+
+      URL.revokeObjectURL(viewUrl);
     } catch (err) {
       console.error('Error al generar PDF:', err);
       await Swal.fire({ icon:'error', title:'Error', text:'No se pudo generar el PDF.' });
