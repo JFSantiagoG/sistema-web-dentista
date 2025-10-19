@@ -84,14 +84,22 @@ async function cargarPerfil() {
           <td>${actionBtns(r.formulario_id, 'evolucion.html')}</td>
         </tr>`).join('') || `<tr><td colspan="4" class="text-center text-muted">Sin evoluciones</td></tr>`;
 
+    // 💊 Recetas (general)
     document.getElementById('tb-recetas').innerHTML =
-      (data.recetas||[]).map(r => `
+      (data.recetas || []).map(r => `
         <tr>
           <td>${fdate(r.fecha)}</td>
-          <td>${r.medicamento || '—'}</td>
-          <td>${r.indicaciones || '—'}</td>
+          <td>${r.doctor || '—'}</td>
+          <td>${r.meds_count ?? 0}</td>
+          <td>
+            <span class="badge ${r.estado === 'firmado' ? 'bg-success' : r.estado === 'cerrado' ? 'bg-secondary' : 'bg-warning text-dark'}">
+              ${r.estado || 'borrador'}
+            </span>
+          </td>
           <td>${actionBtns(r.formulario_id, 'receta.html')}</td>
-        </tr>`).join('') || `<tr><td colspan="4" class="text-center text-muted">Sin recetas</td></tr>`;
+        </tr>
+      `).join('') || `<tr><td colspan="5" class="text-center text-muted">Sin recetas</td></tr>`;
+
 
     document.getElementById('tb-presupuestos').innerHTML =
       (data.presupuestos||[]).map(r => `
@@ -271,5 +279,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// === Cuarto: ejecutar tras cargar el DOM ===
-document.addEventListener('DOMContentLoaded', cargarPerfil);
+

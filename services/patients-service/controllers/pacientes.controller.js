@@ -1,6 +1,10 @@
+// services/patients-service/controllers/pacientes.controller.js
 const db = require('../db/connection');
 const { buscarPacientes, getFormsSummary, getPatientStudies } = require('../models/pacientes.model');
 
+/* =======================
+ *   Pacientes: Buscar
+ * ======================= */
 async function buscar(req, res) {
   const q = req.query.q?.trim();
   const page = parseInt(req.query.page) || 1;
@@ -14,6 +18,9 @@ async function buscar(req, res) {
   }
 }
 
+/* =======================
+ *   Pacientes: Obtener por ID
+ * ======================= */
 async function obtenerPorId(req, res) {
   const id = req.params.id;
   try {
@@ -24,7 +31,6 @@ async function obtenerPorId(req, res) {
     `, [id]);
 
     if (rows.length === 0) return res.status(404).json({ error: 'Paciente no encontrado' });
-
     res.json(rows[0]);
   } catch (err) {
     console.error('Error al obtener paciente:', err);
@@ -32,7 +38,9 @@ async function obtenerPorId(req, res) {
   }
 }
 
-// NUEVO: /patients/:id/forms
+/* =======================
+ *   Pacientes: Resumen de Formularios
+ * ======================= */
 async function obtenerFormsSummary(req, res) {
   try {
     const id = Number(req.params.id);
@@ -41,7 +49,6 @@ async function obtenerFormsSummary(req, res) {
     const data = await getFormsSummary(id);
     if (!data || !data.paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
-    // asegura arrays (si no hay datos, el front muestra "Sin ...")
     res.json({
       paciente: data.paciente,
       evoluciones: data.evoluciones || [],
@@ -60,17 +67,149 @@ async function obtenerFormsSummary(req, res) {
   }
 }
 
+/* =======================
+ *   Pacientes: Estudios
+ * ======================= */
 async function obtenerStudies(req, res) {
   try {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ error: 'paciente_id inválido' });
 
     const rows = await getPatientStudies(id);
-    // Devolver siempre array (aunque esté vacío)
-    res.json(rows);
+    res.json(rows); // siempre array
   } catch (err) {
     console.error('getPatientStudies error:', err);
     res.status(500).json({ error: 'Error al consultar estudios' });
+  }
+}
+
+/* =======================
+ *   Formularios: Crear Receta (SIN firma por ahora)
+ *   - Crea en:
+ *     1) formulario
+ *     2) formulario_receta
+ *     3) formulario_receta_medicamentos
+ * ======================= */
+async function crearReceta(req, res) {
+  console.log('──────────────────────────────────────────────');
+  console.log('📩 POST /patients/:id/recetas');
+  console.log('Auth header presente:', !!req.headers.authorization);
+  console.log('User (token decodificado):', req.user);
+  console.log('Body:', JSON.stringify(req.body));
+
+  const pacienteId = Number(req.params.id);
+  if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
+
+  const {
+    fecha,                 // 'YYYY-MM-DD'
+    medicamentos = [],     // [{nombre,dosis,frecuencia,duracion,indicaciones}]
+    nombreMedico,          // opcional
+    cedula,                // opcional
+    edad                   // ej. "45 años" (opcional)
+    // firma IGNORADA por ahora
+  } = req.body || {};
+
+  if (!fecha) return res.status(400).json({ error: 'fecha requerida' });
+  if (!Array.isArray(medicamentos) || medicamentos.length === 0) {
+    return res.status(400).json({ error: 'Debe incluir al menos un medicamento' });
+  }
+
+  // Derivados limpios
+  const edadTexto = (typeof edad === 'string' && edad.trim()) ? edad.trim() : null;
+  const edadAnios = (edadTexto && /^\d+/.test(edadTexto)) ? parseInt(edadTexto, 10) : null;
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    console.log('🔹 Transacción iniciada');
+
+    // 1) tipo_id receta_medica
+    const [tipoRows] = await conn.query(
+      'SELECT id FROM formulario_tipo WHERE nombre = ? LIMIT 1',
+      ['receta_medica']
+    );
+    if (!tipoRows.length) throw new Error('No existe tipo "receta_medica"');
+    const tipoId = tipoRows[0].id;
+    console.log('✔️ tipo_id:', tipoId);
+
+    // 2) INSERT formulario (sin especificar "estado" => DEFAULT 'borrador')
+    const creadoPor = req.user?.id || null;
+    const [formIns] = await conn.query(
+      `INSERT INTO formulario (paciente_id, tipo_id, creado_por, fecha_creacion)
+       VALUES (?, ?, ?, NOW())`,
+      [pacienteId, tipoId, creadoPor]
+    );
+    const formularioId = formIns.insertId;
+    console.log('✔️ formulario insertado id=', formularioId);
+
+    // 2.1) Resolver medico_id (medicos.id) a partir del users.id del token (req.user.id)
+    //      Si no hay relación, dejamos NULL (la FK lo permite).
+    const userId = req.user?.id ?? null;
+    let medicoId = null;
+    if (userId) {
+      const [medRow] = await conn.query(
+        'SELECT id FROM medicos WHERE user_id = ? LIMIT 1',
+        [userId]
+      );
+      medicoId = medRow[0]?.id ?? null;
+    }
+    console.log('users.id =', userId, '→ medicos.id =', medicoId);
+
+    // 3) INSERT formulario_receta (SIN firma por ahora)
+    await conn.query(
+      `INSERT INTO formulario_receta
+        (formulario_id, paciente_id, medico_id, fecha, edad_texto, edad_anios, nombre_medico, cedula, firma_path, firma_hash)
+       VALUES
+        (?,             ?,           ?,        ?,     ?,          ?,          ?,             ?,      NULL,       NULL)`,
+      [
+        formularioId,
+        pacienteId,
+        medicoId,                 // puede ser NULL si no hay fila en medicos
+        fecha,
+        edadTexto,
+        edadAnios,
+        nombreMedico || null,
+        cedula || null
+      ]
+    );
+    console.log('✔️ receta insertada (sin firma)');
+
+    // 4) INSERT medicamentos (bulk)
+    const values = [];
+    const params = [];
+    medicamentos.forEach((m, i) => {
+      values.push('(?, ?, ?, ?, ?, ?)');
+      params.push(
+        formularioId,
+        m?.nombre || '',
+        m?.dosis || '',
+        m?.frecuencia || '',
+        m?.duracion || '',
+        m?.indicaciones || ''
+      );
+      console.log(`   💊 [${i + 1}]`, m?.nombre || '(sin nombre)');
+    });
+
+    await conn.query(
+      `INSERT INTO formulario_receta_medicamentos
+         (formulario_id, medicamento, dosis, frecuencia, duracion, indicaciones)
+       VALUES ${values.join(',')}`,
+      params
+    );
+    console.log(`✔️ ${medicamentos.length} medicamentos insertados`);
+
+    await conn.commit();
+    console.log('✅ Transacción confirmada');
+    console.log('──────────────────────────────────────────────');
+    return res.json({ ok: true, formulario_id: formularioId });
+
+  } catch (err) {
+    await conn.rollback();
+    console.error('❌ Error en crearReceta:', err);
+    console.log('──────────────────────────────────────────────');
+    return res.status(500).json({ error: 'Error al crear receta', detalle: err.message });
+  } finally {
+    conn.release();
   }
 }
 
@@ -78,5 +217,6 @@ module.exports = {
   buscar,
   obtenerPorId,
   obtenerFormsSummary,
-  obtenerStudies
+  obtenerStudies,
+  crearReceta
 };

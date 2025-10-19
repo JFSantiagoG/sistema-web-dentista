@@ -109,28 +109,44 @@ async function getFormsSummary(pacienteId) {
       }));
     }
 
-    // ====== Recetas – Fecha | Medicamento | Indicaciones
+    // ====== Recetas – Fecha | Doctor | #Meds | Estado
     let recetas = [];
     if (porTipo['receta_medica']?.length) {
-      const ids = porTipo['receta_medica'].map(f => f.id);
-      const [rows] = await conn.query(
-        `SELECT r.formulario_id, r.fecha,
-                (SELECT medicamento FROM formulario_receta_medicamentos m
-                 WHERE m.formulario_id=r.formulario_id ORDER BY m.id ASC LIMIT 1) AS medicamento,
-                (SELECT indicaciones FROM formulario_receta_medicamentos m
-                 WHERE m.formulario_id=r.formulario_id ORDER BY m.id ASC LIMIT 1) AS indicaciones
-         FROM formulario_receta r
-         WHERE r.formulario_id IN (${inList(ids)})
-         ORDER BY r.fecha DESC`,
+      const formsRecetas = porTipo['receta_medica']; // ya trae f.id, f.creado_por, f.estado
+      const ids = formsRecetas.map(f => f.id);
+
+      // Fechas de emisión por formulario
+      const [rRows] = await conn.query(
+        `SELECT formulario_id, fecha
+        FROM formulario_receta
+        WHERE formulario_id IN (${inList(ids)})
+        ORDER BY fecha DESC`,
         ids
       );
-      recetas = rows.map(r => ({
-        formulario_id: r.formulario_id,
-        fecha: r.fecha,
-        medicamento: r.medicamento || '—',
-        indicaciones: r.indicaciones || '—'
-      }));
+      const fechaMap = Object.fromEntries(rRows.map(r => [r.formulario_id, r.fecha]));
+
+      // Conteo de medicamentos por formulario
+      const [cntRows] = await conn.query(
+        `SELECT formulario_id, COUNT(*) AS meds_count
+        FROM formulario_receta_medicamentos
+        WHERE formulario_id IN (${inList(ids)})
+        GROUP BY formulario_id`,
+        ids
+      );
+      const medsCountMap = Object.fromEntries(cntRows.map(r => [r.formulario_id, r.meds_count]));
+
+      // Armado final (doctor desde medMap por creado_por; si no hay, '—')
+      recetas = formsRecetas.map(f => ({
+        formulario_id: f.id,
+        fecha: fechaMap[f.id] || null,
+        doctor: medMap[f.creado_por] || '—',
+        meds_count: medsCountMap[f.id] || 0,
+        estado: f.estado || 'borrador'
+      }))
+      // ordena del más reciente por id (opcional)
+      .sort((a, b) => b.formulario_id - a.formulario_id);
     }
+
 
     // ====== Presupuestos (legacy) – Fecha | Tratamiento | Costo
     let presupuestos = [];

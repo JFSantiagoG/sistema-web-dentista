@@ -6,6 +6,7 @@
   <title>💊 Receta Médica - Consultorio Dental</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="../css/receta.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-light">
   <div class="container py-4">
@@ -13,31 +14,34 @@
       <h2>💊 Receta Médica</h2>
       <button class="btn btn-outline-secondary" onclick="window.history.back()">← Volver</button>
     </div>
-
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <form id="recetaForm" novalidate>
+      <form id="recetaForm" novalidate>
           <!-- DATOS PACIENTE -->
           <div class="row mb-3">
             <div class="col-md-6">
               <label class="form-label">Nombre del Paciente</label>
-              <input type="text" class="form-control" name="nombrePaciente" value="Ana García López">
+              <input type="text" class="form-control" name="nombrePaciente" readonly>
             </div>
             <div class="col-md-3">
               <label class="form-label">Fecha</label>
-              <input type="date" class="form-control" name="fecha" value="2024-05-15">
+              <input type="date" class="form-control" name="fecha" readonly>
             </div>
             <div class="col-md-3">
               <label class="form-label">Edad</label>
-              <input type="text" class="form-control" name="edad" value="32 años">
+              <input type="text" class="form-control" name="edad" readonly>
             </div>
+            <input type="hidden" name="pacienteId" id="pacienteId">
           </div>
 
           <!-- TABLA DE MEDICAMENTOS -->
           <div class="mb-4">
-            <h5>Medicamentos</h5>
-            <div class="table-responsive">
-              <table class="table table-bordered" id="tablaMedicamentos">
+            <div class="d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">Medicamentos</h5>
+              <button type="button" id="addMedicamentoBtn" class="btn btn-sm btn-outline-primary">
+                ➕ Agregar medicamento
+              </button>
+            </div>
+            <div class="table-responsive mt-2">
+              <table class="table table-bordered align-middle" id="tablaMedicamentos">
                 <thead class="table-light">
                   <tr>
                     <th>Medicamento</th>
@@ -45,6 +49,7 @@
                     <th>Frecuencia</th>
                     <th>Duración</th>
                     <th>Indicaciones</th>
+                    <th style="width:80px;">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -54,6 +59,9 @@
                     <td><input type="text" class="form-control" name="frecuencia[]"></td>
                     <td><input type="text" class="form-control" name="duracion[]"></td>
                     <td><input type="text" class="form-control" name="indicaciones[]"></td>
+                    <td class="text-center">
+                      <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row">🗑️</button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -86,10 +94,12 @@
             </div>
           </div>
 
-          <!-- BOTÓN -->
-          <div class="mt-4 text-center">
-            <button type="submit" class="btn btn-primary">💾 Guardar Receta en PDF</button>
-          </div>
+        <!-- BOTONES DE ACCIÓN -->
+        <div class="mt-4 d-flex gap-2 justify-content-center">
+          <button type="button" id="btnGuardar" class="btn btn-success">💾 Guardar</button>
+          <button type="button" id="btnEnviar" class="btn btn-info">📤 Enviar al paciente</button>
+          <button type="submit" class="btn btn-primary">🧾 Generar PDF</button>
+        </div>
         </form>
       </div>
     </div>
