@@ -191,8 +191,6 @@ async function getFormsSummary(pacienteId) {
         costo: byId[id]?.costo ?? totalMap[id] ?? null
       }));
     }
-
-    // ====== Consentimiento Odontológico – Fecha | Procedimiento | Firmado
 // ====== Consentimiento Odontológico – Fecha | Procedimiento | Firmado
       let consentimiento_odontologico = [];
       if (porTipo['consentimiento_odontologico']?.length) {
@@ -220,24 +218,28 @@ async function getFormsSummary(pacienteId) {
         }
       }
 
-    // ====== Consentimiento Quirúrgico – Fecha | Intervención | Firmado
-    let consentimiento_quirurgico = [];
-    if (porTipo['consentimiento_quirurgico']?.length) {
-      const ids = porTipo['consentimiento_quirurgico'].map(f => f.id);
-      const [rows] = await conn.query(
-        `SELECT formulario_id, fecha, intervencion, firma_path
-         FROM formulario_consent_quiro
-         WHERE formulario_id IN (${inList(ids)})
-         ORDER BY fecha DESC`,
-        ids
-      );
-      consentimiento_quirurgico = rows.map(r => ({
-        formulario_id: r.formulario_id,
-        fecha: r.fecha,
-        intervencion: r.intervencion || '—',
-        firmado: !!r.firma_path
-      }));
-    }
+      // ====== Consentimiento Quirúrgico – Fecha | Intervención/Resumen | Firmado
+      let consentimiento_quirurgico = [];
+      if (porTipo['consentimiento_quirurgico']?.length) {
+        const ids = porTipo['consentimiento_quirurgico'].map(f => f.id);
+        const [rows] = await conn.query(
+          `SELECT formulario_id,
+                  fecha,
+                  acuerdo_economico AS intervencion,           -- algo corto para mostrar
+                  (CASE WHEN firma_paciente_at IS NOT NULL OR firma_medico_at IS NOT NULL THEN 1 ELSE 0 END) AS firmado
+          FROM formulario_consent_quiro
+          WHERE formulario_id IN (${inList(ids)})
+          ORDER BY fecha DESC`,
+          ids
+        );
+        consentimiento_quirurgico = rows.map(r => ({
+          formulario_id: r.formulario_id,
+          fecha: r.fecha,
+          intervencion: r.intervencion || '—',
+          firmado: !!r.firmado
+        }));
+      }
+
 
     // ====== Historia clínica
     let historia_clinica = [];

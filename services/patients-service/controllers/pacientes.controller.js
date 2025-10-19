@@ -405,6 +405,128 @@ async function crearConsentOdont(req, res) {
   }
 }
 
+async function crearConsentQuirurgico(req, res) {
+  const pacienteId = Number(req.params.id);
+  if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
+
+  const {
+    fecha,                  // 'YYYY-MM-DD'
+    numero_paciente,        // string (usualmente mismo id del paciente en UI)
+    pronostico,
+    condiciones_posop,
+    recuperacion_dias,
+    historia_aceptada,
+    anestesia_consentida,
+    pronostico_entendido,
+    recuperacion_entendida,
+    responsabilidad_aceptada,
+    economico_aceptado,
+    acuerdo_economico,
+  } = req.body || {};
+
+  // ⚠️ Ignoramos cualquier firma que venga en el body:
+  // firmaPacienteBase64, firmaMedicoBase64 —> NO se usan (quedan NULL)
+  // firma*_* no se guardan NOMBRES ni PATHS
+
+  // Logs
+  console.log('📩 POST /patients/:id/consent-quiro');
+  console.log('Auth header presente:', !!req.headers.authorization);
+  console.log('User (token decodificado):', { id: req.user?.id, rol: req.user?.rol, email: req.user?.email });
+  console.log('Body (sin firmas):', {
+    pacienteId,
+    fecha,
+    numero_paciente,
+    pronostico,
+    condiciones_posop,
+    recuperacion_dias,
+    historia_aceptada,
+    anestesia_consentida,
+    pronostico_entendido,
+    recuperacion_entendida,
+    responsabilidad_aceptada,
+    economico_aceptado,
+    acuerdo_economico,
+  });
+
+  if (!fecha) return res.status(400).json({ error: 'fecha requerida' });
+  if (!pronostico || !condiciones_posop) {
+    return res.status(400).json({ error: 'pronostico y condiciones_posop son requeridos' });
+  }
+  if (recuperacion_dias == null || Number.isNaN(Number(recuperacion_dias))) {
+    return res.status(400).json({ error: 'recuperacion_dias inválido' });
+  }
+
+  const conn = await db.getConnection();
+  try {
+    console.log('🔹 Transacción iniciada');
+    await conn.beginTransaction();
+
+    // 1) tipo_id para consentimiento_quirurgico
+    const [tipoRows] = await conn.query(
+      'SELECT id FROM formulario_tipo WHERE nombre = ? LIMIT 1',
+      ['consentimiento_quirurgico']
+    );
+    if (!tipoRows.length) throw new Error('No existe tipo "consentimiento_quirurgico"');
+    const tipoId = tipoRows[0].id;
+    console.log('✔️ tipo_id:', tipoId);
+
+    // 2) formulario
+    const creadoPor = req.user?.id || null;
+    const estado = 'firmado'; // o 'borrador' si lo prefieres
+    const [formIns] = await conn.query(
+      `INSERT INTO formulario (paciente_id, tipo_id, creado_por, estado, fecha_creacion)
+       VALUES (?, ?, ?, ?, NOW())`,
+      [pacienteId, tipoId, creadoPor, estado]
+    );
+    const formularioId = formIns.insertId;
+    console.log('✔️ formulario insertado id=', formularioId);
+
+    // 3) mapear users.id -> medicos.id (puede quedar NULL)
+    let medicoId = null;
+    if (creadoPor) {
+      const [medRow] = await conn.query(
+        'SELECT id FROM medicos WHERE user_id = ? LIMIT 1',
+        [creadoPor]
+      );
+      medicoId = medRow[0]?.id ?? null;
+    }
+    console.log('users.id =', creadoPor, '→ medicos.id =', medicoId);
+
+    // 4) Insertar consentimiento quirúrgico — SIN FIRMAS (en NULL)
+    await conn.query(
+      `INSERT INTO formulario_consent_quiro
+        (formulario_id, paciente_id, medico_id, fecha, numero_paciente,
+         pronostico, condiciones_posop, recuperacion_dias,
+         historia_aceptada, anestesia_consentida, pronostico_entendido, recuperacion_entendida,
+         responsabilidad_aceptada, economico_aceptado, acuerdo_economico,
+         firma_paciente_at, firma_medico_at)
+       VALUES
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
+      [
+        formularioId, pacienteId, medicoId, fecha, numero_paciente || String(pacienteId),
+        pronostico, condiciones_posop, Number(recuperacion_dias),
+        !!historia_aceptada, !!anestesia_consentida, !!pronostico_entendido, !!recuperacion_entendida,
+        !!responsabilidad_aceptada, !!economico_aceptado, acuerdo_economico || ''
+      ]
+    );
+    console.log('✔️ consentimiento quirúrgico insertado (sin firmar)');
+
+    await conn.commit();
+    console.log('✅ Transacción confirmada');
+    console.log('──────────────────────────────────────────────');
+
+    return res.json({ ok: true, formulario_id: formularioId });
+  } catch (err) {
+    await conn.rollback();
+    console.error('❌ Error en crearConsentQuirurgico:', err);
+    console.log('──────────────────────────────────────────────');
+    return res.status(500).json({ error: 'Error al crear consentimiento quirúrgico' });
+  } finally {
+    conn.release();
+  }
+}
+
+
 module.exports = {
   buscar,
   obtenerPorId,
@@ -412,5 +534,6 @@ module.exports = {
   obtenerStudies,
   crearJustificante,
   crearConsentOdont,
+  crearConsentQuirurgico,
   crearReceta
 };

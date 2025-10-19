@@ -53,8 +53,8 @@ router.post('/generate', (req, res) => {
     .text('El paciente declara que no ha omitido ni alterado datos al responder la historia clínica, incluyendo alergias, automedicación, consumo de estimulantes o drogas, embarazo, trastornos previos o reacciones adversas a medicamentos o anestesia.')
     .moveDown(0.5)
     .text(historiaClinica
-      ? '✅ Confirmado: el paciente respondió sinceramente.'
-      : '❌ No confirmado: el paciente no validó la historia clínica.')
+      ? 'Confirmado: el paciente respondió sinceramente.'
+      : 'No confirmado: el paciente no validó la historia clínica.')
     .moveDown(1);
 
   // === Anestesia ===
@@ -65,8 +65,8 @@ router.post('/generate', (req, res) => {
     .text('El paciente da consentimiento para la administración de anestésicos necesarios. Se le ha explicado que el tipo de anestesia, la técnica empleada y las molestias resultantes son temporales. Comprende que cualquier forma de anestesia entraña riesgos, complicaciones, lesiones y, muy raramente, la muerte.')
     .moveDown(0.5)
     .text(anestesia
-      ? '✅ El paciente acepta los riesgos asociados a la anestesia.'
-      : '❌ El paciente no confirmó consentimiento para anestesia.')
+      ? 'El paciente acepta los riesgos asociados a la anestesia.'
+      : 'El paciente no confirmó consentimiento para anestesia.')
     .moveDown(1);
 
   // === Pronóstico y Condiciones ===
@@ -78,8 +78,8 @@ router.post('/generate', (req, res) => {
     .text(`Condiciones posoperatorias: ${condiciones}`)
     .moveDown(0.5)
     .text(pronosticoAceptado
-      ? '✅ El paciente acepta y comprende el pronóstico y condiciones posoperatorias.'
-      : '❌ El paciente no confirmó comprensión del pronóstico.')
+      ? 'El paciente acepta y comprende el pronóstico y condiciones posoperatorias.'
+      : 'El paciente no confirmó comprensión del pronóstico.')
     .moveDown(1);
 
   // === Recuperación ===
@@ -90,8 +90,8 @@ router.post('/generate', (req, res) => {
     .text(`Tiempo de recuperación aproximado: ${recuperacion} días. En procedimientos quirúrgicos puede existir la presencia de cicatrices posoperatorias.`)
     .moveDown(0.5)
     .text(recuperacionAceptada
-      ? '✅ El paciente acepta los riesgos de recuperación y cicatrices.'
-      : '❌ El paciente no confirmó aceptación de recuperación.')
+      ? 'El paciente acepta los riesgos de recuperación y cicatrices.'
+      : 'El paciente no confirmó aceptación de recuperación.')
     .moveDown(1);
 
   // === Responsabilidad Personal ===
@@ -102,8 +102,8 @@ router.post('/generate', (req, res) => {
     .text('El paciente se compromete a cuidar su boca mediante higiene adecuada, control de dieta y seguimiento de las indicaciones del profesional tratante.')
     .moveDown(0.5)
     .text(responsabilidad
-      ? '✅ Confirmado: el paciente acepta la responsabilidad personal.'
-      : '❌ El paciente no confirmó responsabilidad personal.')
+      ? 'Confirmado: el paciente acepta la responsabilidad personal.'
+      : 'No confirmado: el paciente no confirmó responsabilidad personal.')
     .moveDown(1);
 
   // === Acuerdo Económico ===
@@ -114,8 +114,8 @@ router.post('/generate', (req, res) => {
     .text(`Acuerdo económico establecido: ${acuerdo}`)
     .moveDown(0.5)
     .text(acuerdoAceptado
-      ? '✅ El paciente acepta las condiciones económicas.'
-      : '❌ El paciente no confirmó aceptación del acuerdo económico.')
+      ? 'El paciente acepta las condiciones económicas.'
+      : 'El paciente no confirmó aceptación del acuerdo económico.')
     .moveDown(2);
 
   // === Firmas ===
