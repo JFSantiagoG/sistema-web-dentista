@@ -213,10 +213,204 @@ async function crearReceta(req, res) {
   }
 }
 
+async function crearJustificante(req, res) {
+  console.log('📩 POST /patients/:id/justificantes');
+  const pacienteId = Number(req.params.id);
+  const userFromToken = req.user?.id ?? null;
+  if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
+
+  const {
+    fechaEmision,       // 'YYYY-MM-DD'
+    nombrePaciente,     // snapshot
+    procedimiento,
+    fechaProcedimiento, // string libre (ej: "10 y 12 de octubre")
+    diasReposo          // número
+    // SIN firma y sin numero_paciente por ahora
+  } = req.body || {};
+
+  if (!fechaEmision || !nombrePaciente || !procedimiento || !fechaProcedimiento || !diasReposo) {
+    return res.status(400).json({ error: 'Campos requeridos faltantes' });
+  }
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    console.log('🔹 TX justificante iniciada');
+
+    // 1) tipo_id
+    const [tipoRows] = await conn.query(
+      'SELECT id FROM formulario_tipo WHERE nombre = ? LIMIT 1',
+      ['justificante_medico']
+    );
+    if (!tipoRows.length) throw new Error('No existe tipo "justificante_medico"');
+    const tipoId = tipoRows[0].id;
+    console.log('✔️ tipo_id:', tipoId);
+
+    // 2) formulario
+    const [formIns] = await conn.query(
+      `INSERT INTO formulario (paciente_id, tipo_id, creado_por, estado, fecha_creacion)
+       VALUES (?, ?, ?, 'firmado', NOW())`,
+      [pacienteId, tipoId, userFromToken] // estado: firmado o borrador, a tu criterio
+    );
+    const formularioId = formIns.insertId;
+    console.log('✔️ formulario creado id=', formularioId);
+
+    // 3) resolver medico_id desde users.id
+    let medicoId = null;
+    if (userFromToken) {
+      const [mRow] = await conn.query(
+        'SELECT id FROM medicos WHERE user_id = ? LIMIT 1',
+        [userFromToken]
+      );
+      medicoId = mRow[0]?.id ?? null;
+    }
+    console.log('users.id =', userFromToken, '→ medicos.id =', medicoId);
+
+    // 4) justificante
+    await conn.query(
+      `INSERT INTO formulario_justificante
+        (formulario_id, paciente_id, medico_id, fecha_emision, nombre_paciente,
+         procedimiento, fecha_procedimiento, dias_reposo,
+         numero_paciente, firma_profesional_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
+      [
+        formularioId,
+        pacienteId,
+        medicoId,                  // puede ser null
+        fechaEmision,
+        nombrePaciente,
+        procedimiento,
+        fechaProcedimiento,
+        Number(diasReposo) || 0
+      ]
+    );
+    console.log('✔️ justificante insertado');
+
+    await conn.commit();
+    console.log('✅ TX confirmada');
+    return res.json({ ok: true, formulario_id: formularioId });
+  } catch (err) {
+    await conn.rollback();
+    console.error('❌ crearJustificante error:', err);
+    return res.status(500).json({ error: 'Error al crear justificante' });
+  } finally {
+    conn.release();
+  }
+}
+
+async function crearConsentOdont(req, res) {
+  console.log('📩 POST /patients/:id/consent-odont');
+  const pacienteId = Number(req.params.id);
+  const hasAuth = !!req.headers.authorization;
+  console.log('Auth header presente:', hasAuth);
+  console.log('User (token decodificado):', req.user);
+  console.log('Body:', JSON.stringify(req.body));
+
+  if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
+
+  // Payload esperado desde el front (sin firma)
+  const {
+    fecha,              // date 'YYYY-MM-DD'  (fechaRegistroInput)
+    numero_paciente,    // string (normalmente el mismo id en string)
+    tratamiento,        // text
+    monto,              // decimal o string numérico
+    ausencia_dias,      // int o string numérico
+    autorizacion,       // boolean
+    economico,          // boolean
+    ausencia            // boolean
+  } = req.body || {};
+
+  // Validaciones mínimas
+  if (!fecha)            return res.status(400).json({ error: 'fecha requerida' });
+  if (!tratamiento)      return res.status(400).json({ error: 'tratamiento requerido' });
+  if (monto === undefined || monto === null || monto === '')
+    return res.status(400).json({ error: 'monto requerido' });
+  if (ausencia_dias === undefined || ausencia_dias === null || ausencia_dias === '')
+    return res.status(400).json({ error: 'ausencia_dias requerido' });
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    console.log('🔹 Transacción iniciada');
+
+    // 1) tipo_id: consentimiento odontológico
+    const [tipoRows] = await conn.query(
+      'SELECT id FROM formulario_tipo WHERE nombre = ? LIMIT 1',
+      ['consentimiento_odontologico']
+    );
+    if (!tipoRows.length) throw new Error('No existe tipo "consentimiento_odontologico"');
+    const tipoId = tipoRows[0].id;
+    console.log('✔️ tipo_id:', tipoId);
+
+    // 2) formulario (usa tu ENUM: 'borrador','firmado','cerrado')
+    const creadoPor = req.user?.id ?? null; // users.id
+    const estado = 'firmado';
+    const [formIns] = await conn.query(
+      `INSERT INTO formulario (paciente_id, tipo_id, creado_por, estado, fecha_creacion)
+       VALUES (?, ?, ?, ?, NOW())`,
+      [pacienteId, tipoId, creadoPor, estado]
+    );
+    const formularioId = formIns.insertId;
+    console.log('✔️ formulario insertado id=', formularioId);
+
+    // 3) mapear users.id → medicos.id (opcional; si no existe, queda NULL)
+    let medicoId = null;
+    if (creadoPor) {
+      const [medRow] = await conn.query(
+        'SELECT id FROM medicos WHERE user_id = ? LIMIT 1',
+        [creadoPor]
+      );
+      medicoId = medRow[0]?.id ?? null;
+    }
+    console.log('users.id =', creadoPor, '→ medicos.id =', medicoId);
+
+    // 4) consentimiento odontológico (SIN firma; firma_paciente_at queda NULL)
+    const montoNum = Number(monto);
+    const ausenciaNum = parseInt(ausencia_dias, 10);
+    const autChk = autorizacion ? 1 : 0;
+    const ecoChk = economico ? 1 : 0;
+    const ausChk = ausencia ? 1 : 0;
+
+    await conn.query(
+      `INSERT INTO formulario_consent_odont
+        (formulario_id, paciente_id, medico_id, fecha, numero_paciente, tratamiento, monto,
+         ausencia_dias, autorizacion_check, economico_check, ausencia_check, firma_paciente_at)
+       VALUES
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+      [
+        formularioId,
+        pacienteId,
+        medicoId,
+        fecha,
+        numero_paciente ?? String(pacienteId),
+        tratamiento,
+        isNaN(montoNum) ? 0 : montoNum,
+        isNaN(ausenciaNum) ? 0 : ausenciaNum,
+        autChk,
+        ecoChk,
+        ausChk
+      ]
+    );
+    console.log('✔️ consentimiento odontológico insertado (sin firma)');
+
+    await conn.commit();
+    console.log('✅ Transacción confirmada');
+    return res.json({ ok: true, formulario_id: formularioId });
+  } catch (e) {
+    await conn.rollback();
+    console.error('❌ Error en crearConsentOdont:', e);
+    return res.status(500).json({ error: 'Error al crear consentimiento odontológico' });
+  } finally {
+    conn.release();
+  }
+}
+
 module.exports = {
   buscar,
   obtenerPorId,
   obtenerFormsSummary,
   obtenerStudies,
+  crearJustificante,
+  crearConsentOdont,
   crearReceta
 };

@@ -193,23 +193,32 @@ async function getFormsSummary(pacienteId) {
     }
 
     // ====== Consentimiento Odontológico – Fecha | Procedimiento | Firmado
-    let consentimiento_odontologico = [];
-    if (porTipo['consentimiento_odontologico']?.length) {
-      const ids = porTipo['consentimiento_odontologico'].map(f => f.id);
-      const [rows] = await conn.query(
-        `SELECT formulario_id, fecha, tratamiento AS procedimiento, firma_path
-         FROM formulario_consent_odont
-         WHERE formulario_id IN (${inList(ids)})
-         ORDER BY fecha DESC`,
-        ids
-      );
-      consentimiento_odontologico = rows.map(r => ({
-        formulario_id: r.formulario_id,
-        fecha: r.fecha,
-        procedimiento: r.procedimiento || '—',
-        firmado: !!r.firma_path
-      }));
-    }
+// ====== Consentimiento Odontológico – Fecha | Procedimiento | Firmado
+      let consentimiento_odontologico = [];
+      if (porTipo['consentimiento_odontologico']?.length) {
+        const ids = porTipo['consentimiento_odontologico'].map(f => f.id);
+        if (ids.length) {
+          const [rows] = await conn.query(
+            `
+            SELECT
+              formulario_id,
+              fecha,
+              tratamiento AS procedimiento,
+              (firma_paciente_at IS NOT NULL) AS firmado
+            FROM formulario_consent_odont
+            WHERE formulario_id IN (${inList(ids)})
+            ORDER BY fecha DESC
+            `,
+            ids
+          );
+          consentimiento_odontologico = rows.map(r => ({
+            formulario_id: r.formulario_id,
+            fecha: r.fecha,
+            procedimiento: r.procedimiento || '—',
+            firmado: !!r.firmado
+          }));
+        }
+      }
 
     // ====== Consentimiento Quirúrgico – Fecha | Intervención | Firmado
     let consentimiento_quirurgico = [];
@@ -323,5 +332,8 @@ async function getPatientStudies(pacienteId) {
   );
   return rows;
 }
+
+
+
 
 module.exports = { buscarPacientes, getFormsSummary, getPatientStudies };

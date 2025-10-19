@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>✅ Consentimiento Odontológico - Consultorio Dental</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="../css/forms.css" rel="stylesheet">
-  <link href="../css/consent-odont.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="../css/forms.css" rel="stylesheet" />
+  <link href="../css/consent-odont.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-light">
   <div class="container py-4">
@@ -47,22 +48,24 @@
           </div>
           <div class="card-body">
             <div class="row">
+              <!-- Campo visible de solo lectura -->
               <div class="col-md-6 mb-3">
                 <label class="form-label required">Nombre del Paciente</label>
-                <select class="form-select" id="pacienteSelect" required>
-                  <option value="">Seleccionar paciente...</option>
-                  <option value="1">Ana García López</option>
-                  <option value="2">Carlos Rodríguez Martínez</option>
-                  <option value="3">María Fernández Sánchez</option>
+                <input type="text" id="nombrePacienteVisible" class="form-control" readonly placeholder="Se llenará automáticamente" />
+                <!-- Select oculto para compatibilidad con tu JS (showPatientStep lee pacienteSelect) -->
+                <select id="pacienteSelect" class="form-select d-none" required>
+                  <!-- Se inyectará una <option> por JS con el id y el nombre -->
                 </select>
               </div>
+
               <div class="col-md-3 mb-3">
                 <label class="form-label required">Fecha</label>
-                <input type="date" class="form-control" id="fechaRegistroInput" required>
+                <input type="date" class="form-control" id="fechaRegistroInput" required readonly />
               </div>
+
               <div class="col-md-3 mb-3">
                 <label class="form-label">Número de paciente</label>
-                <input type="text" id="numeroPacienteInput" class="form-control" readonly placeholder="Se asigna automáticamente">
+                <input type="text" id="numeroPacienteInput" class="form-control" readonly placeholder="Se asigna automáticamente" />
               </div>
             </div>
           </div>
@@ -94,7 +97,7 @@
               </div>
             </div>
             <p>
-              Se me ha informado, que en relación con los pagos estos comprenden única y exclusivamente el tratamiento en cuestión. 
+              Se me ha informado, que en relación con los pagos estos comprenden única y exclusivamente el tratamiento en cuestión.
               Que toda cita no cancelada genera el pago de la misma, que todo pago no realizado en la fecha acordada genera cargos adicionales.
             </p>
           </div>
@@ -107,8 +110,8 @@
           </div>
           <div class="card-body">
             <p>
-              Se me ha informado que en caso de no asistir a mis citas por un período de 
-              <input type="number" id="ausenciaInput" class="form-control d-inline" style="width: 80px;" min="1" max="365" placeholder="30" required> 
+              Se me ha informado que en caso de no asistir a mis citas por un período de
+              <input type="number" id="ausenciaInput" class="form-control d-inline" style="width: 80px;" min="1" max="365" placeholder="30" required>
               días, el tratamiento será suspendido y los resultados del mismo serán estrictamente mi responsabilidad.
             </p>
           </div>
@@ -194,26 +197,22 @@
           </div>
         </div>
 
-          <!-- Bloque de Firma -->
-          <div class="card section-card">
-            <div class="card-header bg-secondary text-white">
-              <h5 class="mb-0">Firma del Paciente</h5>
+        <!-- Bloque de Firma -->
+        <div class="card section-card">
+          <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Firma del Paciente</h5>
+          </div>
+          <div class="card-body text-center">
+            <div class="firma-wrap">
+              <canvas id="signature-pad" width="360" height="120"></canvas>
             </div>
-            <div class="card-body text-center">
-              <div class="firma-wrap">
-                <canvas id="signature-pad" width="360" height="120"></canvas>
-              </div>
-              <div class="mt-2 d-flex justify-content-center">
-                <!-- 🔧 Cambiado de "clearSignature" a "clearSignature-pad" -->
-                <button type="button" class="btn btn-sm btn-outline-danger" id="clearSignature-pad">
-                  🧹 Limpiar
-                </button>
-              </div>
+            <div class="mt-2 d-flex justify-content-center">
+              <button type="button" class="btn btn-sm btn-outline-danger" id="clearSignature-pad">
+                🧹 Limpiar
+              </button>
             </div>
           </div>
-
-
-
+        </div>
 
         <!-- Botones -->
         <div class="text-center mt-4">
@@ -224,8 +223,6 @@
       </div>
     </form>
   </div>
-
-  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="../js/consent-odont.js"></script>
   <script src="../js/firma.js"></script>
