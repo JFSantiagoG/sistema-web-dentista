@@ -2,6 +2,7 @@
 const db = require('../db/connection');
 const { buscarPacientes, getFormsSummary, getPatientStudies } = require('../models/pacientes.model');
 
+
 /* =======================
  *   Pacientes: Buscar
  * ======================= */
@@ -526,6 +527,112 @@ async function crearConsentQuirurgico(req, res) {
   }
 }
 
+// ====== Crear Evolución Clínica (SIN firma en BD; igual estilo que Receta) ======
+async function crearEvolucion(req, res) {
+  console.log('──────────────────────────────────────────────');
+  console.log('📩 POST /patients/:id/evoluciones');
+  console.log('Auth header presente:', !!req.headers.authorization);
+  console.log('User (token decodificado):', {
+    id: req.user?.id, rol: req.user?.rol, email: req.user?.email
+  });
+
+  const pacienteId = Number(req.params.id);
+  if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
+
+  const body = req.body || {};
+  const fechaRegistro = body.fecha_registro || null;
+  const evoluciones = Array.isArray(body.evoluciones) ? body.evoluciones : [];
+
+  console.log('Body:', JSON.stringify(body));
+
+  if (!evoluciones.length) {
+    return res.status(400).json({ error: 'Debe incluir al menos una evolución' });
+  }
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    console.log('🔹 Transacción iniciada');
+
+    // 1) Obtener tipo_id
+    const [tipoRows] = await conn.query(
+      'SELECT id FROM formulario_tipo WHERE nombre = ? LIMIT 1',
+      ['evolucion_clinica']
+    );
+    if (!tipoRows.length) throw new Error('No existe tipo "evolucion_clinica"');
+    const tipoId = tipoRows[0].id;
+    console.log('✔️ tipo_id:', tipoId);
+
+    // 2) Crear formulario (mismo patrón que receta)
+    const creadoPor = req.user?.id || null;
+    const [formIns] = await conn.query(
+      `INSERT INTO formulario (paciente_id, tipo_id, creado_por, fecha_creacion)
+      VALUES (?, ?, ?, NOW())`,
+      [pacienteId, tipoId, creadoPor]
+    );
+
+    const formularioId = formIns.insertId;
+    console.log('✔️ formulario insertado id=', formularioId);
+
+    // 3) Mapear users.id -> medicos.id (puede ser NULL)
+    let medicoId = null;
+    if (creadoPor) {
+      const [medRow] = await conn.query(
+        'SELECT id FROM medicos WHERE user_id = ? LIMIT 1',
+        [creadoPor]
+      );
+      medicoId = medRow[0]?.id ?? null;
+    }
+    console.log('users.id =', creadoPor, '→ medicos.id =', medicoId ?? '—');
+
+    // 4) Cabecera en formulario_evolucion
+    const numeroPaciente = String(pacienteId);
+    const evolJSON = JSON.stringify(evoluciones);
+
+    await conn.query(
+      `INSERT INTO formulario_evolucion
+        (formulario_id, paciente_id, medico_id, numero_paciente, fecha_registro, evoluciones_json, firma_paciente_at)
+       VALUES (?, ?, ?, ?, ?, CAST(? AS JSON), NULL)`,
+      [formularioId, pacienteId, medicoId, numeroPaciente, fechaRegistro, evolJSON]
+    );
+    console.log('✔️ cabecera de evolución insertada');
+
+    // 5) Detalle (una fila por evolución)
+    let count = 0;
+    for (const e of evoluciones) {
+      await conn.query(
+        `INSERT INTO formulario_evolucion_detalle
+          (formulario_id, fecha, tratamiento, costo, ac, proxima_cita_tx)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          formularioId,
+          e.fecha || null,
+          e.tratamiento || null,
+          e.costo != null ? Number(e.costo) : null,
+          e.ac || null,
+          e.proxima || null
+        ]
+      );
+      count++;
+      console.log(`   🧾 [${count}] ${e.fecha || '—'} | ${e.tratamiento || '—'}`);
+    }
+    console.log(`✔️ ${count} evoluciones insertadas`);
+
+    await conn.commit();
+    console.log('✅ Transacción confirmada');
+    console.log('──────────────────────────────────────────────');
+
+    return res.status(201).json({ ok: true, formulario_id: formularioId });
+  } catch (err) {
+    try { await conn.rollback(); } catch {}
+    console.error('❌ Error en crearEvolucion:', err);
+    console.log('──────────────────────────────────────────────');
+    return res.status(500).json({ error: 'Error al crear evolución' });
+  } finally {
+    conn.release();
+  }
+}
+
 
 module.exports = {
   buscar,
@@ -535,5 +642,6 @@ module.exports = {
   crearJustificante,
   crearConsentOdont,
   crearConsentQuirurgico,
+  crearEvolucion,
   crearReceta
 };

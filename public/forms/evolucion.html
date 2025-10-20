@@ -7,6 +7,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="../css/forms.css" rel="stylesheet">
   <link href="../css/evolucion.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-light">
   <div class="container py-4">
@@ -22,22 +23,6 @@
       <button class="btn btn-outline-secondary" onclick="window.history.back()">← Volver</button>
     </div>
 
-    <!-- Identificación del Profesional -->
-    <div class="header-profesional mb-4">
-      <div class="row">
-        <div class="col-md-6">
-          <h5>Información del Dentista</h5>
-          <p class="mb-1"><strong>Nombre completo:</strong> Cirujano Dentista Nancy A. Hernández López</p>
-          <p class="mb-1"><strong>Especialidad:</strong> Especialista en Ortodoncia y Ortopedia Maxilar</p>
-          <p class="mb-1"><strong>Cédulas:</strong> CED. 4680024, CED. ESP. 7817313</p>
-        </div>
-        <div class="col-md-6">
-          <p class="mb-1"><strong>Dirección:</strong> Puerto Ciudad Madero 148, Casas Alemán, G.A.M.</p>
-          <p class="mb-1"><strong>Teléfono:</strong> 56 30 54 49 81</p>
-        </div>
-      </div>
-    </div>
-
     <!-- Identificación del Paciente -->
     <div class="card section-card mb-4">
       <div class="card-header bg-primary text-white">
@@ -47,11 +32,9 @@
         <div class="row">
           <div class="col-md-6 mb-3">
             <label class="form-label required">Nombre del Paciente</label>
+            <!-- Select se autollenará si viene ?paciente_id= -->
             <select class="form-select" id="pacienteSelect" required>
               <option value="">Seleccionar paciente...</option>
-              <option value="1">Ana García López</option>
-              <option value="2">Carlos Rodríguez Martínez</option>
-              <option value="3">María Fernández Sánchez</option>
             </select>
           </div>
           <div class="col-md-3 mb-3">
@@ -67,7 +50,7 @@
     </div>
 
     <!-- Filtros -->
-    <div class="date-filter-section">
+    <div class="date-filter-section mb-3">
       <div class="row">
         <div class="col-md-5">
           <label class="form-label">Filtrar por rango de fechas:</label>
@@ -78,8 +61,8 @@
           </div>
         </div>
         <div class="col-md-3 d-flex align-items-end">
-          <button class="btn btn-outline-primary me-2" onclick="filtrarPorFechas()">🔍 Filtrar</button>
-          <button class="btn btn-outline-secondary" onclick="limpiarFiltros()">🔄 Limpiar</button>
+          <button class="btn btn-outline-primary me-2" id="btnFiltrar">🔍 Filtrar</button>
+          <button class="btn btn-outline-secondary" id="btnLimpiarFiltros">🔄 Limpiar</button>
         </div>
       </div>
     </div>
@@ -109,7 +92,7 @@
         </div>
         
         <div class="text-center mt-3">
-          <button type="button" class="btn btn-add-row btn-lg" onclick="agregarFila()">➕ Agregar Nueva Evolución</button>
+          <button type="button" class="btn btn-add-row btn-lg" id="btnAddRow">➕ Agregar Nueva Evolución</button>
         </div>
       </div>
     </div>
@@ -119,20 +102,18 @@
       <div class="card-body text-center">
         <h5>Firma del Paciente</h5>
         <canvas id="signature-pad" width="400" height="150"
-          style="border:1px dashed #ccc; border-radius:8px; cursor:crosshair;"></canvas>
+          style="border:1px dashed #ccc; border-radius:8px; cursor:crosshair; background:#fff;"></canvas>
         <div class="mt-3">
-          <!-- 🔧 ID corregido -->
           <button type="button" class="btn btn-outline-danger" id="clearSignature-pad">🧹 Limpiar</button>
         </div>
       </div>
     </div>
 
-
     <!-- Acciones -->
     <div class="text-center mt-4">
-      <button type="button" class="btn btn-outline-primary btn-lg me-2">💾 Guardar Borrador</button>
-      <button type="button" class="btn btn-success btn-lg me-2" onclick="guardarEvoluciones()">📤 Enviar Formulario</button>
-      <button type="button" class="btn btn-info btn-lg" onclick="generarPDFEvolucion()">🖨️ Descargar PDF</button>
+      <button type="button" class="btn btn-outline-primary btn-lg me-2" id="btnGuardar">💾 Guardar Borrador</button>
+      <button type="button" class="btn btn-success btn-lg me-2" id="btnEnviar">📤 Enviar Formulario</button>
+      <button type="button" class="btn btn-info btn-lg" id="btnPDF">🖨️ Descargar PDF</button>
     </div>
   </div>
 

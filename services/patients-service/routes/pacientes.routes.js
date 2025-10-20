@@ -8,6 +8,7 @@ const { crearReceta } = require('../controllers/pacientes.controller');
 const { crearJustificante } = require('../controllers/pacientes.controller');
 const { crearConsentOdont } = require('../controllers/pacientes.controller');
 const { crearConsentQuirurgico } = require('../controllers/pacientes.controller');
+const { crearEvolucion } = require('../controllers/pacientes.controller');
 const { verificarToken } = require('../middlewares/auth');
 
 router.get('/search', verificarToken, buscar);
@@ -18,6 +19,7 @@ router.post('/:id/recetas', verificarToken, crearReceta);
 router.post('/:id/justificantes', verificarToken, crearJustificante);
 router.post('/:id/consent-odont', verificarToken, crearConsentOdont);
 router.post('/:id/consent-quiro', verificarToken, crearConsentQuirurgico);
+router.post('/:id/evoluciones', verificarToken, crearEvolucion);
 
 
 module.exports = router;

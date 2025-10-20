@@ -299,6 +299,90 @@ async function getFormsSummary(pacienteId) {
       ortodoncia = rows;
     }
 
+    // ====== CREAR EVOLUCIÓN CLÍNICA ======
+    async function crearEvolucion(pacienteId, body, user = {}) {
+      const conn = await db.getConnection();
+      try {
+        console.log('🔹 Transacción iniciada');
+        await conn.beginTransaction();
+
+        // tipo_id
+        const tipoNombre = 'evolucion_clinica';
+        const tipoId = await getTipoIdByName(conn, tipoNombre);
+        console.log('✔️ tipo_id:', tipoId);
+
+        // Insertar en formulario
+        const [resForm] = await conn.query(
+          `INSERT INTO formulario (paciente_id, tipo_id, creado_por, estado, fecha_creacion)
+          VALUES (?, ?, ?, 'completo', NOW())`,
+          [pacienteId, tipoId, user.id || null]
+        );
+        const formularioId = resForm.insertId;
+        console.log('✔️ formulario insertado id=', formularioId);
+
+        // Médico
+        let medicoId = null;
+        if (user?.id) {
+          const [medRows] = await conn.query(
+            'SELECT id FROM medicos WHERE user_id = ? LIMIT 1',
+            [user.id]
+          );
+          medicoId = medRows.length ? medRows[0].id : null;
+          console.log(`users.id = ${user.id} → medicos.id = ${medicoId ?? '—'}`);
+        }
+
+        // Cabecera en formulario_evolucion
+        const numeroPaciente = String(pacienteId);
+        const fechaRegistro = body.fecha_registro || null;
+        const evolJSON = JSON.stringify(body.evoluciones || []);
+
+        await conn.query(
+          `INSERT INTO formulario_evolucion
+          (formulario_id, paciente_id, medico_id, numero_paciente, fecha_registro, evoluciones_json, firma_paciente_at)
+          VALUES (?, ?, ?, ?, ?, CAST(? AS JSON), NULL)`,
+          [formularioId, pacienteId, medicoId, numeroPaciente, fechaRegistro, evolJSON]
+        );
+        console.log('✔️ cabecera de evolución insertada');
+
+        // Detalles
+        const det = body.evoluciones || [];
+        if (!det.length) throw new Error('evoluciones[] vacío');
+
+        let count = 0;
+        for (const e of det) {
+          await conn.query(
+            `INSERT INTO formulario_evolucion_detalle
+            (formulario_id, fecha, tratamiento, costo, ac, proxima_cita_tx)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+              formularioId,
+              e.fecha || null,
+              e.tratamiento || null,
+              e.costo != null ? Number(e.costo) : null,
+              e.ac || null,
+              e.proxima || null
+            ]
+          );
+          count++;
+          console.log(`   🧾 [${count}] ${e.fecha} | ${e.tratamiento ?? '—'}`);
+        }
+        console.log(`✔️ ${count} evoluciones insertadas`);
+
+        await conn.commit();
+        console.log('✅ Transacción confirmada');
+        console.log('──────────────────────────────────────────────');
+
+        return { formulario_id: formularioId };
+      } catch (err) {
+        try { await conn.rollback(); } catch {}
+        console.error('❌ Transacción revertida por error:', err);
+        console.log('──────────────────────────────────────────────');
+        throw err;
+      } finally {
+        conn.release();
+      }
+    }
+
     return {
       paciente,
       evoluciones,
@@ -309,6 +393,7 @@ async function getFormsSummary(pacienteId) {
       historia_clinica,
       justificantes,
       odontograma_final,
+      crearEvolucion,
       ortodoncia
     };
   } finally {
