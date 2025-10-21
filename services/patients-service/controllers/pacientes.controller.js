@@ -634,6 +634,279 @@ async function crearEvolucion(req, res) {
 }
 
 
+function toDec(v) {
+  if (v === '' || v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+function yesNoToBit(v) {
+  if (v == null) return null;
+  const s = String(v).trim().toLowerCase();
+  if (s === 'si' || s === 'sí' || s === 'true' || s === '1') return 1;
+  if (s === 'no' || s === 'false' || s === '0') return 0;
+  return null;
+}
+
+// ===== Crear Ortodoncia (84 columnas 1:1) =====
+// ===== Crear Ortodoncia (84 columnas 1:1, con verificación de orden) =====
+async function crearOrtodoncia(req, res) {
+  console.log('──────────────────────────────────────────────');
+  console.log('📩 POST /patients/:id/ortodoncia');
+  console.log('Auth header presente:', !!req.headers.authorization);
+  console.log('User (token decodificado):', { id: req.user?.id, rol: req.user?.rol, email: req.user?.email });
+  console.log('Datos recibidos para ORTO:', JSON.stringify(req.body));
+
+  const pacienteId = Number(req.params.id || 0);
+  if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
+
+  const b = req.body || {};
+  const {
+    nombrePaciente = '',
+    fechaIngreso   = null,
+    fechaAlta      = null,
+    examenClinico = {},
+    analisisFuncional = {},
+    analisisModelos = {},
+    indicesValorativos = {},
+    planTratamiento = {},
+    analisisCefalometrico = {},
+    factoresComplementarios = {},
+    analisisJaraback = [],
+    medidasLineales  = [],
+    analisisMcNamara = []
+  } = b;
+
+  if (!nombrePaciente || !fechaIngreso) {
+    return res.status(400).json({ error: 'nombrePaciente y fechaIngreso son requeridos' });
+  }
+
+  // helpers seguros
+  const num = (v) => {
+    if (v === '' || v === null || v === undefined) return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  const yesNoToTinyint = (v) => {
+    if (v == null) return null;
+    const s = String(v).trim().toLowerCase();
+    if (s === 'si' || s === 'sí' || s === 'true' || s === '1') return 1;
+    if (s === 'no' || s === 'false' || s === '0') return 0;
+    return null;
+  };
+  const J = (v) => JSON.stringify(Array.isArray(v) ? v : (v == null ? [] : v));
+
+  // alias para no romper si vienen vacíos
+  const ex = examenClinico || {};
+  const af = analisisFuncional || {};
+  const am = analisisModelos || {};
+  const rd = am.relacionesDentarias || {};
+  const ad = am.anomaliasDentarias || {};
+  const ai = am.arcadasIndividuales || {};
+  const iv = indicesValorativos || {};
+  const pontMx = iv.pontMaxilar || {};
+  const pontMd = iv.pontMandibular || {};
+  const pre   = pontMx.premaxila  || {};
+  const premo = pontMx.premolares || {};
+  const molar = pontMx.molares    || {};
+  const mdPr  = pontMd.premolares || {};
+  const mdMo  = pontMd.molares    || {};
+  const la    = iv.longitudArco   || {};
+  const pt    = planTratamiento   || {};
+
+  const acf   = analisisCefalometrico || {};
+  const biotipoFacial       = acf.biotipoFacial       || [];
+  const claseEsqueletica    = acf.claseEsqueletica    || [];
+  const problemasVerticales = acf.problemasVerticales || [];
+  const factoresDentales    = acf.factoresDentales    || [];
+  const diagCef             = acf.diagnosticoCefalometrico || null;
+
+  const fcomp = factoresComplementarios || {};
+  const claseII   = fcomp.claseII    || [];
+  const claseIII  = fcomp.claseIII   || [];
+  const complVert = fcomp.verticales || [];
+
+  const boltonSup = iv.boltonSuperiores || [];
+  const boltonInf = iv.boltonInferiores || [];
+
+  const conn = await db.getConnection();
+  try {
+    console.log('🔹 TX ortodoncia iniciada');
+    await conn.beginTransaction();
+
+    // 1) tipo_id
+    const [tipoRows] = await conn.query('SELECT id FROM formulario_tipo WHERE nombre=? LIMIT 1', ['historia_ortodoncia']);
+    if (!tipoRows.length) throw new Error('No existe tipo "historia_ortodoncia"');
+    const tipoId = tipoRows[0].id;
+
+    // 2) formulario (usa estado válido del ENUM: 'borrador'|'firmado'|'cerrado')
+    const creadoPor = req.user?.id || null;
+    const [formIns] = await conn.query(
+      `INSERT INTO formulario (paciente_id, tipo_id, creado_por, estado, fecha_creacion)
+       VALUES (?, ?, ?, 'borrador', NOW())`,
+      [pacienteId, tipoId, creadoPor]
+    );
+    const formularioId = formIns.insertId;
+    console.log('✔️ formulario insertado id =', formularioId);
+
+    // 3) mapear users.id -> medicos.id
+    let medicoId = null;
+    if (creadoPor) {
+      const [mRow] = await conn.query('SELECT id FROM medicos WHERE user_id=? LIMIT 1', [creadoPor]);
+      medicoId = mRow[0]?.id ?? null;
+    }
+
+    // 4) INSERT exacto 84 columnas ⇄ 84 valores
+    const cols = [
+      // 1..6
+      'formulario_id','paciente_id','medico_id','nombre_paciente','fecha_ingreso','fecha_alta',
+      // 7..10
+      'tipo_cuerpo','tipo_cara','tipo_craneo','examen_otros',
+      // 11..14
+      'fun_respiracion','fun_deglucion','fun_masticacion','fun_fonacion',
+      // 15..18
+      'atm_problemas_actuales','atm_dolor_si','atm_ruidos_si','atm_dolor_palpacion',
+      // 19..22
+      'atm_max_apertura_mm','atm_lateralidad_izq_mm','atm_protrusion_mm','atm_lateralidad_der_mm',
+      // 23..25
+      'dis_ocrc_vertical_mm','dis_ocrc_horizontal_mm','dis_ocrc_otro',
+      // 26..29
+      'mod_ocl_molares_der_mm','mod_ocl_molares_izq_mm','mod_ocl_caninos_der_mm','mod_ocl_caninos_izq_mm',
+      // 30..31
+      'mod_resalte_horizontal_mm','mod_resalte_vertical_mm',
+      // 32..33
+      'mod_linea_media_sup_mm','mod_linea_media_inf_mm',
+      // 34..35
+      'mod_mordida_cruzada_post_der_mm','mod_mordida_cruzada_post_izq_mm',
+      // 36..41
+      'mod_anom_ausentes','mod_anom_malformacion','mod_anom_giroversion','mod_anom_infraversion','mod_anom_supraversion','mod_anom_pigmentados',
+      // 42..43
+      'arcada_sup','arcada_inf',
+      // 44..46
+      'pont_premaxila_nc','pont_premaxila_pac','pont_premaxila_dif',
+      // 47..49
+      'pont_premolares_nc','pont_premolares_pac','pont_premolares_dif',
+      // 50..52
+      'pont_molares_nc','pont_molares_pac','pont_molares_dif',
+      // 53..56
+      'col_mand_premolares_pac','col_mand_premolares_dif','col_mand_molares_pac','col_mand_molares_dif',
+      // 57..60
+      'suma_incisivos','bolton_sup_json','bolton_inf_json','bolton_dif_mm',
+      // 61..64
+      'long_apinamiento_mm','long_protrusion_dental_mm','long_curva_spee_mm','long_total_mm',
+      // 65..71
+      'plan_ortopedia_maxilar','plan_ortopedia_mandibula','plan_inf_incisivo','plan_inf_molar','plan_sup_molar','plan_sup_incisivo','plan_sup_estetica',
+      // 72..73
+      'anclaje_max','anclaje_man',
+      // 74..78
+      'biotipo_facial_json','clase_esqueletica_json','problemas_verticales_json','factores_dentales_json','diagnostico',
+      // 79..81
+      'clase_ii_json','clase_iii_json','compl_verticales_json',
+      // 82..84
+      'jaraback_json','medidas_lineales_json','mcnamara_json'
+    ];
+
+    // params en el MISMO orden de cols[]
+    const params = [
+      // 1..6
+      formularioId, pacienteId, medicoId, nombrePaciente, fechaIngreso, (fechaAlta || null),
+      // 7..10
+      ex.tipoCuerpo || null, ex.tipoCara || null, ex.tipoCraneo || null, ex.otros || null,
+      // 11..14
+      af.respiracion || null, af.deglucion || null, af.masticacion || null, af.fonacion || null,
+      // 15..18
+      af.problemasATM || null, yesNoToTinyint(af.dolorATM), yesNoToTinyint(af.ruidosATM), af.dolorPalpacion || null,
+      // 19..22
+      num(af.aperturaMax), num(af.latIzq), num(af.protrusion), num(af.latDer),
+      // 23..25
+      num(af.verticalOCRC), num(af.horizontalOCRC), af.otrosOCRC || null,
+      // 26..29
+      num(rd.oclusionMolaresDer), num(rd.oclusionMolaresIzq), num(rd.oclusionCaninosDer), num(rd.oclusionCaninosIzq),
+      // 30..31
+      num(rd.resalteHorizontal), num(rd.resalteVertical),
+      // 32..33
+      num(rd.lineaMediaSup), num(rd.lineaMediaInf),
+      // 34..35
+      num(rd.mordidaCruzadaDer), num(rd.mordidaCruzadaIzq),
+      // 36..41
+      ad.dientesAusentes || null, ad.dientesMalformados || null, ad.dientesGiroversion || null,
+      ad.dientesInfraversion || null, ad.dientesSupraversion || null, ad.dientesPigmentados || null,
+      // 42..43
+      ai.arcadaSuperior || null, ai.arcadaInferior || null,
+      // 44..46
+      num(pre.nc), num(pre.pac), num(pre.dif),
+      // 47..49
+      num(premo.nc), num(premo.pac), num(premo.dif),
+      // 50..52
+      num(molar.nc), num(molar.pac), num(molar.dif),
+      // 53..56
+      num(mdPr.pac), num(mdPr.dif), num(mdMo.pac), num(mdMo.dif),
+      // 57..60 (AQUÍ VAN BOLTON!)
+      num(iv.sumaIncisivos), J(boltonSup), J(boltonInf), num(iv.diferenciaBolton),
+      // 61..64
+      num(la.apinamiento), num(la.protrusionDental), num(la.curvaSpee), num(la.totalLongitud),
+      // 65..71
+      pt.ortopediaMaxilar || null, pt.ortopediaMandibula || null, pt.dientesInfIncisivo || null,
+      pt.dientesInfMolar || null, pt.dientesSupMolar || null, pt.dientesSupIncisivo || null, pt.dientesSupEstetica || null,
+      // 72..73
+      (pt.anclaje?.maxilar || null), (pt.anclaje?.mandibular || null),
+      // 74..78
+      J(biotipoFacial), J(claseEsqueletica), J(problemasVerticales), J(factoresDentales), (diagCef || null),
+      // 79..81
+      J(claseII), J(claseIII), J(complVert),
+      // 82..84
+      J(analisisJaraback), J(medidasLineales), J(analisisMcNamara)
+    ];
+
+    // 🔎 Verificación dura
+    if (params.length !== cols.length) {
+      console.error(`❌ Mismatch cols(${cols.length}) vs params(${params.length})`);
+      return res.status(500).json({ error: 'Desface interno de columnas/valores (contacta dev).' });
+    }
+
+    // Log de depuración columna → valor (primeros 90, aquí son 84)
+    console.log('🧩 Mapeo columna → valor:');
+    cols.forEach((c, i) => {
+      const v = params[i];
+      const show = (v === null) ? 'NULL'
+                 : (typeof v === 'string' && v.length > 80) ? (v.slice(0,77) + '...') 
+                 : (typeof v === 'string') ? `'${v}'`
+                 : (typeof v === 'number') ? v
+                 : (typeof v === 'object') ? JSON.stringify(v).slice(0,80)+'...'
+                 : String(v);
+      console.log(String(i+1).padStart(2,' '), c.padEnd(30), '→', show);
+    });
+
+    // SQL con placeholders
+    const sql = `
+      INSERT INTO formulario_ortodoncia (
+        ${cols.join(',')}
+      ) VALUES (
+        ${cols.map((c) => {
+          // Campos JSON deben ir como CAST(? AS JSON)
+          return /_json$/.test(c) ? 'CAST(? AS JSON)' : '?';
+        }).join(',')}
+      )
+    `;
+
+    await conn.query(sql, params);
+
+    await conn.commit();
+    console.log('✅ TX confirmada (ortodoncia)');
+    console.log('──────────────────────────────────────────────');
+
+    return res.status(201).json({ ok: true, formulario_id: formularioId });
+  } catch (err) {
+    try { await conn.rollback(); } catch {}
+    console.error('❌ crearOrtodoncia error:', err);
+    console.log('──────────────────────────────────────────────');
+    return res.status(500).json({ error: 'Error al crear ortodoncia', detalle: err.message });
+  } finally {
+    conn.release();
+  }
+}
+
+
+
 module.exports = {
   buscar,
   obtenerPorId,
@@ -643,5 +916,6 @@ module.exports = {
   crearConsentOdont,
   crearConsentQuirurgico,
   crearEvolucion,
+  crearOrtodoncia,
   crearReceta
 };
