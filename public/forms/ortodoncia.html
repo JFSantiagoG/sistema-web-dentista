@@ -65,19 +65,19 @@
               <tbody>
                 <tr>
                   <td>Tipo de cuerpo</td>
-                  <td><input type="text" class="form-control" placeholder="Ej: Ectomorfo"></td>
+                  <td><input name="tipoCuerpo" type="text" class="form-control" placeholder="Ej: Ectomorfo"></td>
                 </tr>
                 <tr>
                   <td>Tipo de cara</td>
-                  <td><input type="text" class="form-control" placeholder="Ej: Braquifacial"></td>
+                  <td><input name="tipoCara" type="text" class="form-control" placeholder="Ej: Braquifacial"></td>
                 </tr>
                 <tr>
                   <td>Tipo de cráneo</td>
-                  <td><input type="text" class="form-control" placeholder="Ej: Mesocefálico"></td>
+                  <td><input name="tipoCraneo" type="text" class="form-control" placeholder="Ej: Mesocefálico"></td>
                 </tr>
                 <tr>
                   <td>Otros</td>
-                  <td><input type="text" class="form-control" placeholder="Especificar"></td>
+                  <td><input name="otros" type="text" class="form-control" placeholder="Especificar"></td>
                 </tr>
               </tbody>
             </table>
@@ -96,19 +96,19 @@
           <div class="row">
             <div class="col-md-6 mb-3">
               <label class="form-label">Respiración</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea name="respiracion" class="form-control" rows="2"></textarea>
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Deglución</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea name="deglucion" class="form-control" rows="2"></textarea>
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Masticación</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea name="masticacion" class="form-control" rows="2"></textarea>
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Fonación</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea name="fonacion" class="form-control" rows="2"></textarea>
             </div>
           </div>
 
@@ -116,7 +116,7 @@
           <h6 class="mt-4">b) Salud Articular</h6>
           <div class="mb-3">
             <label class="form-label">Problemas en la Actualidad</label>
-            <textarea class="form-control" rows="2"></textarea>
+            <textarea name="problemasATM" class="form-control" rows="2"></textarea>
           </div>
           <div class="table-responsive mb-3">
             <table class="table table-bordered text-center-sm">
@@ -143,24 +143,24 @@
           </div>
           <div class="mb-3">
             <label class="form-label">Dolor a la Palpación</label>
-            <textarea class="form-control" rows="2"></textarea>
+            <textarea name="dolorPalpacion" class="form-control" rows="2"></textarea>
           </div>
           <div class="row">
             <div class="col-md-3 mb-3">
               <label class="form-label">Máxima Apertura (mm)</label>
-              <input type="number" class="form-control input-number">
+              <input name="aperturaMax" type="number" class="form-control input-number">
             </div>
             <div class="col-md-3 mb-3">
               <label class="form-label">Lateralidad Izq. (mm)</label>
-              <input type="number" class="form-control input-number">
+              <input name="latIzq" type="number" class="form-control input-number">
             </div>
             <div class="col-md-3 mb-3">
               <label class="form-label">Protrusión (mm)</label>
-              <input type="number" class="form-control input-number">
+              <input name="protrusion" type="number" class="form-control input-number">
             </div>
             <div class="col-md-3 mb-3">
               <label class="form-label">Lateralidad Der. (mm)</label>
-              <input type="number" class="form-control input-number">
+              <input name="latDer" type="number" class="form-control input-number">
             </div>
           </div>
 
@@ -176,15 +176,15 @@
               </thead>
               <tbody>
                 <tr>
-                  <td><input type="number" class="form-control input-number"></td>
-                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input name="verticalOCRC" type="number" class="form-control input-number"></td>
+                  <td><input name="horizontalOCRC" type="number" class="form-control input-number"></td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div class="mb-3">
             <label class="form-label">Algún otro dato</label>
-            <textarea class="form-control" rows="2"></textarea>
+            <textarea name="otrosOCRC" class="form-control" rows="2"></textarea>
           </div>
         </div>
       </div>
@@ -207,14 +207,40 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Oclusión de molares</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Oclusión de caninos</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Resalte horizontal (mm)</td><td colspan="2"><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Resalte vertical (mm)</td><td colspan="2"><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Línea media superior (mm)</td><td colspan="2"><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Línea media inferior (mm)</td><td colspan="2"><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Mordida cruzada posterior derecha (mm)</td><td colspan="2"><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Mordida cruzada posterior izquierda (mm)</td><td colspan="2"><input type="number" class="form-control input-number"></td></tr>
+                <tr>
+                  <td>Oclusión de molares</td>
+                  <td><input name="oclusionMolaresDer" type="number" class="form-control input-number"></td>
+                  <td><input name="oclusionMolaresIzq" type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td>Oclusión de caninos</td>
+                  <td><input name="oclusionCaninosDer" type="number" class="form-control input-number"></td>
+                  <td><input name="oclusionCaninosIzq" type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td>Resalte horizontal (mm)</td>
+                  <td colspan="2"><input name="resalteHorizontal" type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td>Resalte vertical (mm)</td>
+                  <td colspan="2"><input name="resalteVertical" type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td>Línea media superior (mm)</td>
+                  <td colspan="2"><input name="lineaMediaSup" type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td>Línea media inferior (mm)</td>
+                  <td colspan="2"><input name="lineaMediaInf" type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td>Mordida cruzada posterior derecha (mm)</td>
+                  <td colspan="2"><input name="mordidaCruzadaDer" type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td>Mordida cruzada posterior izquierda (mm)</td>
+                  <td colspan="2"><input name="mordidaCruzadaIzq" type="number" class="form-control input-number"></td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -230,12 +256,12 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Dientes ausentes</td><td><input type="text" class="form-control"></td></tr>
-                <tr><td>Dientes con malformación</td><td><input type="text" class="form-control"></td></tr>
-                <tr><td>Dientes con giroversión</td><td><input type="text" class="form-control"></td></tr>
-                <tr><td>Dientes en infraversión</td><td><input type="text" class="form-control"></td></tr>
-                <tr><td>Dientes en supraversión</td><td><input type="text" class="form-control"></td></tr>
-                <tr><td>Dientes pigmentados</td><td><input type="text" class="form-control"></td></tr>
+                <tr><td>Dientes ausentes</td>            <td><input name="dientesAusentes"     type="text" class="form-control"></td></tr>
+                <tr><td>Dientes con malformación</td>    <td><input name="dientesMalformados"  type="text" class="form-control"></td></tr>
+                <tr><td>Dientes con giroversión</td>     <td><input name="dientesGiroversion"  type="text" class="form-control"></td></tr>
+                <tr><td>Dientes en infraversión</td>     <td><input name="dientesInfraversion" type="text" class="form-control"></td></tr>
+                <tr><td>Dientes en supraversión</td>     <td><input name="dientesSupraversion" type="text" class="form-control"></td></tr>
+                <tr><td>Dientes pigmentados</td>         <td><input name="dientesPigmentados"  type="text" class="form-control"></td></tr>
               </tbody>
             </table>
           </div>
@@ -290,9 +316,24 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Premaxila</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Premolares</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Molares</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr>
+                  <td>Premaxila</td>
+                  <td><input name="pontPremaxilaNC"  type="number" class="form-control input-number"></td>
+                  <td><input name="pontPremaxilaPac" type="number" class="form-control input-number"></td>
+                  <td><input name="pontPremaxilaDif" type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td>Premolares</td>
+                  <td><input name="pontPremolaresNC"  type="number" class="form-control input-number"></td>
+                  <td><input name="pontPremolaresPac" type="number" class="form-control input-number"></td>
+                  <td><input name="pontPremolaresDif" type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td>Molares</td>
+                  <td><input name="pontMolaresNC"  type="number" class="form-control input-number"></td>
+                  <td><input name="pontMolaresPac" type="number" class="form-control input-number"></td>
+                  <td><input name="pontMolaresDif" type="number" class="form-control input-number"></td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -306,14 +347,22 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Premolares</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Molares</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr>
+                  <td>Premolares</td>
+                  <td><input name="pontMandPremolaresPac" type="number" class="form-control input-number"></td>
+                  <td><input name="pontMandPremolaresDif" type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td>Molares</td>
+                  <td><input name="pontMandMolaresPac" type="number" class="form-control input-number"></td>
+                  <td><input name="pontMandMolaresDif" type="number" class="form-control input-number"></td>
+                </tr>
               </tbody>
             </table>
           </div>
           <div class="mb-3">
             <label class="form-label">Suma de los Incisivos</label>
-            <input type="number" class="form-control" placeholder="Valor numérico">
+            <input name="sumaIncisivos" type="number" class="form-control" placeholder="Valor numérico">
           </div>
 
           <!-- Análisis de Bolton -->
@@ -375,10 +424,10 @@
               </thead>
               <tbody>
                 <tr>
-                  <td><input type="number" class="form-control input-number"></td>
-                  <td><input type="number" class="form-control input-number"></td>
-                  <td><input type="number" class="form-control input-number"></td>
-                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input name="apinamiento"      type="number" class="form-control input-number"></td>
+                  <td><input name="protrusionDental" type="number" class="form-control input-number"></td>
+                  <td><input name="curvaSpee"        type="number" class="form-control input-number"></td>
+                  <td><input name="totalLongitud"    type="number" class="form-control input-number"></td>
                 </tr>
               </tbody>
             </table>
@@ -395,31 +444,31 @@
           <div class="row">
             <div class="col-md-6 mb-3">
               <label class="form-label">Ortopedia - Maxilar</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea name="ortopediaMaxilar" class="form-control" rows="2"></textarea>
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Ortopedia - Mandíbula</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea name="ortopediaMandibula" class="form-control" rows="2"></textarea>
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Dientes Inferiores - Incisivo</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea name="dientesInfIncisivo" class="form-control" rows="2"></textarea>
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Dientes Inferiores - Molar</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea name="dientesInfMolar" class="form-control" rows="2"></textarea>
             </div>
             <div class="col-md-4 mb-3">
               <label class="form-label">Dientes Superiores - Molar</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea name="dientesSupMolar" class="form-control" rows="2"></textarea>
             </div>
             <div class="col-md-4 mb-3">
               <label class="form-label">Dientes Superiores - Incisivo</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea name="dientesSupIncisivo" class="form-control" rows="2"></textarea>
             </div>
             <div class="col-md-4 mb-3">
               <label class="form-label">Dientes Superiores - Estética</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea name="dientesSupEstetica" class="form-control" rows="2"></textarea>
             </div>
           </div>
           <h6 class="mt-3">Anclaje</h6>
@@ -461,7 +510,7 @@
           <!-- Biotipo Facial -->
           <h6>Biotipo Facial</h6>
           <div class="table-responsive mb-3">
-            <table class="table table-bordered">
+            <table id="biotipoFacial" class="table table-bordered">
               <thead>
                 <tr>
                   <th>Factor</th>
@@ -473,11 +522,22 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Profundidad facial</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="text" class="form-control"></td></tr>
-                <tr><td>Eje Facial</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="text" class="form-control"></td></tr>
-                <tr><td>Altura Facial Inf.</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="text" class="form-control"></td></tr>
-                <tr><td>Plano Mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="text" class="form-control"></td></tr>
-                <tr><td>Arco Mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="text" class="form-control"></td></tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="text"   class="form-control"></td>
+                </tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="text"   class="form-control"></td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -485,7 +545,7 @@
           <!-- Clase Esquelética -->
           <h6 class="mt-4">Clase Esquelética</h6>
           <div class="table-responsive mb-3">
-            <table class="table table-bordered">
+            <table id="claseEsqueletica" class="table table-bordered">
               <thead>
                 <tr>
                   <th>Factor</th>
@@ -495,9 +555,18 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Convexidad Facial</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Profundidad Maxilar</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Profundidad facial</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -505,7 +574,7 @@
           <!-- Problemas Verticales -->
           <h6 class="mt-4">Problemas Verticales</h6>
           <div class="table-responsive mb-3">
-            <table class="table table-bordered">
+            <table id="problemasVerticales" class="table table-bordered">
               <thead>
                 <tr>
                   <th>Factor</th>
@@ -515,9 +584,18 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Altura Facial Inferior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Plano Mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Altura Maxilar</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -525,7 +603,7 @@
           <!-- Factores Dentales -->
           <h6 class="mt-4">Factores Dentales</h6>
           <div class="table-responsive mb-3">
-            <table class="table table-bordered">
+            <table id="factoresDentales" class="table table-bordered">
               <thead>
                 <tr>
                   <th>Factor</th>
@@ -535,19 +613,25 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Posición del molar sup.</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Relación Molar</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Posición del incisivo Inf.</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Inclinación del Incisivo</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Ángulo interincisivo</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Protrusión Labial</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
               </tbody>
             </table>
           </div>
 
           <div class="mb-3">
             <label class="form-label">Diagnóstico</label>
-            <textarea class="form-control" rows="3" placeholder="Resumen diagnóstico..."></textarea>
+            <textarea name="diagnosticoCefalometrico" class="form-control" rows="3" placeholder="Resumen diagnóstico..."></textarea>
           </div>
         </div>
       </div>
@@ -561,7 +645,7 @@
           <!-- Clase II -->
           <h6>Clase II</h6>
           <div class="table-responsive mb-3">
-            <table class="table table-bordered">
+            <table id="claseII" class="table table-bordered">
               <thead>
                 <tr>
                   <th>Factor</th>
@@ -571,9 +655,18 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Longitud craneal anterior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Posición de la rama mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Longitud del cuerpo mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -581,7 +674,7 @@
           <!-- Clase III -->
           <h6 class="mt-4">Clase III</h6>
           <div class="table-responsive mb-3">
-            <table class="table table-bordered">
+            <table id="claseIII" class="table table-bordered">
               <thead>
                 <tr>
                   <th>Factor</th>
@@ -591,11 +684,18 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Longitud craneal anterior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Posición de la rama mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Longitud del cuerpo mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Deflexion craneal</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Localización del porion</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -603,7 +703,7 @@
           <!-- Factores Complementarios Verticales -->
           <h6 class="mt-4">Factores Complementarios Verticales</h6>
           <div class="table-responsive">
-            <table class="table table-bordered">
+            <table id="verticales" class="table table-bordered">
               <thead>
                 <tr>
                   <th>Factor</th>
@@ -613,9 +713,18 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Altura Facial Posterior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Inclinacion del plano palatino</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Arco mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -629,7 +738,7 @@
         </div>
         <div class="card-body">
           <div class="table-responsive">
-            <table class="table table-bordered">
+            <table id="jaraback" class="table table-bordered">
               <thead>
                 <tr>
                   <th>Factor</th>
@@ -639,17 +748,18 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Angulo Silla</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Angulo Articular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Angulo Goniaco Total</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Suma Total</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Angulo Goniaco Superior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Angulo Goniaco Inferior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Angulo S-NA NA-A</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Angulo S-NA NA-B</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Angulo A-NA-B</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Inclinacion del Incisivo Superior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Inclinacion del Incisivo Inferior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -663,7 +773,7 @@
         </div>
         <div class="card-body">
           <div class="table-responsive">
-            <table class="table table-bordered">
+            <table id="medidasLineales" class="table table-bordered">
               <thead>
                 <tr>
                   <th>Factor</th>
@@ -673,11 +783,18 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Base Craneal Anterior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Longitud del Cuerpo Mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Base Craneal Posterior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Altura de la Rama</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Relacion entre la altura facial post. y la altura facial ant.</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -691,7 +808,7 @@
         </div>
         <div class="card-body">
           <div class="table-responsive">
-            <table class="table table-bordered">
+            <table id="mcnamara" class="table table-bordered">
               <thead>
                 <tr>
                   <th>Factor</th>
@@ -701,9 +818,18 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Altura Facial Anteroinferior</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Longitud Maxilar</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
-                <tr><td>Longitud Mandibular</td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td><td><input type="number" class="form-control input-number"></td></tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
+                <tr>
+                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                  <td><input type="number" class="form-control input-number"></td>
+                </tr>
               </tbody>
             </table>
           </div>

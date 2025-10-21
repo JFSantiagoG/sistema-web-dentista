@@ -1,15 +1,16 @@
 const express = require('express');
 const PDFDocument = require('pdfkit');
-const { insertarEncabezado, insertarPie, verificarEspacioYAgregarPagina } = require('../utils/pdfHelpers');
+const { insertarEncabezado, insertarPie } = require('../utils/pdfHelpers');
 
 const router = express.Router();
 
 router.post('/generate', (req, res) => {
-  const data = req.body;
+  const data = req.body || {};
+
   const {
     nombrePaciente = '',
-    fechaIngreso = '',
-    fechaAlta = '',
+    fechaIngreso   = '',
+    fechaAlta      = '',
     examenClinico = {},
     analisisFuncional = {},
     analisisModelos = {},
@@ -21,39 +22,11 @@ router.post('/generate', (req, res) => {
     medidasLineales = [],
     analisisMcNamara = []
   } = data;
+  console.log("Datos recibidos para generar PDF de ortodoncia:", data);
 
-  // 🧾 Log limpio (resumen, sin spamear la consola):
-  console.log('📋 Ortodoncia recibida:', {
-    nombrePaciente,
-    fechaIngreso,
-    fechaAlta,
-    examenClinicoKeys: Object.keys(examenClinico).length,
-    analisisFuncionalKeys: Object.keys(analisisFuncional).length,
-    analisisModelosBlocks: {
-      relacionesDentarias: Object.keys(analisisModelos.relacionesDentarias || {}).length,
-      anomaliasDentarias: Object.keys(analisisModelos.anomaliasDentarias || {}).length,
-      arcadasIndividuales: Object.keys(analisisModelos.arcadasIndividuales || {}).length
-    },
-    indicesValorativosKeys: Object.keys(indicesValorativos || {}).length,
-    planTratamientoKeys: Object.keys(planTratamiento || {}).length,
-    analisisCefalometrico: {
-      biotipoFacial: (analisisCefalometrico.biotipoFacial || []).length,
-      claseEsqueletica: (analisisCefalometrico.claseEsqueletica || []).length,
-      problemasVerticales: (analisisCefalometrico.problemasVerticales || []).length,
-      factoresDentales: (analisisCefalometrico.factoresDentales || []).length,
-      diagnosticoLen: (analisisCefalometrico.diagnosticoCefalometrico || '').length
-    },
-    factoresComplementarios: {
-      claseII: (factoresComplementarios.claseII || []).length,
-      claseIII: (factoresComplementarios.claseIII || []).length,
-      verticales: (factoresComplementarios.verticales || []).length
-    },
-    analisisJaraback: analisisJaraback.length,
-    medidasLineales: medidasLineales.length,
-    analisisMcNamara: analisisMcNamara.length
-  });
-
+  // Crear PDF
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
+
   const chunks = [];
   doc.on('data', c => chunks.push(c));
   doc.on('end', () => {
@@ -61,247 +34,235 @@ router.post('/generate', (req, res) => {
     res.send(Buffer.concat(chunks));
   });
 
-  // === Página 1: Encabezado + Pie ===
-  insertarEncabezado(doc, 'CIRUJANO DENTISTA NANCY HERNÁNDEZ LÓPEZ', [
-    'ESPECIALISTA EN CIRUGÍA Y ORTOPEDIA MAXILAR'
-  ]);
-  insertarPie(doc, false);
+  // ---------- Helpers de salto ----------
+  const LINE = 14; // altura estimada por línea
+  const BOTTOM_SAFE = () => doc.page.height - doc.page.margins.bottom - 2 * LINE; // deja 2 líneas para el pie
 
-  // ========= Configuración general =========
-  const LEFT_X = 50;
-  const WIDTH = doc.page.width - doc.page.margins.left - doc.page.margins.right; // ~515
-  const FOOTER_RESERVE = 80; // no pisar el pie
-
-  // Estilos consistentes
-  const setTitle = () => doc.font('Helvetica-Bold').fontSize(12).fillColor('#111');
-  const setSub = () => doc.font('Helvetica-Bold').fontSize(11).fillColor('#00457C');
-  const setBody = () => doc.font('Helvetica').fontSize(10).fillColor('#111');
-
-  // Wrapper de tu helper con reserva para el pie
-  const vspace = (h) => {
-    verificarEspacioYAgregarPagina(
+  function nuevaPagina() {
+    // pie de la página actual
+    doc.font('Helvetica').fontSize(8).fillColor('gray').text('', 40, BOTTOM_SAFE());
+    insertarPie(doc, false);
+    // nueva página + encabezado
+    doc.addPage();
+    insertarEncabezado(
       doc,
-      h + FOOTER_RESERVE,
       'CIRUJANO DENTISTA NANCY HERNÁNDEZ LÓPEZ',
       ['ESPECIALISTA EN CIRUGÍA Y ORTOPEDIA MAXILAR']
     );
-  };
+  }
 
-  const bullet = (text) => {
-    setBody();
-    vspace(Math.max(16, doc.heightOfString(`• ${text}`, { width: WIDTH })));
-    doc.text(`• ${text}`, LEFT_X, doc.y, { width: WIDTH });
-  };
+  function ensureSpace(lines = 3) {
+    const need = lines * LINE;
+    if (doc.y + need > BOTTOM_SAFE()) {
+      nuevaPagina();
+    }
+  }
 
-  const labelValue = (label, value, opts = {}) => {
-    const t = `${label}: ${value ?? '-'}`;
-    setBody();
-    vspace(Math.max(16, doc.heightOfString(t, { width: WIDTH })));
-    doc.text(t, LEFT_X, doc.y, { width: WIDTH, align: opts.align || 'left' });
-  };
+  // Encabezado de la primera página
+  insertarEncabezado(
+    doc,
+    'CIRUJANO DENTISTA NANCY HERNÁNDEZ LÓPEZ',
+    ['ESPECIALISTA EN CIRUGÍA Y ORTOPEDIA MAXILAR']
+  );
 
-  const smallGap = () => doc.moveDown(0.3);
-  const midGap = () => doc.moveDown(0.6);
+  // ============ 1) Identificación ============
+  ensureSpace(5);
+  doc.font('Helvetica-Bold').fontSize(12).fillColor('black').text('1. Identificación del Paciente', 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Nombre: ${nombrePaciente}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Fecha de Ingreso: ${fechaIngreso}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Fecha de Alta: ${fechaAlta}`, 50).moveDown(0.6);
 
-  // ===== 1. Identificación del Paciente =====
-  setTitle();
-  doc.text('1. Identificación del Paciente', LEFT_X, doc.y, { width: WIDTH, underline: true });
-  midGap();
+  // ============ 2) Examen Clínico ============
+  ensureSpace(6);
+  doc.font('Helvetica-Bold').fontSize(12).fillColor('black').text('2. Examen Clínico', 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Tipo de cuerpo: ${examenClinico.tipoCuerpo || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Tipo de cara: ${examenClinico.tipoCara || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Tipo de cráneo: ${examenClinico.tipoCraneo || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Otros: ${examenClinico.otros || ''}`, 50).moveDown(0.6);
 
-  labelValue('Nombre', nombrePaciente);
-  labelValue('Fecha de Ingreso', fechaIngreso);
-  labelValue('Fecha de Alta', fechaAlta);
+  // ============ 3) Análisis Funcional ============
+  ensureSpace(12);
+  doc.font('Helvetica-Bold').fontSize(12).fillColor('black').text('3. Análisis Funcional', 50).moveDown(0.3);
 
-  // ===== 2. Examen Clínico =====
-  vspace(60);
-  setTitle();
-  doc.text('2. Examen Clínico', LEFT_X, doc.y, { width: WIDTH, underline: true });
-  midGap();
+  // 3a) Funciones básicas
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('black').text('a) Funciones Básicas', 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Respiración: ${analisisFuncional.respiracion || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Deglución: ${analisisFuncional.deglucion || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Masticación: ${analisisFuncional.masticacion || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Fonación: ${analisisFuncional.fonacion || ''}`, 50).moveDown(0.6);
 
-  labelValue('Tipo de cuerpo', examenClinico.tipoCuerpo || '');
-  labelValue('Tipo de cara', examenClinico.tipoCara || '');
-  labelValue('Tipo de cráneo', examenClinico.tipoCraneo || '');
-  labelValue('Otros', examenClinico.otros || '', { align: 'justify' });
+  // 3b) ATM
+  ensureSpace(10);
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('black').text('b) Salud Articular (ATM)', 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Problemas actuales: ${analisisFuncional.problemasATM || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Dolor: ${analisisFuncional.dolorATM || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Ruidos: ${analisisFuncional.ruidosATM || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Dolor a la palpación: ${analisisFuncional.dolorPalpacion || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Máxima Apertura (mm): ${analisisFuncional.aperturaMax || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Lateralidad Izq. (mm): ${analisisFuncional.latIzq || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Protrusión (mm): ${analisisFuncional.protrusion || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Lateralidad Der. (mm): ${analisisFuncional.latDer || ''}`, 50).moveDown(0.6);
 
-  // ===== 3. Análisis Funcional =====
-  vspace(60);
-  setTitle();
-  doc.text('3. Análisis Funcional', LEFT_X, doc.y, { width: WIDTH, underline: true });
-  midGap();
+  // 3c) Discrepancia OC-RC
+  ensureSpace(6);
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('black').text('c) Discrepancia Oclusión Céntrica – Relación Céntrica (OC–RC)', 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Vertical (mm): ${analisisFuncional.verticalOCRC || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Horizontal (mm): ${analisisFuncional.horizontalOCRC || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Otros: ${analisisFuncional.otrosOCRC || ''}`, 50).moveDown(0.6);
 
-  setSub(); doc.text('a) Funciones Básicas'); smallGap();
-  labelValue('Respiración', analisisFuncional.respiracion || '', { align: 'justify' });
-  labelValue('Deglución', analisisFuncional.deglucion || '', { align: 'justify' });
-  labelValue('Masticación', analisisFuncional.masticacion || '', { align: 'justify' });
-  labelValue('Fonación', analisisFuncional.fonacion || '', { align: 'justify' });
+  // ============ 4) Análisis de Modelos ============
+  ensureSpace(14);
+  doc.font('Helvetica-Bold').fontSize(12).fillColor('black').text('4. Análisis de Modelos', 50).moveDown(0.3);
 
-  vspace(40);
-  setSub(); doc.text('b) Salud Articular'); smallGap();
-  labelValue('Problemas en la actualidad', analisisFuncional.problemasATM || '', { align: 'justify' });
-  labelValue('Dolor', (analisisFuncional.dolorATM || '').toUpperCase() === 'SI' ? 'Sí' : (analisisFuncional.dolorATM || 'No'));
-  labelValue('Ruidos', (analisisFuncional.ruidosATM || '').toUpperCase() === 'SI' ? 'Sí' : (analisisFuncional.ruidosATM || 'No'));
-  labelValue('Dolor a la palpación', analisisFuncional.dolorPalpacion || '', { align: 'justify' });
-
-  labelValue('Máxima Apertura (mm)', analisisFuncional.aperturaMax || '');
-  labelValue('Lateralidad Izq. (mm)', analisisFuncional.latIzq || '');
-  labelValue('Protrusión (mm)', analisisFuncional.protrusion || '');
-  labelValue('Lateralidad Der. (mm)', analisisFuncional.latDer || '');
-
-  vspace(40);
-  setSub(); doc.text('c) Discrepancia OC-RC'); smallGap();
-  labelValue('Vertical (mm)', analisisFuncional.verticalOCRC || '');
-  labelValue('Horizontal (mm)', analisisFuncional.horizontalOCRC || '');
-  labelValue('Otros', analisisFuncional.otrosOCRC || '', { align: 'justify' });
-
-  // ===== 4. Análisis de Modelos =====
-  vspace(60);
-  setTitle();
-  doc.text('4. Análisis de Modelos', LEFT_X, doc.y, { width: WIDTH, underline: true });
-  midGap();
-
-  setSub(); doc.text('I. Relaciones Dentarias'); smallGap();
+  // I. Relaciones dentarias
   const rd = analisisModelos.relacionesDentarias || {};
-  labelValue('Oclusión de molares (Der/Izq, mm)', `${rd.oclusionMolaresDer || '-'} / ${rd.oclusionMolaresIzq || '-'}`);
-  labelValue('Oclusión de caninos (Der/Izq, mm)', `${rd.oclusionCaninosDer || '-'} / ${rd.oclusionCaninosIzq || '-'}`);
-  labelValue('Resalte horizontal (mm)', rd.resalteHorizontal || '');
-  labelValue('Resalte vertical (mm)', rd.resalteVertical || '');
-  labelValue('Línea media superior (mm)', rd.lineaMediaSup || '');
-  labelValue('Línea media inferior (mm)', rd.lineaMediaInf || '');
-  labelValue('Mordida cruzada post. derecha (mm)', rd.mordidaCruzadaDer || '');
-  labelValue('Mordida cruzada post. izquierda (mm)', rd.mordidaCruzadaIzq || '');
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('black').text('I. Relaciones Dentarias', 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Oclusión de molares (Der/Izq): ${rd.oclusionMolaresDer || '-'} / ${rd.oclusionMolaresIzq || '-'}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Oclusión de caninos (Der/Izq): ${rd.oclusionCaninosDer || '-'} / ${rd.oclusionCaninosIzq || '-'}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Resalte horizontal (mm): ${rd.resalteHorizontal || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Resalte vertical (mm): ${rd.resalteVertical || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Línea media superior (mm): ${rd.lineaMediaSup || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Línea media inferior (mm): ${rd.lineaMediaInf || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Mordida cruzada post. derecha (mm): ${rd.mordidaCruzadaDer || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Mordida cruzada post. izquierda (mm): ${rd.mordidaCruzadaIzq || ''}`, 50).moveDown(0.6);
 
-  vspace(36);
-  setSub(); doc.text('II. Anomalías Dentarias'); smallGap();
+  // II. Anomalías dentarias
+  ensureSpace(10);
   const ad = analisisModelos.anomaliasDentarias || {};
-  labelValue('Dientes ausentes', ad.dientesAusentes || '');
-  labelValue('Dientes con malformación', ad.dientesMalformados || '');
-  labelValue('Giroversión', ad.dientesGiroversion || '');
-  labelValue('Infraversión', ad.dientesInfraversion || '');
-  labelValue('Supraversion', ad.dientesSupraversion || '');
-  labelValue('Pigmentados', ad.dientesPigmentados || '');
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('black').text('II. Anomalías Dentarias', 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Dientes ausentes: ${ad.dientesAusentes || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Dientes malformados: ${ad.dientesMalformados || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Giroversión: ${ad.dientesGiroversion || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Infraversión: ${ad.dientesInfraversion || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Supraversion: ${ad.dientesSupraversion || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Pigmentados: ${ad.dientesPigmentados || ''}`, 50).moveDown(0.6);
 
-  vspace(36);
-  setSub(); doc.text('III. Arcadas Individuales'); smallGap();
+  // III. Arcadas individuales
+  ensureSpace(6);
   const ai = analisisModelos.arcadasIndividuales || {};
-  labelValue('Arcada Superior', (ai.arcadaSuperior || '').toUpperCase() || '-');
-  labelValue('Arcada Inferior', (ai.arcadaInferior || '').toUpperCase() || '-');
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('black').text('III. Arcadas Individuales', 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Arcada Superior: ${(ai.arcadaSuperior || '').toUpperCase()}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Arcada Inferior: ${(ai.arcadaInferior || '').toUpperCase()}`, 50).moveDown(0.6);
 
-  // ===== 5. Índices Valorativos =====
-  vspace(60);
-  setTitle();
-  doc.text('5. Índices Valorativos', LEFT_X, doc.y, { width: WIDTH, underline: true });
-  midGap();
+  // ============ 5) Índices Valorativos ============
+  ensureSpace(14);
+  doc.font('Helvetica-Bold').fontSize(12).fillColor('black').text('5. Índices Valorativos', 50).moveDown(0.3);
 
-  setSub(); doc.text('Análisis de Pont - Maxilar'); smallGap();
-  const pontMx = (indicesValorativos.pontMaxilar || {});
-  const pPre = pontMx.premaxila || {}, pPreMol = pontMx.premolares || {}, pMol = pontMx.molares || {};
-  labelValue('Premaxila (NC/Pac/Dif)', `${pPre.nc || '-'} / ${pPre.pac || '-'} / ${pPre.dif || '-'}`);
-  labelValue('Premolares (NC/Pac/Dif)', `${pPreMol.nc || '-'} / ${pPreMol.pac || '-'} / ${pPreMol.dif || '-'}`);
-  labelValue('Molares (NC/Pac/Dif)', `${pMol.nc || '-'} / ${pMol.pac || '-'} / ${pMol.dif || '-'}`);
+  // Pont - Maxilar
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('black').text('Análisis de Pont - Maxilar', 50).moveDown(0.3);
+  const pontMx = indicesValorativos.pontMaxilar || {};
+  const pPre = pontMx.premaxila || {};
+  const pPreMol = pontMx.premolares || {};
+  const pMol = pontMx.molares || {};
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Premaxila (NC/Pac/Dif): ${pPre.nc || '-'} / ${pPre.pac || '-'} / ${pPre.dif || '-'}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Premolares (NC/Pac/Dif): ${pPreMol.nc || '-'} / ${pPreMol.pac || '-'} / ${pPreMol.dif || '-'}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Molares (NC/Pac/Dif): ${pMol.nc || '-'} / ${pMol.pac || '-'} / ${pMol.dif || '-'}`, 50).moveDown(0.6);
 
-  vspace(24);
-  setSub(); doc.text('Análisis de Pont - Mandibular'); smallGap();
-  const pontMd = (indicesValorativos.pontMandibular || {});
-  const pmPre = pontMd.premolares || {}, pmMol = pontMd.molares || {};
-  labelValue('Premolares (Pac/Dif)', `${pmPre.pac || '-'} / ${pmPre.dif || '-'}`);
-  labelValue('Molares (Pac/Dif)', `${pmMol.pac || '-'} / ${pmMol.dif || '-'}`);
+  // Pont - Mandibular
+  ensureSpace(8);
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('black').text('Análisis de Pont - Mandibular', 50).moveDown(0.3);
+  const pontMd = indicesValorativos.pontMandibular || {};
+  const pmPre = pontMd.premolares || {};
+  const pmMol = pontMd.molares || {};
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Premolares (Pac/Dif): ${pmPre.pac || '-'} / ${pmPre.dif || '-'}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Molares (Pac/Dif): ${pmMol.pac || '-'} / ${pmMol.dif || '-'}`, 50).moveDown(0.6);
 
-  vspace(16);
-  labelValue('Suma de los Incisivos', indicesValorativos.sumaIncisivos || '');
+  // Suma incisivos / Bolton / Longitud Arco
+  ensureSpace(10);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Suma de los Incisivos: ${indicesValorativos.sumaIncisivos || ''}`, 50).moveDown(0.6);
 
-  vspace(24);
-  setSub(); doc.text('Análisis de Bolton'); smallGap();
   const sup = indicesValorativos.boltonSuperiores || [];
   const inf = indicesValorativos.boltonInferiores || [];
-  labelValue('Superiores (16–26)', sup.join(', ') || '-');
-  labelValue('Inferiores (46–36)', inf.join(', ') || '-');
-  labelValue('Diferencia de Bolton (mm)', indicesValorativos.diferenciaBolton || '');
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('black').text('Análisis de Bolton', 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Superiores (16–26): ${sup.join(', ') || '-'}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Inferiores (46–36): ${inf.join(', ') || '-'}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Diferencia de Bolton (mm): ${indicesValorativos.diferenciaBolton || ''}`, 50).moveDown(0.6);
 
-  vspace(24);
-  setSub(); doc.text('Análisis de Longitud de Arco'); smallGap();
   const la = indicesValorativos.longitudArco || {};
-  labelValue('Apinamiento (mm)', la.apinamiento || '');
-  labelValue('Protrusión Dental (mm)', la.protrusionDental || '');
-  labelValue('Curva de Spee (mm)', la.curvaSpee || '');
-  labelValue('Total (mm)', la.totalLongitud || '');
+  ensureSpace(8);
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('black').text('Análisis de Longitud de Arco', 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Apinamiento (mm): ${la.apinamiento || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Protrusión Dental (mm): ${la.protrusionDental || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Curva de Spee (mm): ${la.curvaSpee || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Total (mm): ${la.totalLongitud || ''}`, 50).moveDown(0.6);
 
-  // ===== 6. Plan de Tratamiento =====
-  vspace(60);
-  setTitle();
-  doc.text('6. Plan de Tratamiento', LEFT_X, doc.y, { width: WIDTH, underline: true });
-  midGap();
-
+  // ============ 6) Plan de Tratamiento ============
+  ensureSpace(14);
   const pt = planTratamiento || {};
-  labelValue('Ortopedia - Maxilar', pt.ortopediaMaxilar || '', { align: 'justify' });
-  labelValue('Ortopedia - Mandíbula', pt.ortopediaMandibula || '', { align: 'justify' });
-  labelValue('Dientes Inferiores - Incisivo', pt.dientesInfIncisivo || '', { align: 'justify' });
-  labelValue('Dientes Inferiores - Molar', pt.dientesInfMolar || '', { align: 'justify' });
-  labelValue('Dientes Superiores - Molar', pt.dientesSupMolar || '', { align: 'justify' });
-  labelValue('Dientes Superiores - Incisivo', pt.dientesSupIncisivo || '', { align: 'justify' });
-  labelValue('Dientes Superiores - Estética', pt.dientesSupEstetica || '', { align: 'justify' });
+  doc.font('Helvetica-Bold').fontSize(12).fillColor('black').text('6. Plan de Tratamiento', 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Ortopedia - Maxilar: ${pt.ortopediaMaxilar || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Ortopedia - Mandíbula: ${pt.ortopediaMandibula || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Dientes Inf. - Incisivo: ${pt.dientesInfIncisivo || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Dientes Inf. - Molar: ${pt.dientesInfMolar || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Dientes Sup. - Molar: ${pt.dientesSupMolar || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Dientes Sup. - Incisivo: ${pt.dientesSupIncisivo || ''}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Dientes Sup. - Estética: ${pt.dientesSupEstetica || ''}`, 50).moveDown(0.3);
   const ancl = pt.anclaje || {};
-  labelValue('Anclaje Maxilar', (ancl.maxilar || '').toUpperCase() || '-');
-  labelValue('Anclaje Mandibular', (ancl.mandibular || '').toUpperCase() || '-');
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Anclaje Maxilar: ${(ancl.maxilar || '').toUpperCase()}`, 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(`Anclaje Mandibular: ${(ancl.mandibular || '').toUpperCase()}`, 50).moveDown(0.6);
 
-  // ===== 7. Análisis Cefalométrico =====
-  vspace(60);
-  setTitle();
-  doc.text('7. Análisis Cefalométrico', LEFT_X, doc.y, { width: WIDTH, underline: true });
-  midGap();
+  // ============ 7) Análisis Cefalométrico ============
+  ensureSpace(16);
+  doc.font('Helvetica-Bold').fontSize(12).fillColor('black').text('7. Análisis Cefalométrico', 50).moveDown(0.3);
 
-  const printTableRows = (title, rows = [], cols = []) => {
-    if (!rows || rows.length === 0) {
-      bullet(`${title}: (sin registros)`);
+  const printRows = (titulo, rows = [], cols = []) => {
+    ensureSpace(2);
+    doc.font('Helvetica-Bold').fontSize(11).fillColor('black').text(titulo || '', 50).moveDown(0.3);
+    if (!rows.length) {
+      doc.font('Helvetica').fontSize(10).fillColor('black').text('- (Sin registros)', 60).moveDown(0.3);
       return;
     }
-    setSub(); doc.text(title); smallGap();
     rows.forEach(r => {
+      ensureSpace(1);
       const line = cols.map(k => r[k] ?? '-').join(' | ');
-      bullet(line);
+      doc.font('Helvetica').fontSize(10).fillColor('black').text(`- ${line}`, 60).moveDown(0.3);
     });
-    midGap();
   };
 
-  printTableRows('Biotipo Facial', (analisisCefalometrico.biotipoFacial || []), ['factor','nc','paciente','diferencia','dc','resultado']);
-  printTableRows('Clase Esquelética', (analisisCefalometrico.claseEsqueletica || []), ['factor','nc','paciente','dc']);
-  printTableRows('Problemas Verticales', (analisisCefalometrico.problemasVerticales || []), ['factor','nc','paciente','dc']);
-  printTableRows('Factores Dentales', (analisisCefalometrico.factoresDentales || []), ['factor','nc','paciente','dc']);
+  printRows('Biotipo Facial', (analisisCefalometrico.biotipoFacial || []), ['factor','nc','paciente','diferencia','dc','resultado']);
+  doc.moveDown(0.3);
+  printRows('Clase Esquelética', (analisisCefalometrico.claseEsqueletica || []), ['factor','nc','paciente','dc']);
+  doc.moveDown(0.3);
+  printRows('Problemas Verticales', (analisisCefalometrico.problemasVerticales || []), ['factor','nc','paciente','dc']);
+  doc.moveDown(0.3);
+  printRows('Factores Dentales', (analisisCefalometrico.factoresDentales || []), ['factor','nc','paciente','dc']);
+  doc.moveDown(0.3);
 
-  setSub(); doc.text('Diagnóstico'); smallGap();
-  labelValue('', analisisCefalometrico.diagnosticoCefalometrico || '', { align: 'justify' });
+  ensureSpace(4);
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('black').text('Diagnóstico', 50).moveDown(0.3);
+  doc.font('Helvetica').fontSize(10).fillColor('black').text(analisisCefalometrico.diagnosticoCefalometrico || '', 50).moveDown(0.6);
 
-  // ===== 8. Factores Complementarios =====
-  vspace(60);
-  setTitle();
-  doc.text('8. Factores Complementarios', LEFT_X, doc.y, { width: WIDTH, underline: true });
-  midGap();
+  // ============ 8) Factores Complementarios ============
+  ensureSpace(12);
+  doc.font('Helvetica-Bold').fontSize(12).fillColor('black').text('8. Factores Complementarios', 50).moveDown(0.3);
+  printRows('Clase II', (factoresComplementarios.claseII || []), ['factor','nc','paciente','dc']);
+  doc.moveDown(0.3);
+  printRows('Clase III', (factoresComplementarios.claseIII || []), ['factor','nc','paciente','dc']);
+  doc.moveDown(0.3);
+  printRows('Verticales', (factoresComplementarios.verticales || []), ['factor','nc','paciente','dc']);
+  doc.moveDown(0.6);
 
-  printTableRows('Clase II', (factoresComplementarios.claseII || []), ['factor','nc','paciente','dc']);
-  printTableRows('Clase III', (factoresComplementarios.claseIII || []), ['factor','nc','paciente','dc']);
-  printTableRows('Verticales', (factoresComplementarios.verticales || []), ['factor','nc','paciente','dc']);
+  // ============ 9) Jaraback ============
+  ensureSpace(8);
+  doc.font('Helvetica-Bold').fontSize(12).fillColor('black').text('9. Análisis Cefalométrico de Jaraback', 50).moveDown(0.3);
+  printRows('', (analisisJaraback || []), ['factor','nc','paciente','dc']);
+  doc.moveDown(0.6);
 
-  // ===== 9. Análisis Cefalométrico de Jaraback =====
-  vspace(60);
-  setTitle();
-  doc.text('9. Análisis Cefalométrico de Jaraback', LEFT_X, doc.y, { width: WIDTH, underline: true });
-  midGap();
-  printTableRows('', (analisisJaraback || []), ['factor','nc','paciente','dc']);
+  // ============ 10) Medidas Lineales ============
+  ensureSpace(8);
+  doc.font('Helvetica-Bold').fontSize(12).fillColor('black').text('10. Medidas Lineales', 50).moveDown(0.3);
+  printRows('', (medidasLineales || []), ['factor','nc','paciente','dc']);
+  doc.moveDown(0.6);
 
-  // ===== 10. Medidas Lineales =====
-  vspace(60);
-  setTitle();
-  doc.text('10. Medidas Lineales', LEFT_X, doc.y, { width: WIDTH, underline: true });
-  midGap();
-  printTableRows('', (medidasLineales || []), ['factor','nc','paciente','dc']);
+  // ============ 11) McNamara ============
+  ensureSpace(8);
+  doc.font('Helvetica-Bold').fontSize(12).fillColor('black').text('11. Análisis de McNamara', 50).moveDown(0.3);
+  printRows('', (analisisMcNamara || []), ['factor','nc','paciente','dc']);
+  doc.moveDown(0.6);
 
-  // ===== 11. Análisis de McNamara =====
-  vspace(60);
-  setTitle();
-  doc.text('11. Análisis de McNamara', LEFT_X, doc.y, { width: WIDTH, underline: true });
-  midGap();
-  printTableRows('', (analisisMcNamara || []), ['factor','nc','paciente','dc']);
+  // Pie de la ÚLTIMA página
+  insertarPie(doc, false);
 
-  // ⚠️ No dibujar pie aquí: se añade cuando se crea/navega de página por el helper
   doc.end();
 });
 
