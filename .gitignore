@@ -1,0 +1,22 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.swp
+
+# Archivos de uploads
+uploads/
+
+# Archivos ngrok (no subir)
+ngrok-stable-linux-amd64.zip
+ngrok-v3-stable-linux-amd64.tgz

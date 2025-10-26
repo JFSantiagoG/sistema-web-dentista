@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perfil del Paciente</title>
+  <link rel="stylesheet" href="css/paciente.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body class="bg-light">
+  <div class="container py-5">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h2 class="fw-bold text-primary mb-0">👤 Perfil del Paciente</h2>
+        <small class="text-muted">Información general y formularios clínicos</small>
+      </div>
+      <button class="btn btn-outline-dark" onclick="window.location.href='/menu.html'">← Volver al menú</button>
+    </div>
+
+    <!-- Tarjeta -->
+    <div class="card shadow-sm mb-5">
+      <div class="card-body" id="tarjetaPaciente">
+        <!-- se llena por JS -->
+      </div>
+    </div>
+
+    <div class="formularios">
+
+      <!-- 🖼️ Estudios de Imagen -->
+<section class="mb-5">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="text-secondary mb-0">🖼️ Estudios de Imagen</h4>
+    <!-- (Opcional) cuando habilitemos subida -->
+    <!-- <a class="btn btn-success btn-sm" id="btn-subir-estudio">➕ Subir estudio</a> -->
+  </div>
+      <section class="mb-5">
+        <div class="table-responsive mb-2">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Archivo</th>
+                <th>Tamaño</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tb-studies"></tbody>
+          </table>
+        </div>
+      </section>
+
+
+      <!-- 1) 📈 Evoluciones -->
+      <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="text-secondary mb-0">📈 Evoluciones</h4>
+          <a class="btn btn-success btn-sm" id="btn-nueva-evo">➕ Crear nueva evolución</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Descripción</th>
+                <th>Doctor</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tb-evoluciones"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 2) 💊 Recetas -->
+      <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="text-secondary mb-0">💊 Recetas</h4>
+          <a class="btn btn-success btn-sm" id="btn-nueva-receta">➕ Crear nueva receta</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                  <th>Fecha</th>
+                  <th>Doctor</th>
+                  <th># Meds</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+            <tbody id="tb-recetas"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 3) 💰 Presupuestos -->
+      <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="text-secondary mb-0">💰 Presupuestos Dentales</h4>
+          <a class="btn btn-success btn-sm" id="btn-nuevo-pres">➕ Crear nuevo presupuesto</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Tratamiento</th>
+                <th>Costo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tb-presupuestos"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 4) 📝 Consentimiento Odontológico -->
+      <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="text-secondary mb-0">📝 Consentimiento Odontológico</h4>
+          <a class="btn btn-success btn-sm" id="btn-nuevo-co">➕ Crear nuevo consentimiento</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Procedimiento</th>
+                <th>Firmado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tb-consent-odont"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 5) 📝 Consentimiento Quirúrgico -->
+      <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="text-secondary mb-0">📝 Consentimiento Quirúrgico</h4>
+          <a class="btn btn-success btn-sm" id="btn-nuevo-cq">➕ Crear nuevo consentimiento</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Costo</th>
+                <th>Firmado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tb-consent-quiro"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 6) 🧾 Historia Clínica -->
+      <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="text-secondary mb-0">🧾 Historia Clínica</h4>
+          <a class="btn btn-success btn-sm" id="btn-nueva-historia">➕ Crear nueva historia</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Form ID</th>
+                <th>Nombre (snapshot)</th>
+                <th>Creado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tb-historia"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 7) 📄 Justificantes -->
+      <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="text-secondary mb-0">📄 Justificantes</h4>
+          <a class="btn btn-success btn-sm" id="btn-nuevo-justificante">➕ Crear nuevo justificante</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Emisión</th>
+                <th>Procedimiento</th>
+                <th>Días reposo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tb-justificantes"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 8) 🦷 Odontograma Final -->
+      <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="text-secondary mb-0">🦷 Odontograma Final</h4>
+          <a class="btn btn-success btn-sm" id="btn-nuevo-odont">➕ Crear nuevo odontograma</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Término</th>
+                <th># Tratamientos</th>
+                <th># Encía</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tb-odont-final"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 9) 🦷 Ortodoncia -->
+      <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="text-secondary mb-0">🦷 Ortodoncia</h4>
+          <a class="btn btn-success btn-sm" id="btn-nueva-orto">➕ Crear nuevo registro</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Ingreso</th>
+                <th>Alta</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tb-ortodoncia"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 10) 👶 Diagnóstico Infantil -->
+      <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="text-secondary mb-0">👶 Diagnóstico Infantil</h4>
+          <a class="btn btn-success btn-sm" id="btn-diag-infantil">➕ Crear diagnóstico infantil</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Resumen</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tb-diag-infantil"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Botones finales -->
+    <div class="d-flex justify-content-center mt-4 gap-3 flex-wrap">
+      <button class="btn btn-outline-dark px-4" onclick="window.location.href='/menu.html'">← Volver al menú</button>
+      <button class="btn btn-primary px-4">📋 Crear historial médico</button>
+      <button class="btn btn-warning px-4">✏️ Editar datos del paciente</button>
+      <button class="btn btn-success px-4">📤 Enviar historial médico al paciente</button>
+    </div>
+  </div>
+
+  <script src="js/paciente.js"></script>
+</body>
+</html>

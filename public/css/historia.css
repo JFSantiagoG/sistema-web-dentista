@@ -1,0 +1,56 @@
+/* Estilos específicos para este formulario */
+.required::after {
+  content: " *";
+  color: red;
+}
+
+.table-responsive {
+  margin-bottom: 1.5rem;
+}
+
+.conditional-field {
+  margin-top: 0.5rem;
+}
+
+.signature-area {
+  border: 2px dashed #ccc;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background-color: #f8f9fa;
+  border-radius: 0.375rem;
+}
+
+.signature-area:hover {
+  background-color: #e9ecef;
+}
+
+.section-title {
+  font-weight: bold;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.form-check-label {
+  font-size: 0.95rem;
+}
+
+.section-card {
+  margin-bottom: 1.5rem;
+}
+.firma-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+canvas#signature-pad-paciente {
+  background-color: #fff;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  transition: cursor 0.2s ease;
+}

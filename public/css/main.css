@@ -1,0 +1,21 @@
+.main-card {
+  height: 150px;
+  transition: transform 0.2s;
+}
+.main-card:hover {
+  transform: scale(1.02);
+}
+.main-card .card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.form-card {
+  height: 120px;
+}
+.form-card .card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}

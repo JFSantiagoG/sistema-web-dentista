@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🦷 Visualizador Dental</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/visualizador/static/styles.css">
+</head>
+<body class="bg-light">
+  <div class="container py-5">
+    <div class="text-center mb-4">
+      <h1 class="display-5">🦷 Visualizador de Imágenes Dentales</h1>
+      <p class="text-muted">Carga y visualiza radiografías o tomografías DICOM</p>
+    </div>
+
+    <!-- Formulario -->
+    <form action="/visualizador/upload" method="POST" enctype="multipart/form-data" class="card shadow-sm p-4 mb-4">
+      <div class="mb-3">
+        <label for="imagenInput" class="form-label">Selecciona una imagen</label>
+        <input type="file" class="form-control" name="imagen" id="imagenInput" accept="image/*,.dcm" required />
+      </div>
+      <button type="submit" class="btn btn-primary">📤 Cargar y visualizar</button>
+    </form>
+
+    {% if filename %}
+    <div class="viewer-container text-center">
+      {% if filename.endswith(".dcm") %}
+        <!-- 🔹 Visor DICOM -->
+        <div id="dicomViewer" 
+             data-file="/visualizador/uploads/{{ filename }}" 
+             style="width:512px; height:512px; margin:auto; background:black;">
+        </div>
+      {% else %}
+        <!-- 🔹 Imagen normal -->
+        <img id="imagenVisualizada" src="/visualizador/uploads/{{ filename }}" class="img-fluid" alt="Imagen cargada" />
+      {% endif %}
+
+      <!-- Controles -->
+      <div class="viewer-controls mt-3 d-flex flex-wrap gap-2 justify-content-center">
+        <button id="zoomIn" class="btn btn-sm btn-secondary">🔍+</button>
+        <button id="zoomOut" class="btn btn-sm btn-secondary">🔎−</button>
+        <button id="rotate" class="btn btn-sm btn-secondary">↻</button>
+        <button id="measure" class="btn btn-sm btn-outline-primary">📏 Medir</button>
+        <button id="pan" class="btn btn-sm btn-outline-primary">✋ Desplazar</button>
+        <button id="annotate" class="btn btn-sm btn-warning">📝 Nota</button>
+        <button id="angle" class="btn btn-sm btn-outline-info">📐 Ángulo</button> <!-- 🆕 -->
+        <button id="shapeRect" class="btn btn-sm btn-outline-success">⬛ Rectángulo</button> <!-- 🆕 -->
+        <button id="shapeCircle" class="btn btn-sm btn-outline-success">⚪ Círculo</button> <!-- 🆕 -->
+        <button id="reset" class="btn btn-sm btn-danger">⛔</button>
+      </div>
+    </div>
+
+    <!-- Controles de filtros -->
+    <div class="text-center mt-4">
+      <button class="btn btn-outline-dark" onclick="setFilter('none')">🎨 Normal</button>
+      <button class="btn btn-outline-dark" onclick="setFilter('grayscale')">⚪ Blanco y negro</button>
+      <button class="btn btn-outline-dark" onclick="setFilter('sepia')">🟤 Sepia</button>
+      <button class="btn btn-outline-dark" onclick="setFilter('invert')">🌀 Invertir</button>
+      <button class="btn btn-outline-dark" onclick="setFilter('contrast')">🌈 Contraste</button>
+      <button class="btn btn-outline-dark" onclick="setFilter('brightness')">💡 Brillo</button>
+    </div>
+    {% endif %}
+
+    <div class="text-center mt-4">
+      <button class="btn btn-secondary" onclick="window.location.href='/menu.html'">⬅️ Volver al menú</button>
+    </div>
+  </div>
+
+  <!-- 🔹 Librerías locales -->
+  <script src="/visualizador/static/libs/cornerstone.min.js"></script>
+  <script src="/visualizador/static/libs/cornerstoneMath.min.js"></script>
+  <script src="/visualizador/static/libs/dicomParser.min.js"></script>
+  <script src="/visualizador/static/libs/cornerstoneWADOImageLoader.min.js"></script>
+  <script src="/visualizador/static/libs/hammer.min.js"></script>
+  <script src="/visualizador/static/libs/cornerstoneTools.min.js"></script>
+
+  <!-- 🔹 Tu visor -->
+  <script src="/visualizador/static/viewer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

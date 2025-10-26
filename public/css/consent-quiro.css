@@ -1,0 +1,68 @@
+/* === Indicador de pasos === */
+.step-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.step {
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+  border-radius: 50%;
+  background: #dee2e6;
+  display: inline-block;
+  text-align: center;
+  font-weight: bold;
+}
+
+.step.active {
+  background: #dc3545;
+  color: white;
+}
+
+.step-label {
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.step-line {
+  width: 60px;
+  height: 2px;
+  background-color: #dee2e6;
+}
+
+/* === Tarjetas de secciones === */
+.section-card {
+  margin-bottom: 20px;
+  border-radius: 10px;
+}
+/* Igual que receta/evolución */
+.firma-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+#signature-pad-paciente,
+#signature-pad-medico {
+  width: 360px;
+  height: 120px;
+  border: 2px dashed #6c757d;
+  border-radius: 8px;
+  background: #fff;
+  cursor: crosshair;
+  display: block;
+}
+
+.overlay-text {
+  position: absolute;
+  color: #6c757d;
+  font-size: 16px;
+  font-weight: bold;
+  pointer-events: none; /* No bloquea el click */
+  text-align: center;
+}
+

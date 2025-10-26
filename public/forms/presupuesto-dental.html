@@ -6,6 +6,7 @@
     <title>✅ Presupuesto Dental - Consultorio Dental</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="../css/forms.css" rel="stylesheet"> <!-- CSS estandarizado -->
+<<<<<<< HEAD
     <style>
         /* Estilos específicos para el presupuesto dental */
         .dientes-container {
@@ -119,6 +120,9 @@
             font-weight: bold;
         }
     </style>
+=======
+    <link href="../css/presupuesto.css" rel="stylesheet"> <!-- CSS específico -->
+>>>>>>> Hector
 </head>
 
 <body class="bg-light">
@@ -169,7 +173,11 @@
                     <h5 class="mb-0">2. Odontograma</h5>
                 </div>
                 <div class="card-body">
+<<<<<<< HEAD
                     <div class="dientes-container">
+=======
+                    <div class="dientes-container" style="background-color: transparent !important;">
+>>>>>>> Hector
                         <div class="label-superior">SUPERIOR</div>
                         <div class="label-inferior">INFERIOR</div>
                         <div class="label-derecho label-lado">DERECHO</div>
@@ -280,6 +288,7 @@
                     <p>Seleccione los tratamientos generales que no están asociados a un diente específico:</p>
                     <div class="form-check">
                         <input class="form-check-input general-treatment-checkbox" type="checkbox" id="limpiezaCheckbox" data-costo="500">
+<<<<<<< HEAD
                         <label class="form-check-label" for="limpiezaCheckbox">
                             Limpieza
                         </label>
@@ -297,6 +306,18 @@
                         </label>
                     </div>
                     <!-- Agregar más tratamientos generales aquí -->
+=======
+                        <label class="form-check-label" for="limpiezaCheckbox">Limpieza</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input general-treatment-checkbox" type="checkbox" id="resinaCheckbox" data-costo="1500">
+                        <label class="form-check-label" for="resinaCheckbox">Resina</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input general-treatment-checkbox" type="checkbox" id="incrustacionesMetlicasCheckbox" data-costo="1200">
+                        <label class="form-check-label" for="incrustacionesMetlicasCheckbox">Incrustaciones Metálicas (INC. MET.)</label>
+                    </div>
+>>>>>>> Hector
                 </div>
             </div>
 
@@ -331,6 +352,7 @@
 
             <!-- Botones de Acción -->
             <div class="text-center mt-4">
+<<<<<<< HEAD
                 <button type="button" class="btn btn-outline-secondary btn-lg me-2">
                     💾 Guardar Borrador
                 </button>
@@ -340,6 +362,11 @@
                 <button type="button" class="btn btn-info btn-lg ms-2">
                     🖨️ Descargar PDF
                 </button>
+=======
+                <button type="button" class="btn btn-outline-secondary btn-lg me-2">💾 Guardar Borrador</button>
+                <button type="submit" class="btn btn-success btn-lg">📤 Enviar Formulario</button>
+                <button type="button" class="btn btn-info btn-lg ms-2" onclick="generarPDFPresupuesto()">🖨️ Descargar PDF</button>
+>>>>>>> Hector
             </div>
         </form>
     </div>
@@ -350,7 +377,11 @@
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">Seleccionar Tratamiento</h5>
+<<<<<<< HEAD
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+=======
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+>>>>>>> Hector
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="dienteSeleccionado">
@@ -387,17 +418,23 @@
                     </div>
                 </div>
                 <div class="modal-footer">
+<<<<<<< HEAD
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
                         Cancelar
                     </button>
                     <button type="button" class="btn btn-primary" id="guardarTratamientoBtn">
                         Guardar Tratamiento
                     </button>
+=======
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="guardarTratamientoBtn">Guardar Tratamiento</button>
+>>>>>>> Hector
                 </div>
             </div>
         </div>
     </div>
 
+<<<<<<< HEAD
     <!-- Scripts estandarizados -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/forms.js"></script> <!-- JS estandarizado -->
@@ -599,3 +636,12 @@
 
 </body>
 </html>
+=======
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script><!--Para capturar el odontograma-->
+    <script src="../js/forms.js"></script> <!-- JS estandarizado -->
+    <script src="../js/presupuesto.js"></script> <!-- JS específico -->
+</body>
+</html>
+>>>>>>> Hector

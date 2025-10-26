@@ -18,4 +18,29 @@ Inicia en carpeta sistema-web-dentista
     ./start.sh
 
 Accede
+<<<<<<< HEAD
     http://localhost:8080/
+=======
+    http://localhost:8080/
+
+
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.swp
+
+# Archivos de uploads
+uploads/
+>>>>>>> Hector

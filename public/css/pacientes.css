@@ -1,0 +1,16 @@
+body {
+  font-family: 'Segoe UI', sans-serif;
+}
+
+#resultados ul {
+  text-align: left;
+  margin-top: 20px;
+}
+
+.list-group-item strong {
+  font-weight: 600;
+}
+.table td {
+  color: #212529; /* negro Bootstrap */
+  text-decoration: none;
+}

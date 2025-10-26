@@ -1,0 +1,16 @@
+{
+  "name": "tt-r",
+  "version": "1.0.0",
+  "description": "Instalar desde PoweShell WSL o instalar Ubuntu como SO 24.04\r     wsl --install -d 'Ubuntu-24.04'",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0",
+    "puppeteer": "^24.20.0"
+  }
+}
