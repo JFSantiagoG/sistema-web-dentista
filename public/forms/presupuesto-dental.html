@@ -6,123 +6,7 @@
     <title>✅ Presupuesto Dental - Consultorio Dental</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="../css/forms.css" rel="stylesheet"> <!-- CSS estandarizado -->
-<<<<<<< HEAD
-    <style>
-        /* Estilos específicos para el presupuesto dental */
-        .dientes-container {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        /* Línea central horizontal */
-        .linea-central {
-            width: 60%;
-            height: 2px;
-            background-color: black;
-            position: relative;
-            margin: 1% 5%; /* separa visualmente la línea del contenido */
-        }
-
-        /* Línea vertical */
-        .linea-vertical {
-            position: absolute;
-            left: 50%;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background-color: black;
-        }
-
-        /* Etiquetas de derecha/izquierda */
-        .label-lado {
-            position: absolute;
-            font-weight: bold;
-        }
-
-        .label-derecho {
-            left: 10%;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        .label-izquierdo {
-            right: 10%;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        /* Etiquetas de superior/inferior */
-        .label-superior {
-            top: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            position: absolute;
-            font-weight: bold;
-        }
-
-        .label-inferior {
-            bottom: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            position: absolute;
-            font-weight: bold;
-        }
-
-        /* Fila de dientes */
-        .dientes-fila {
-            display: flex;
-            justify-content: center;
-            gap: 5px;
-            margin: 5px 0;
-        }
-
-        .diente.tratamiento-asignado {
-            background-color: #28a745;
-        }
-
-        .dientes-label {
-            font-size: 12px;
-            font-weight: bold;
-            width: 50px;
-            text-align: center;
-        }
-
-        .diente {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background-color: #ccc; /* Color inicial (gris) */
-            margin: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .diente.tratamiento-asignado {
-            background-color: #28a745; /* Verde para tratamientos asignados */
-        }
-        .tratamientos-tabla {
-            margin-top: 2rem;
-        }
-        .tratamientos-tabla th, .tratamientos-tabla td {
-            text-align: center;
-        }
-        .general-treatments {
-            margin-top: 2rem;
-        }
-        .general-treatment-checkbox {
-            margin-right: 10px;
-        }
-        .calculator-section {
-            margin-top: 2rem;
-        }
-        .total-cost {
-            font-weight: bold;
-        }
-    </style>
-=======
     <link href="../css/presupuesto.css" rel="stylesheet"> <!-- CSS específico -->
->>>>>>> Hector
 </head>
 
 <body class="bg-light">
@@ -173,11 +57,7 @@
                     <h5 class="mb-0">2. Odontograma</h5>
                 </div>
                 <div class="card-body">
-<<<<<<< HEAD
-                    <div class="dientes-container">
-=======
                     <div class="dientes-container" style="background-color: transparent !important;">
->>>>>>> Hector
                         <div class="label-superior">SUPERIOR</div>
                         <div class="label-inferior">INFERIOR</div>
                         <div class="label-derecho label-lado">DERECHO</div>
@@ -288,25 +168,6 @@
                     <p>Seleccione los tratamientos generales que no están asociados a un diente específico:</p>
                     <div class="form-check">
                         <input class="form-check-input general-treatment-checkbox" type="checkbox" id="limpiezaCheckbox" data-costo="500">
-<<<<<<< HEAD
-                        <label class="form-check-label" for="limpiezaCheckbox">
-                            Limpieza
-                        </label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input general-treatment-checkbox" type="checkbox" id="resinaCheckbox" data-costo="1500">
-                        <label class="form-check-label" for="resinaCheckbox">
-                            Resina
-                        </label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input general-treatment-checkbox" type="checkbox" id="incrustacionesMetlicasCheckbox" data-costo="1200">
-                        <label class="form-check-label" for="incrustacionesMetlicasCheckbox">
-                            Incrustaciones Metálicas (INC. MET.)
-                        </label>
-                    </div>
-                    <!-- Agregar más tratamientos generales aquí -->
-=======
                         <label class="form-check-label" for="limpiezaCheckbox">Limpieza</label>
                     </div>
                     <div class="form-check">
@@ -317,7 +178,6 @@
                         <input class="form-check-input general-treatment-checkbox" type="checkbox" id="incrustacionesMetlicasCheckbox" data-costo="1200">
                         <label class="form-check-label" for="incrustacionesMetlicasCheckbox">Incrustaciones Metálicas (INC. MET.)</label>
                     </div>
->>>>>>> Hector
                 </div>
             </div>
 
@@ -352,21 +212,9 @@
 
             <!-- Botones de Acción -->
             <div class="text-center mt-4">
-<<<<<<< HEAD
-                <button type="button" class="btn btn-outline-secondary btn-lg me-2">
-                    💾 Guardar Borrador
-                </button>
-                <button type="submit" class="btn btn-success btn-lg">
-                    📤 Enviar Formulario
-                </button>
-                <button type="button" class="btn btn-info btn-lg ms-2">
-                    🖨️ Descargar PDF
-                </button>
-=======
                 <button type="button" class="btn btn-outline-secondary btn-lg me-2">💾 Guardar Borrador</button>
                 <button type="submit" class="btn btn-success btn-lg">📤 Enviar Formulario</button>
                 <button type="button" class="btn btn-info btn-lg ms-2" onclick="generarPDFPresupuesto()">🖨️ Descargar PDF</button>
->>>>>>> Hector
             </div>
         </form>
     </div>
@@ -377,11 +225,7 @@
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">Seleccionar Tratamiento</h5>
-<<<<<<< HEAD
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-=======
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
->>>>>>> Hector
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="dienteSeleccionado">
@@ -418,225 +262,13 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-<<<<<<< HEAD
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                        Cancelar
-                    </button>
-                    <button type="button" class="btn btn-primary" id="guardarTratamientoBtn">
-                        Guardar Tratamiento
-                    </button>
-=======
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-primary" id="guardarTratamientoBtn">Guardar Tratamiento</button>
->>>>>>> Hector
                 </div>
             </div>
         </div>
     </div>
 
-<<<<<<< HEAD
-    <!-- Scripts estandarizados -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="../js/forms.js"></script> <!-- JS estandarizado -->
-    <script>
-        // Variables globales
-        const tratamientosPorDiente = {};
-        const tratamientosGenerales = [];
-        let totalCosto = 0;
-        let dienteActual = null;
-
-        // Inicializar modal de Bootstrap
-        const tratamientoModal = new bootstrap.Modal(document.getElementById('tratamientoModal'));
-
-        // Mostrar modal al hacer clic en un diente
-        document.querySelectorAll('.diente').forEach(diente => {
-            diente.addEventListener('click', () => {
-                const dienteId = diente.getAttribute('data-diente');
-                dienteActual = dienteId;
-                
-                // Limpiar campos del modal
-                document.getElementById('dienteSeleccionado').value = dienteId;
-                document.getElementById('dienteNumero').value = dienteId;
-                document.getElementById('tratamientoSelect').value = '';
-                document.getElementById('costoInput').value = '';
-                document.getElementById('otroTratamientoInput').value = '';
-                document.getElementById('otroTratamientoDiv').style.display = 'none';
-                
-                // Mostrar modal
-                tratamientoModal.show();
-            });
-        });
-
-        // Mostrar campo "Otro" cuando se selecciona esa opción
-        document.getElementById('tratamientoSelect').addEventListener('change', function() {
-            const otroDiv = document.getElementById('otroTratamientoDiv');
-            if (this.value === 'Otro') {
-                otroDiv.style.display = 'block';
-            } else {
-                otroDiv.style.display = 'none';
-            }
-        });
-
-        // Guardar tratamiento
-        document.getElementById('guardarTratamientoBtn').addEventListener('click', function() {
-            const dienteId = document.getElementById('dienteSeleccionado').value;
-            const tratamientoSelect = document.getElementById('tratamientoSelect');
-            const otroInput = document.getElementById('otroTratamientoInput');
-            const costoInput = document.getElementById('costoInput');
-            
-            let tratamientoNombre = tratamientoSelect.value;
-            const costo = parseFloat(costoInput.value) || 0;
-            
-            // Validar selección de tratamiento
-            if (!tratamientoNombre) {
-                alert('❌ Por favor, seleccione un tratamiento');
-                return;
-            }
-            
-            // Si es "Otro", usar el valor del input
-            if (tratamientoNombre === 'Otro') {
-                tratamientoNombre = otroInput.value.trim();
-                if (!tratamientoNombre) {
-                    alert('❌ Por favor, especifique el nombre del tratamiento');
-                    return;
-                }
-            }
-            
-            // Validar costo
-            if (costo <= 0) {
-                alert('❌ Por favor, ingrese un costo válido');
-                return;
-            }
-            
-            // Guardar tratamiento
-            tratamientosPorDiente[dienteId] = { 
-                nombre: tratamientoNombre, 
-                costo: costo 
-            };
-            
-            // Actualizar visualización del diente
-            const dienteElement = document.querySelector(`.diente[data-diente="${dienteId}"]`);
-            if (dienteElement) {
-                dienteElement.classList.add('tratamiento-asignado');
-            }
-            
-            // Actualizar tablas
-            actualizarTablaTratamientos();
-            actualizarCalculadora();
-            
-            // Cerrar modal
-            tratamientoModal.hide();
-        });
-
-        // Función para actualizar la tabla de tratamientos
-        function actualizarTablaTratamientos() {
-            const tbody = document.getElementById('tratamientosTablaBody');
-            tbody.innerHTML = '';
-
-            Object.entries(tratamientosPorDiente).forEach(([dienteId, tratamiento]) => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${dienteId}</td>
-                    <td>${tratamiento.nombre || 'Sin tratamiento'}</td>
-                    <td>$${parseFloat(tratamiento.costo || 0).toFixed(2)}</td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
-        // Función para actualizar la calculadora de presupuesto
-        function actualizarCalculadora() {
-            const costosTablaBody = document.getElementById('costosTablaBody');
-            costosTablaBody.innerHTML = '';
-
-            // Agregar tratamientos por diente
-            Object.values(tratamientosPorDiente).forEach(tratamiento => {
-                if (tratamiento.costo > 0) {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${tratamiento.nombre} (Diente ${Object.keys(tratamientosPorDiente).find(key => tratamientosPorDiente[key] === tratamiento)})</td>
-                        <td>$${parseFloat(tratamiento.costo).toFixed(2)}</td>
-                    `;
-                    costosTablaBody.appendChild(row);
-                }
-            });
-
-            // Agregar tratamientos generales
-            tratamientosGenerales.forEach(tratamiento => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${tratamiento.nombre}</td>
-                    <td>$${parseFloat(tratamiento.costo).toFixed(2)}</td>
-                `;
-                costosTablaBody.appendChild(row);
-            });
-
-            // Calcular el total
-            totalCosto = Object.values(tratamientosPorDiente)
-                .filter(t => t.costo > 0)
-                .reduce((acc, t) => acc + parseFloat(t.costo), 0);
-
-            tratamientosGenerales.forEach(t => {
-                totalCosto += parseFloat(t.costo);
-            });
-
-            document.getElementById('totalCosto').textContent = `$${totalCosto.toFixed(2)}`;
-
-            // Calcular mensualidad
-            const meses = parseInt(document.getElementById('mesesInput').value) || 1;
-            const mensualidad = totalCosto / meses;
-            document.getElementById('mensualidad').textContent = `$${mensualidad.toFixed(2)}`;
-        }
-
-        // Manejar checkboxes de tratamientos generales
-        document.querySelectorAll('.general-treatment-checkbox').forEach(check => {
-            check.addEventListener('change', () => {
-                const costo = parseFloat(check.dataset.costo);
-                const nombre = check.nextElementSibling.textContent.trim();
-
-                if (check.checked) {
-                    tratamientosGenerales.push({ nombre, costo });
-                } else {
-                    const index = tratamientosGenerales.findIndex(t => t.nombre === nombre);
-                    if (index > -1) {
-                        tratamientosGenerales.splice(index, 1);
-                    }
-                }
-
-                actualizarCalculadora();
-            });
-        });
-
-        // Validación del formulario
-        document.getElementById('presupuestoForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            // Validar campos requeridos
-            const pacienteSelect = document.getElementById('pacienteSelect');
-            const fechaInput = document.getElementById('fechaInput');
-
-            if (!pacienteSelect.value || !fechaInput.value) {
-                alert('❌ Por favor, complete todos los campos requeridos antes de enviar.');
-                return;
-            }
-
-            // Mostrar mensaje de éxito
-            alert('✅ Formulario enviado correctamente!\n(En una implementación real, aquí se guardarían los datos)');
-        });
-
-        // Calcular mensualidad cuando cambia el número de meses
-        document.getElementById('mesesInput').addEventListener('input', function() {
-            if (totalCosto > 0) {
-                const meses = parseInt(this.value) || 1;
-                const mensualidad = totalCosto / meses;
-                document.getElementById('mensualidad').textContent = `$${mensualidad.toFixed(2)}`;
-            }
-        });
-    </script>
-
-</body>
-</html>
-=======
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script><!--Para capturar el odontograma-->
@@ -644,4 +276,3 @@
     <script src="../js/presupuesto.js"></script> <!-- JS específico -->
 </body>
 </html>
->>>>>>> Hector
