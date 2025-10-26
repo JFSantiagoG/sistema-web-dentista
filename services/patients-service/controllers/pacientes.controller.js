@@ -1067,7 +1067,137 @@ async function crearHistoriaClinica(req, res) {
   }
 }
 
+async function crearOdontogramaFinal(req, res) {
+  console.log('──────────────────────────────────────────────');
+  console.log('📩 POST /patients/:id/odontograma-final');
+  console.log('Auth header presente:', !!req.headers.authorization);
+  console.log('User (token decodificado):', { id: req.user?.id, rol: req.user?.rol, email: req.user?.email });
+  console.log('Body:', JSON.stringify(req.body));
 
+  const pacienteId = Number(req.params.id || 0);
+  if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
+
+  const {
+    nombre_paciente,
+    fecha_termino,
+    tratamientos_por_diente = {},
+    estado_encia = {}
+  } = req.body || {};
+
+  if (!nombre_paciente || !fecha_termino) {
+    return res.status(400).json({ error: 'nombre_paciente y fecha_termino son obligatorios' });
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha_termino)) {
+    return res.status(400).json({ error: 'fecha_termino debe ser YYYY-MM-DD' });
+  }
+
+  // Map a columnas individuales (además de guardar JSON en cabecera)
+  const encia       = estado_encia['Encía'] ?? null;
+  const inflamacion = estado_encia['Inflamación'] ?? null;
+  const migracion   = estado_encia['Migración'] ?? null;
+  const secrecion   = estado_encia['Secreción'] ?? null;
+  const calculo     = estado_encia['Cálculo'] ?? null;
+  const bolsa       = estado_encia['Bolsa*'] ?? estado_encia['Bolsa'] ?? null;
+
+  const tratamientosJson = JSON.stringify(tratamientos_por_diente || {});
+  const odontogramaJson  = null; // si luego persistes imagen base64, haz un update aparte
+
+  const conn = await db.getConnection();
+  try {
+    console.log('🔹 TX odontograma_final iniciada');
+    await conn.beginTransaction();
+
+    // 1) tipo_id
+    const [tipoRows] = await conn.query(
+      'SELECT id FROM formulario_tipo WHERE nombre = ? LIMIT 1',
+      ['odontograma_final']
+    );
+    if (!tipoRows.length) throw new Error('No existe tipo "odontograma_final"');
+    const tipoId = tipoRows[0].id;
+    console.log('✔️ tipo_id:', tipoId);
+
+    // 2) formulario (mismo patrón: creado_por = users.id del token)
+    const creadoPor = req.user?.id || null;
+    const [formIns] = await conn.query(
+      `INSERT INTO formulario (paciente_id, tipo_id, creado_por, fecha_creacion)
+       VALUES (?, ?, ?, NOW())`,
+      [pacienteId, tipoId, creadoPor]
+    );
+    const formularioId = formIns.insertId;
+    console.log('✔️ formulario insertado id=', formularioId);
+
+    // 3) mapear users.id → medicos.id (puede quedar NULL)
+    let medicoId = null;
+    if (creadoPor) {
+      const [mRow] = await conn.query(
+        'SELECT id FROM medicos WHERE user_id = ? LIMIT 1',
+        [creadoPor]
+      );
+      medicoId = mRow[0]?.id ?? null;
+    }
+    console.log('users.id =', creadoPor, '→ medicos.id =', medicoId);
+
+    // 4) Cabecera odontograma_final
+    await conn.query(
+      `INSERT INTO formulario_odontograma_final
+       (formulario_id, paciente_id, medico_id, nombre_paciente, fecha_termino,
+        odontograma_json, tratamientos_json,
+        encia, inflamacion, migracion, secrecion, calculo, bolsa)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        formularioId, pacienteId, medicoId, nombre_paciente, fecha_termino,
+        odontogramaJson, tratamientosJson,
+        encia, inflamacion, migracion, secrecion, calculo, bolsa
+      ]
+    );
+    console.log('✔️ cabecera odontograma_final insertada');
+
+    // 5) Detalle tratamientos (normalizado)
+    const detBulk = [];
+    for (const [dienteStr, lista] of Object.entries(tratamientos_por_diente || {})) {
+      const diente = parseInt(dienteStr, 10);
+      if (!Number.isFinite(diente)) continue;
+      (lista || []).forEach(trat => {
+        if (trat) detBulk.push([formularioId, diente, String(trat).slice(0, 60)]);
+      });
+    }
+    if (detBulk.length) {
+      await conn.query(
+        `INSERT INTO formulario_odontograma_final_detalle (formulario_id, diente, tratamiento)
+         VALUES ?`,
+        [detBulk]
+      );
+      console.log(`✔️ ${detBulk.length} filas detalle insertadas`);
+    } else {
+      console.log('ℹ️ Sin tratamientos marcados en detalle');
+    }
+
+    // 6) Detalle encía (normalizado)
+    const encias = Object.entries(estado_encia || {}).map(([cond, val]) => [
+      formularioId, String(cond).slice(0,40), String(val ?? '').slice(0,120)
+    ]);
+    if (encias.length) {
+      await conn.query(
+        `INSERT INTO formulario_odontograma_final_encia (formulario_id, condicion, valoracion)
+         VALUES ?`,
+        [encias]
+      );
+      console.log(`✔️ ${encias.length} filas encía insertadas`);
+    }
+
+    await conn.commit();
+    console.log('✅ TX confirmada (odontograma_final)');
+    console.log('──────────────────────────────────────────────');
+    return res.status(201).json({ ok: true, formulario_id: formularioId });
+  } catch (err) {
+    try { await conn.rollback(); } catch {}
+    console.error('❌ crearOdontogramaFinal error:', err);
+    console.log('──────────────────────────────────────────────');
+    return res.status(500).json({ error: 'Error al crear odontograma final' });
+  } finally {
+    conn.release();
+  }
+}
 
 
 module.exports = {
@@ -1081,5 +1211,6 @@ module.exports = {
   crearEvolucion,
   crearOrtodoncia,
   crearHistoriaClinica,
+  crearOdontogramaFinal,
   crearReceta
 };

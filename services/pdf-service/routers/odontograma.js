@@ -1,3 +1,4 @@
+// services/pdf-service/routers/odontograma.js
 const express = require("express");
 const PDFDocument = require("pdfkit");
 const { insertarEncabezado, insertarPie } = require("../utils/pdfHelpers");
@@ -5,13 +6,25 @@ const { insertarEncabezado, insertarPie } = require("../utils/pdfHelpers");
 const router = express.Router();
 
 router.post("/generate", (req, res) => {
-  const { paciente, tratamientosPorDiente = {}, estadoEncia = {}, odontogramaVisual } = req.body;
+  const {
+    paciente = {},               // { nombre, fechaTermino }
+    tratamientosPorDiente = {},  // { "18": ["Limpieza", ...], ... }
+    estadoEncia = {},            // { "Encía": "Sana", ... }
+    odontogramaVisual            // dataURL base64 opcional (png)
+  } = req.body || {};
 
-  // Log limpio: NO imprimimos la imagen base64
-  const { odontogramaVisual: _omit, ...logData } = req.body;
-  console.log("📄 Odontograma recibido:", logData);
+  // Log ligero (sin base64)
+  console.log("PDF Odontograma →", {
+    nombre: paciente?.nombre || "(vacío)",
+    fecha: paciente?.fechaTermino || "(vacío)",
+    dientesConTx: Object.keys(tratamientosPorDiente || {}).length,
+    camposEncia: Object.keys(estadoEncia || {}).length,
+    img: odontogramaVisual ? "sí" : "no",
+  });
 
+  // ===== Crear PDF =====
   const doc = new PDFDocument({ size: "A4", margin: 40 });
+
   const chunks = [];
   doc.on("data", (c) => chunks.push(c));
   doc.on("end", () => {
@@ -19,159 +32,166 @@ router.post("/generate", (req, res) => {
     res.send(Buffer.concat(chunks));
   });
 
-  // === Encabezado + Pie (siempre al crear página) ===
-  const initPage = (titleForContinuation) => {
-    insertarEncabezado(doc, "CONSULTORIO DENTAL NIMAFESI", ["Odontograma Clínico"]);
-    insertarPie(doc, false); // 👈 pie una sola vez por página (incluida la primera)
-    if (titleForContinuation) {
+  // ---------- Helpers de salto (MISMO PATRÓN QUE HISTORIA) ----------
+  const LINE = 14; // altura estimada por línea
+  const BOTTOM_SAFE = () =>
+    doc.page.height - doc.page.margins.bottom - 2 * LINE; // deja 2 líneas para el pie
+
+  function nuevaPagina(title = "") {
+    // pie de la página actual (como en historia)
+    doc.font("Helvetica").fontSize(8).fillColor("gray").text("", 40, BOTTOM_SAFE());
+    insertarPie(doc, false);
+    // nueva página + encabezado
+    doc.addPage();
+    insertarEncabezado(
+      doc,
+      "CONSULTORIO DENTAL NIMAFESI",
+      ["Odontograma Clínico"]
+    );
+    if (title) {
       doc
         .moveDown(0.3)
-        .font("Helvetica-Bold")
-        .fontSize(11)
-        .fillColor("#00457C")
-        .text(titleForContinuation, leftX, doc.y, { width: usableWidth })
+        .font("Helvetica-Bold").fontSize(11).fillColor("black")
+        .text(title, 50)
         .moveDown(0.5);
     }
-  };
-
-  // Crear la PRIMERA página (con encabezado y pie)
-  insertarEncabezado(doc, "CONSULTORIO DENTAL NIMAFESI", ["Odontograma Clínico"]);
-  insertarPie(doc, false); // 👈 pie en la página 1
-
-  // === Datos del paciente ===
-  doc
-    .fontSize(10)
-    .fillColor("gray")
-    .text(`PACIENTE: ${paciente?.nombre ?? "-"}`, 50, doc.y, { continued: true })
-    .text(`FECHA DE TÉRMINO: ${paciente?.fechaTermino ?? "-"}`, { align: "right" })
-    .moveDown(1.5);
-
-  // === Imagen del odontograma (opcional) ===
-  if (odontogramaVisual) {
-    const base64Data = odontogramaVisual.replace(/^data:image\/png;base64,/, "");
-    const buffer = Buffer.from(base64Data, "base64");
-
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(12)
-      .fillColor("#00457C")
-      .text("Odontograma Visual", { align: "center" })
-      .moveDown(0.5)
-      .image(buffer, { fit: [500, 300], align: "center" })
-      .moveDown(1.2);
   }
 
-  // === Configuración de una sola columna ===
-  const leftX = 50;
-  const usableWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right; // ~515
-  const footerReserve = 80; // reserva para no pisar el pie
-  const maxY = doc.page.height - doc.page.margins.bottom - footerReserve;
-
-  // Helper: asegura espacio o crea nueva página (encabezado + pie) y opcionalmente reimprime título
-  const ensureSpace = (heightNeeded, titleIfNewPage = "") => {
-    if (doc.y + heightNeeded <= maxY) return;
-    doc.addPage();
-    // Encabezado + Pie SIEMPRE al crear página
-    insertarEncabezado(doc, "CONSULTORIO DENTAL NIMAFESI", ["Odontograma Clínico"]);
-    insertarPie(doc, false);
-    doc.moveDown(0.3);
-    if (titleIfNewPage) {
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(11)
-        .fillColor("#00457C")
-        .text(titleIfNewPage, leftX, doc.y, { width: usableWidth })
-        .moveDown(0.5);
+  function ensureSpace(lines = 3, titleIfNewPage = "") {
+    const need = lines * LINE;
+    if (doc.y + need > BOTTOM_SAFE()) {
+      nuevaPagina(titleIfNewPage);
     }
-  };
+  }
 
-  // === Tratamientos por Diente (UNA COLUMNA, una línea por tratamiento) ===
+  const leftX = 50;
+  const usableWidth =
+    doc.page.width - doc.page.margins.left - doc.page.margins.right;
+
+  // ---------- Encabezado de la primera página ----------
+  insertarEncabezado(
+    doc,
+    "CONSULTORIO DENTAL NIMAFESI",
+    ["Odontograma Clínico"]
+  );
+
+  // ============ 1) Identificación del Paciente ============
+  ensureSpace(6);
   doc
-    .font("Helvetica-Bold")
-    .fontSize(11)
-    .fillColor("#00457C")
-    .text("Tratamientos por Diente", leftX, doc.y, { width: usableWidth })
-    .moveDown(0.5);
+    .font("Helvetica-Bold").fontSize(12).fillColor("black")
+    .text("1. Identificación del Paciente", leftX)
+    .moveDown(0.3);
 
-  const dientesOrdenados = Object.keys(tratamientosPorDiente).sort((a, b) => {
+  doc
+    .font("Helvetica").fontSize(10).fillColor("black")
+    .text(`Paciente: ${paciente?.nombre || "-"}`, leftX, doc.y, { width: usableWidth })
+    .moveDown(0.2)
+    .text(`Fecha de término: ${paciente?.fechaTermino || "-"}`, leftX, doc.y, { width: usableWidth })
+    .moveDown(0.6);
+
+  // ============ 2) Odontograma Visual (opcional) ============
+  if (odontogramaVisual) {
+    ensureSpace(3);
+    doc
+      .font("Helvetica-Bold").fontSize(12).fillColor("black")
+      .text("2. Odontograma Visual", leftX)
+      .moveDown(0.3);
+
+    try {
+      const base64Data = odontogramaVisual.replace(/^data:image\/png;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+
+      // reservar aprox. 24 líneas (~300px)
+      ensureSpace(24, "2. Odontograma Visual (cont.)");
+      doc.image(buffer, {
+        fit: [500, 300],
+        align: "center",
+        valign: "top",
+      });
+      doc.moveDown(1.0);
+    } catch (e) {
+      console.error("❌ Error al insertar imagen de odontograma:", e);
+      ensureSpace(2);
+      doc
+        .font("Helvetica").fontSize(10).fillColor("red")
+        .text("No se pudo mostrar la imagen del odontograma.", leftX)
+        .moveDown(0.6);
+    }
+  }
+
+  // ============ 3) Tratamientos por Diente ============
+  const dientesOrdenados = Object.keys(tratamientosPorDiente || {}).sort((a, b) => {
     const na = Number(a), nb = Number(b);
     if (!isNaN(na) && !isNaN(nb)) return na - nb;
     return a.localeCompare(b);
   });
 
-  dientesOrdenados.forEach((dienteId, idx) => {
-    const lista = Array.isArray(tratamientosPorDiente[dienteId])
-      ? tratamientosPorDiente[dienteId]
-      : (tratamientosPorDiente[dienteId] ? [String(tratamientosPorDiente[dienteId])] : []);
+  ensureSpace(3);
+  doc
+    .font("Helvetica-Bold").fontSize(12).fillColor("black")
+    .text("3. Tratamientos por Diente", leftX)
+    .moveDown(0.3);
 
-    if (lista.length === 0) {
-      const line = `Diente ${dienteId}: (sin tratamientos)`;
-      const h = doc.heightOfString(line, { width: usableWidth });
-      ensureSpace(h, idx === 0 ? "Tratamientos por Diente" : "Tratamientos por Diente (cont.)");
-      doc
-        .font("Helvetica")
-        .fontSize(10)
-        .fillColor("black")
-        .text(line, leftX, doc.y, { width: usableWidth })
-        .moveDown(0.15);
-      return;
-    }
+  if (!dientesOrdenados.length) {
+    ensureSpace(2);
+    doc
+      .font("Helvetica").fontSize(10).fillColor("black")
+      .text("- (Sin tratamientos asignados)", leftX)
+      .moveDown(0.6);
+  } else {
+    dientesOrdenados.forEach((dId, idx) => {
+      const lista = Array.isArray(tratamientosPorDiente[dId])
+        ? tratamientosPorDiente[dId]
+        : (tratamientosPorDiente[dId] ? [String(tratamientosPorDiente[dId])] : []);
 
-    lista.forEach((tx, j) => {
-      const line = `Diente ${dienteId}: ${tx}`;
-      const h = doc.heightOfString(line, { width: usableWidth });
-      ensureSpace(h, (idx === 0 && j === 0) ? "Tratamientos por Diente" : "Tratamientos por Diente (cont.)");
-      doc
-        .font("Helvetica")
-        .fontSize(10)
-        .fillColor("black")
-        .text(line, leftX, doc.y, { width: usableWidth })
-        .moveDown(0.15);
+      if (!lista.length) {
+        ensureSpace(1, idx === 0 ? "3. Tratamientos por Diente" : "3. Tratamientos por Diente (cont.)");
+        doc
+          .font("Helvetica").fontSize(10).fillColor("black")
+          .text(`- Diente ${dId}: (sin tratamientos)`, leftX)
+          .moveDown(0.15);
+        return;
+      }
+
+      lista.forEach((tx, j) => {
+        ensureSpace(1, (idx === 0 && j === 0) ? "3. Tratamientos por Diente" : "3. Tratamientos por Diente (cont.)");
+        doc
+          .font("Helvetica").fontSize(10).fillColor("black")
+          .text(`- Diente ${dId}: ${tx}`, leftX)
+          .moveDown(0.15);
+      });
     });
-  });
-
-  doc.moveDown(0.6);
-
-  // === Estado de la Encía (una columna) ===
-  const estadoKeys = Object.keys(estadoEncia);
-  let estadoHeight = 0;
-  {
-    const titleH = (() => {
-      doc.font("Helvetica-Bold").fontSize(11);
-      return doc.heightOfString("Estado de la Encía", { width: usableWidth }) + doc.currentLineHeight() * 0.4;
-    })();
-    doc.font("Helvetica").fontSize(10);
-    const linesH = estadoKeys.reduce((acc, k) => {
-      const line = `${k}: ${estadoEncia[k]}`;
-      return acc + doc.heightOfString(line, { width: usableWidth }) + 3;
-    }, 0);
-    estadoHeight = titleH + linesH + 6;
+    doc.moveDown(0.6);
   }
 
-  ensureSpace(estadoHeight, "Estado de la Encía");
-
+  // ============ 4) Estado de la Encía ============
+  const estadoKeys = Object.keys(estadoEncia || {});
+  ensureSpace(3);
   doc
-    .font("Helvetica-Bold")
-    .fontSize(11)
-    .fillColor("#00457C")
-    .text("Estado de la Encía", leftX, doc.y, { width: usableWidth })
-    .moveDown(0.4);
+    .font("Helvetica-Bold").fontSize(12).fillColor("black")
+    .text("4. Estado de la Encía", leftX)
+    .moveDown(0.3);
 
-  estadoKeys.forEach((condicion) => {
-    const valor = estadoEncia[condicion];
-    const line = `${condicion}: ${valor}`;
-    const h = doc.heightOfString(line, { width: usableWidth });
-    ensureSpace(h, "Estado de la Encía (cont.)");
+  if (!estadoKeys.length) {
+    ensureSpace(1);
     doc
-      .font("Helvetica")
-      .fontSize(10)
-      .fillColor("black")
-      .text(line, leftX, doc.y, { width: usableWidth })
-      .moveDown(0.15);
-  });
+      .font("Helvetica").fontSize(10).fillColor("black")
+      .text("- (Sin observaciones de encía)", leftX)
+      .moveDown(0.6);
+  } else {
+    estadoKeys.forEach((k, i) => {
+      const line = `- ${k}: ${estadoEncia[k] || "-"}`;
+      ensureSpace(1, i === 0 ? "4. Estado de la Encía" : "4. Estado de la Encía (cont.)");
+      doc
+        .font("Helvetica").fontSize(10).fillColor("black")
+        .text(line, leftX)
+        .moveDown(0.15);
+    });
+    doc.moveDown(0.6);
+  }
 
-  // ❌ Importante: NO dibujar pie aquí.
-  // El pie ya se dibuja una sola vez cada vez que se crea una página.
+  // Pie de la última página (como en historia)
+  insertarPie(doc, false);
 
   doc.end();
 });

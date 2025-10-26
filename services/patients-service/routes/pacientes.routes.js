@@ -11,6 +11,7 @@ const { crearConsentQuirurgico } = require('../controllers/pacientes.controller'
 const { crearEvolucion } = require('../controllers/pacientes.controller');
 const { crearOrtodoncia } = require('../controllers/pacientes.controller');
 const { crearHistoriaClinica } = require('../controllers/pacientes.controller');
+const { crearOdontogramaFinal } = require('../controllers/pacientes.controller');
 const { verificarToken } = require('../middlewares/auth');
 
 router.get('/search', verificarToken, buscar);
@@ -24,6 +25,7 @@ router.post('/:id/consent-quiro', verificarToken, crearConsentQuirurgico);
 router.post('/:id/evoluciones', verificarToken, crearEvolucion);
 router.post('/:id/ortodoncia', verificarToken, crearOrtodoncia);
 router.post('/:id/historia', verificarToken, crearHistoriaClinica);
+router.post('/:id/odontograma', verificarToken, crearOdontogramaFinal);
 
 
 module.exports = router;
