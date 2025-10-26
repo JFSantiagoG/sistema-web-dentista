@@ -26,7 +26,19 @@ async function obtenerPorId(req, res) {
   const id = req.params.id;
   try {
     const [rows] = await db.query(`
-      SELECT id, nombre, apellido, sexo, edad, email, telefono_principal, telefono_secundario
+      SELECT 
+      id, 
+      nombre, 
+      apellido, 
+      sexo, 
+      edad, 
+      email, 
+      telefono_principal, 
+      telefono_secundario,
+      domicilio,                    
+       DATE_FORMAT(fecha_nacimiento, '%Y-%m-%d') AS fecha_nacimiento,              
+      estado_civil,                  
+      ocupacion   
       FROM pacientes
       WHERE id = ?
     `, [id]);
@@ -647,7 +659,6 @@ function yesNoToBit(v) {
   return null;
 }
 
-// ===== Crear Ortodoncia (84 columnas 1:1) =====
 // ===== Crear Ortodoncia (84 columnas 1:1, con verificación de orden) =====
 async function crearOrtodoncia(req, res) {
   console.log('──────────────────────────────────────────────');
@@ -907,6 +918,158 @@ async function crearOrtodoncia(req, res) {
 
 
 
+
+// ============== Formularios: Historia Clínica ==================
+async function crearHistoriaClinica(req, res) {
+  console.log('──────────────────────────────────────────────');
+  console.log('📩 POST /patients/:id/historia');
+  console.log('Auth header presente:', !!req.headers.authorization);
+  console.log('User (token decodificado):', { id: req.user?.id, rol: req.user?.rol, email: req.user?.email });
+
+  const pacienteId = Number(req.params.id || 0);
+  if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
+
+  // Body esperado (coincide con tu front)
+  const b = req.body || {};
+  const isis = b.interrogatorioSistemas || {};
+  const expl = b.exploracionClinica || {};
+
+  // JSONs completos
+  const antecedentesPatologicosJson = Array.isArray(b.antecedentesPatologicos) ? b.antecedentesPatologicos : [];
+  const soloMujeresJson             = Array.isArray(b.antecedentesMujeres) ? b.antecedentesMujeres : [];
+  const noPatologicosJson           = Array.isArray(b.antecedentesNoPatologicos) ? b.antecedentesNoPatologicos : [];
+  const antecedentesFamiliaresJson  = Array.isArray(b.antecedentesFamiliares) ? b.antecedentesFamiliares : [];
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    console.log('🔹 TX historia clínica iniciada');
+
+    // 1) tipo_id para historia_clinica
+    const [tipoRows] = await conn.query(
+      'SELECT id FROM formulario_tipo WHERE nombre = ? LIMIT 1',
+      ['historia_clinica']
+    );
+    if (!tipoRows.length) throw new Error('No existe tipo "historia_clinica"');
+    const tipoId = tipoRows[0].id;
+    console.log('✔️ tipo_id:', tipoId);
+
+    // 2) formulario (mismo patrón)
+    const creadoPor = req.user?.id || null; // users.id
+    const [formIns] = await conn.query(
+      `INSERT INTO formulario (paciente_id, tipo_id, creado_por, fecha_creacion)
+       VALUES (?, ?, ?, NOW())`,
+      [pacienteId, tipoId, creadoPor]
+    );
+    const formularioId = formIns.insertId;
+    console.log('✔️ formulario insertado id=', formularioId);
+
+    // 3) mapear users.id → medicos.id (puede quedar NULL)
+    let medicoId = null;
+    if (creadoPor) {
+      const [mRow] = await conn.query(
+        'SELECT id FROM medicos WHERE user_id = ? LIMIT 1',
+        [creadoPor]
+      );
+      medicoId = mRow[0]?.id ?? null;
+    }
+    console.log('users.id =', creadoPor, '→ medicos.id =', medicoId);
+
+    // 4) Insert en formulario_historia_clinica — SIN firmas
+    const sql = `
+      INSERT INTO formulario_historia_clinica (
+        formulario_id, paciente_id, medico_id,
+        nombre_paciente, domicilio, telefono, sexo, fecha_nacimiento, edad, estado_civil, ocupacion, motivo_consulta,
+        antecedentes_patologicos, antecedentes_patologicos_json,
+        tratamiento_medico_si, tratamiento_medico_cual,
+        medicamento_si, medicamento_cual,
+        problema_dental_si, problema_dental_cual,
+        solo_mujeres_json, no_patologicos_json, antecedentes_familiares_json,
+        sis_cardiovascular, sis_circulatorio, sis_respiratorio, sis_digestivo, sis_urinario, sis_genital, sis_musculoesqueletico, sis_snc,
+        expl_cabeza_cuello_cara_perfil, expl_atm, expl_labios_frenillos_lengua_paladar_orofaringe_yugal,
+        expl_piso_boca_glandulas_salivales_carrillos, expl_encias_procesos_alveolares,
+        observaciones, hallazgos, firma_paciente_at
+      )
+      VALUES (
+        ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, CAST(? AS JSON),
+        ?, ?, ?, ?,
+        ?, ?,
+        CAST(? AS JSON), CAST(? AS JSON), CAST(? AS JSON),
+        ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?,
+        ?, ?, NULL
+      )
+    `;
+
+    const params = [
+      formularioId, pacienteId, medicoId,
+      b.nombrePaciente || null,
+      b.domicilioPaciente || null,
+      b.telefonoPaciente || null,
+      b.sexoPaciente || null,
+      b.fechaNacimiento || null,
+      b.edadPaciente ? parseInt(b.edadPaciente, 10) : null,
+      b.estadoCivil || null,
+      b.ocupacionPaciente || null,
+      b.motivoConsulta || null,
+
+      null, // antecedentes_patologicos (texto libre opcional) → por ahora null
+      JSON.stringify(antecedentesPatologicosJson),
+
+      (b.tratamientoMedico ? 1 : 0),
+      b.tratamientoMedicoCual || null,
+      (b.medicamento ? 1 : 0),
+      b.medicamentoCual || null,
+      (b.problemaDental ? 1 : 0),
+      b.problemaDentalCual || null,
+
+      JSON.stringify(soloMujeresJson),
+      JSON.stringify(noPatologicosJson),
+      JSON.stringify(antecedentesFamiliaresJson),
+
+      isis.Cardiovascular || '',
+      isis.Circulatorio || '',
+      isis.Respiratorio || '',
+      isis.Digestivo || '',
+      isis.Urinario || '',
+      isis.Genital || '',
+      isis['Musculoesquelético'] || '',
+      isis.SNC || '',
+
+      expl['Cabeza, Cuello, Cara, Perfil'] || '',
+      expl['ATM (Articulación Temporomandibular)'] || '',
+      expl['Labios, Frenillos, Lengua, Paladar Duro, Blando, Orofaringe, Región Yugal'] || '',
+      expl['Piso de Boca, Glándulas Salivales, Carrillos'] || '',
+      expl['Encías, Procesos Alveolares'] || '',
+
+      b.observacionesGenerales || '',
+      b.hallazgosRadiograficos || ''
+      // firma_paciente_at = NULL (no guardamos firmas)
+    ];
+
+    await conn.query(sql, params);
+    console.log('✔️ historia clínica insertada (sin firma)');
+
+    await conn.commit();
+    console.log('✅ TX confirmada (historia clínica)');
+    console.log('──────────────────────────────────────────────');
+
+    return res.status(201).json({ ok: true, formulario_id: formularioId });
+  } catch (err) {
+    try { await conn.rollback(); } catch {}
+    console.error('❌ Error en crearHistoriaClinica:', err);
+    console.log('──────────────────────────────────────────────');
+    return res.status(500).json({ error: 'Error al crear historia clínica' });
+  } finally {
+    conn.release();
+  }
+}
+
+
+
+
 module.exports = {
   buscar,
   obtenerPorId,
@@ -917,5 +1080,6 @@ module.exports = {
   crearConsentQuirurgico,
   crearEvolucion,
   crearOrtodoncia,
+  crearHistoriaClinica,
   crearReceta
 };
