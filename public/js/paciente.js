@@ -170,6 +170,51 @@ async function cargarPerfil() {
     }
   })();
 
+  // --- 👶 Diagnóstico Infantil (Fecha | Tratamiento | Costo | Acciones) ---
+  (() => {
+    const tbody = document.getElementById('tb-diag-infantil');
+    if (!tbody) return;
+
+    // Ajusta encabezados
+    const theadRow = tbody.closest('table')?.querySelector('thead tr');
+    if (theadRow) {
+      theadRow.innerHTML = `
+        <th>Fecha</th>
+        <th>Tratamiento</th>
+        <th>Costo</th>
+        <th>Acciones</th>
+      `;
+    }
+
+    const rows = Array.isArray(data.diag_infantil)
+      ? data.diag_infantil
+      : (Array.isArray(data.diagnostico_infantil) ? data.diagnostico_infantil : []);
+
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Sin diagnósticos infantiles</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+      const formId = r.formulario_id ?? r.id ?? '—';
+      const fecha  = fymdSafe(r.fecha || r.creado_en || r.actualizado_en);
+      const total  = (r.total_costo != null) ? Number(r.total_costo)
+                  : (r.total != null) ? Number(r.total)
+                  : 0;
+      const trat   = `${r.t_count ?? 0} dientes + ${r.g_count ?? 0} generales`;
+
+      return `
+        <tr>
+          <td>${fecha}</td>
+          <td>${trat}</td>
+          <td>$${total.toFixed(2)}</td>
+          <td>${actionBtns(formId, 'diag-infantil.html')}</td>
+        </tr>
+      `;
+    }).join('');
+  })();
+
+
 
     document.getElementById('tb-consent-odont').innerHTML =
       (data.consentimiento_odontologico||[]).map(r => `

@@ -72,7 +72,8 @@ async function obtenerFormsSummary(req, res) {
       historia_clinica: data.historia_clinica || [],
       justificantes: data.justificantes || [],
       odontograma_final: data.odontograma_final || [],
-      ortodoncia: data.ortodoncia || []
+      ortodoncia: data.ortodoncia || [],
+      diag_infantil: data.diag_infantil || []
     });
   } catch (err) {
     console.error('getFormsSummary error:', err);
@@ -1342,6 +1343,147 @@ async function crearPresupuestoDental(req, res) {
   }
 }
 
+// === Crear Diagnóstico Infantil ===
+// Crea: formulario → formulario_diag_infantil → (detalle dientes y generales)
+async function crearDiagInfantil(req, res) {
+  console.log('──────────────────────────────────────────────');
+  console.log('📩 POST /patients/:id/diag-infantil');
+  console.log('Auth header presente:', !!req.headers.authorization);
+  console.log('User (token):', { id: req.user?.id, rol: req.user?.rol, email: req.user?.email });
+
+  const pacienteId = Number(req.params.id || 0);
+  if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
+
+  const b = req.body || {};
+  // Esperado desde el front (como presupuesto)
+  // {
+  //   paciente:{ nombre, numeroPaciente, fechaRegistro },
+  //   odontograma:[{diente,tratamiento,costo}],
+  //   tratamientosGenerales:[{nombre,costo}],
+  //   presupuesto:{ total, mensualidad, meses },
+  //   odontogramaVisual: "data:image/png;base64,..." (NO se guarda aquí)
+  // }
+
+  const fecha = b?.paciente?.fechaRegistro ?? null;       // 'YYYY-MM-DD'
+  if (!fecha) return res.status(400).json({ error: 'fecha requerida' });
+
+  const numeroPaciente   = b?.paciente?.numeroPaciente ?? String(pacienteId);
+  const odontoDientes    = Array.isArray(b?.odontograma) ? b.odontograma : [];
+  const txGenerales      = Array.isArray(b?.tratamientosGenerales) ? b.tratamientosGenerales : [];
+
+  const meses            = Number(b?.presupuesto?.meses ?? 1) || 1;
+  const totalCosto       = Number(b?.presupuesto?.total ?? 0) || 0;        // ← total_costo
+  const totalMensual     = Number(b?.presupuesto?.mensualidad ?? 0) || 0;  // ← total_mensual
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    console.log('🔹 TX diag-infantil iniciada');
+
+    // 1) tipo_id
+    const [tipoRows] = await conn.query(
+      'SELECT id FROM formulario_tipo WHERE nombre=? LIMIT 1',
+      ['diag_infantil']
+    );
+    if (!tipoRows.length) throw new Error('No existe tipo "diag_infantil"');
+    const tipoId = tipoRows[0].id;
+
+    // 2) formulario (estado a tu gusto; dejo 'borrador')
+    const creadoPor = req.user?.id || null;
+    const [formIns] = await conn.query(
+      `INSERT INTO formulario (paciente_id, tipo_id, creado_por, estado, fecha_creacion)
+       VALUES (?, ?, ?, 'borrador', NOW())`,
+      [pacienteId, tipoId, creadoPor]
+    );
+    const formularioId = formIns.insertId;
+    console.log('✔️ formulario insertado id =', formularioId);
+
+    // 3) mapear users.id → medicos.id (puede quedar NULL)
+    let medicoId = null;
+    if (creadoPor) {
+      const [mRow] = await conn.query('SELECT id FROM medicos WHERE user_id=? LIMIT 1', [creadoPor]);
+      medicoId = mRow[0]?.id ?? null;
+    }
+
+    // 4) Cabecera (usa TUS columnas)
+    //    Guardamos todos los jsons que pide tu tabla
+    const odontogramaJson            = JSON.stringify({ dientes: odontoDientes, generales: txGenerales });
+    const tratamientosPorDienteJson  = JSON.stringify(odontoDientes);
+    const tratamientosGeneralesJson  = JSON.stringify(txGenerales);
+
+    await conn.query(
+      `INSERT INTO formulario_diag_infantil
+        (formulario_id, paciente_id, medico_id, fecha, numero_paciente,
+         odontograma_json, tratamientos_por_diente_json, tratamientos_generales_json,
+         meses, total_costo, total_mensual)
+       VALUES (?, ?, ?, ?, ?, CAST(? AS JSON), CAST(? AS JSON), CAST(? AS JSON), ?, ?, ?)`,
+      [
+        formularioId, pacienteId, medicoId, fecha, numeroPaciente,
+        odontogramaJson, tratamientosPorDienteJson, tratamientosGeneralesJson,
+        meses, totalCosto, totalMensual
+      ]
+    );
+    console.log('✔️ cabecera diag-infantil insertada');
+
+    // 5) Detalle: dientes (en tu tabla smallint diente)
+    if (odontoDientes.length) {
+      const values = [];
+      const params = [];
+      odontoDientes.forEach(it => {
+        values.push('(?, ?, ?, ?)');
+        params.push(
+          formularioId,
+          Number.parseInt(it?.diente, 10) || 0,
+          String(it?.tratamiento ?? ''),
+          (it?.costo == null ? null : Number(it.costo))
+        );
+      });
+
+      await conn.query(
+        `INSERT INTO formulario_diag_infantil_detalle (formulario_id, diente, tratamiento, costo)
+         VALUES ${values.join(',')}`,
+        params
+      );
+      console.log(`✔️ ${odontoDientes.length} filas detalle (dientes) insertadas`);
+    }
+
+    // 6) Detalle: generales
+    if (txGenerales.length) {
+      const values = [];
+      const params = [];
+      txGenerales.forEach(g => {
+        values.push('(?, ?, ?)');
+        params.push(
+          formularioId,
+          String(g?.nombre ?? ''),
+          (g?.costo == null ? null : Number(g.costo))
+        );
+      });
+
+      await conn.query(
+        `INSERT INTO formulario_diag_infantil_generales (formulario_id, tratamiento, costo)
+         VALUES ${values.join(',')}`,
+        params
+      );
+      console.log(`✔️ ${txGenerales.length} filas detalle (generales) insertadas`);
+    }
+
+    await conn.commit();
+    console.log('✅ TX confirmada (diag-infantil)');
+    console.log('──────────────────────────────────────────────');
+    return res.status(201).json({ ok: true, formulario_id: formularioId });
+
+  } catch (err) {
+    try { await conn.rollback(); } catch {}
+    console.error('❌ crearDiagInfantil error:', err);
+    console.log('──────────────────────────────────────────────');
+    return res.status(500).json({ error: 'Error al crear diagnóstico infantil', detalle: err.message });
+  } finally {
+    conn.release();
+  }
+}
+
+
 
 
 module.exports = {
@@ -1357,5 +1499,6 @@ module.exports = {
   crearHistoriaClinica,
   crearOdontogramaFinal,
   crearPresupuestoDental,
+  crearDiagInfantil,
   crearReceta
 };

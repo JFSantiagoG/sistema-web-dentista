@@ -29,6 +29,11 @@ router.post("/generate", (req, res) => {
     res.send(Buffer.concat(chunks));
   });
 
+  // === Datos del paciente ===
+  const pacNombre = paciente?.nombre ?? '—';
+  const pacId     = paciente?.numeroPaciente ?? paciente?.id ?? '—';
+  const pacFecha  = paciente?.fechaRegistro ?? paciente?.fecha ?? '—';
+
   // === Encabezado ===
   insertarEncabezado(doc, "CONSULTORIO DENTAL NIMAFESI", ["Diagnóstico Infantil"]);
 
@@ -36,9 +41,9 @@ router.post("/generate", (req, res) => {
   doc
     .fontSize(10)
     .fillColor("gray")
-    .text(`PACIENTE: ${paciente?.nombre ?? "-"}`, 50, doc.y, { continued: true })
-    .text(`ID: ${paciente?.id ?? "-"}`, { align: "center", continued: true })
-    .text(`FECHA: ${paciente?.fecha ?? "-"}`, { align: "right" })
+    .text(`PACIENTE: ${pacNombre}`, 50, doc.y, { continued: true })
+    .text(`ID: ${pacId}`, { align: "center", continued: true })
+    .text(`FECHA: ${pacFecha}`, { align: "right" })
     .moveDown(1.5);
 
   // === Imagen del odontograma (opcional) ===

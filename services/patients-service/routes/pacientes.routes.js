@@ -13,6 +13,7 @@ const { crearOrtodoncia } = require('../controllers/pacientes.controller');
 const { crearHistoriaClinica } = require('../controllers/pacientes.controller');
 const { crearOdontogramaFinal } = require('../controllers/pacientes.controller');
 const { crearPresupuestoDental } = require('../controllers/pacientes.controller');
+const { crearDiagInfantil } = require('../controllers/pacientes.controller');
 const { verificarToken } = require('../middlewares/auth');
 
 router.get('/search', verificarToken, buscar);
@@ -27,6 +28,7 @@ router.post('/:id/evoluciones', verificarToken, crearEvolucion);
 router.post('/:id/ortodoncia', verificarToken, crearOrtodoncia);
 router.post('/:id/historia', verificarToken, crearHistoriaClinica);
 router.post('/:id/odontograma', verificarToken, crearOdontogramaFinal);
+router.post('/:id/diag-infantil', verificarToken, crearDiagInfantil);
 router.post('/:id/presupuesto', verificarToken, crearPresupuestoDental);
 
 
