@@ -148,49 +148,55 @@ async function getFormsSummary(pacienteId) {
     }
 
 
-    // ====== Presupuestos (legacy) – Fecha | Tratamiento | Costo
+    // ====== Presupuestos Dentales — Fecha | Total | Mensualidad | Meses
     let presupuestos = [];
     if (porTipo['presupuesto_dental']?.length) {
       const prIds = porTipo['presupuesto_dental'].map(f => f.id);
 
-      const [firstRows] = await conn.query(
-        `SELECT d.formulario_id,
-                (SELECT MIN(id) FROM formulario_presupuesto_dental_dientes x WHERE x.formulario_id=d.formulario_id) AS minid
-         FROM formulario_presupuesto_dental_dientes d
-         WHERE d.formulario_id IN (${inList(prIds)})
-         GROUP BY d.formulario_id`,
+      // Cabecera: fecha (o fallback a fecha_creacion), total, total_mensual, meses
+      const [hdr] = await conn.query(
+        `
+        SELECT 
+          p.formulario_id,
+          COALESCE(p.fecha, DATE(f.fecha_creacion)) AS fecha,
+          p.total,
+          p.total_mensual,
+          p.meses
+        FROM formulario_presupuesto_dental p
+        JOIN formulario f ON f.id = p.formulario_id
+        WHERE p.formulario_id IN (${inList(prIds)})
+        ORDER BY COALESCE(p.fecha, DATE(f.fecha_creacion)) DESC, p.formulario_id DESC
+        `,
         prIds
       );
-      const minIds = firstRows.map(r => r.minid).filter(Boolean);
 
-      let byId = {};
-      if (minIds.length) {
-        const [detRows] = await conn.query(
-          `SELECT id, formulario_id, tratamiento, costo
-           FROM formulario_presupuesto_dental_dientes
-           WHERE id IN (${inList(minIds)})`,
-          minIds
+      // Si falta total en cabecera, lo calculamos (dientes + generales)
+      const missingTotals = hdr.filter(r => r.total == null);
+      let totalsMap = {};
+      if (missingTotals.length) {
+        const ids = missingTotals.map(r => r.formulario_id);
+        const [sumRows] = await conn.query(
+          `
+          SELECT x.formulario_id,
+                IFNULL((SELECT SUM(costo) FROM formulario_presupuesto_dental_dientes d WHERE d.formulario_id = x.formulario_id), 0) +
+                IFNULL((SELECT SUM(costo) FROM formulario_presupuesto_dental_generales g WHERE g.formulario_id = x.formulario_id), 0) AS total
+          FROM formulario_presupuesto_dental x
+          WHERE x.formulario_id IN (${inList(ids)})
+          `,
+          ids
         );
-        byId = Object.fromEntries(detRows.map(r => [r.formulario_id, r]));
+        totalsMap = Object.fromEntries(sumRows.map(r => [r.formulario_id, Number(r.total || 0)]));
       }
 
-      const [totRows] = await conn.query(
-        `SELECT d.formulario_id,
-                (SELECT IFNULL(SUM(costo),0) FROM formulario_presupuesto_dental_dientes WHERE formulario_id=d.formulario_id) +
-                (SELECT IFNULL(SUM(costo),0) FROM formulario_presupuesto_dental_generales WHERE formulario_id=d.formulario_id) AS total
-         FROM formulario_presupuesto_dental d
-         WHERE d.formulario_id IN (${inList(prIds)})`,
-        prIds
-      );
-      const totalMap = Object.fromEntries(totRows.map(r => [r.formulario_id, r.total]));
-
-      presupuestos = prIds.map(id => ({
-        formulario_id: id,
-        fecha: null,
-        tratamiento: byId[id]?.tratamiento || '—',
-        costo: byId[id]?.costo ?? totalMap[id] ?? null
+      presupuestos = hdr.map(r => ({
+        formulario_id : r.formulario_id,
+        fecha         : r.fecha,                                      // ← AHORA SÍ VIENE FECHA
+        total         : r.total != null ? Number(r.total) : (totalsMap[r.formulario_id] ?? null),
+        total_mensual : r.total_mensual != null ? Number(r.total_mensual) : null,
+        meses         : r.meses ?? null
       }));
     }
+
 // ====== Consentimiento Odontológico – Fecha | Procedimiento | Firmado
       let consentimiento_odontologico = [];
       if (porTipo['consentimiento_odontologico']?.length) {

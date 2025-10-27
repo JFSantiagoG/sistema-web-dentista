@@ -10,6 +10,7 @@ const pacienteId = new URLSearchParams(location.search).get('id');
 const fdate = d => d ? new Date(d).toLocaleDateString() : '—';
 const money = v => (v == null ? '—' : `$${Number(v).toFixed(2)}`);
 const yesno = v => (Number(v) ? 'Sí' : 'No');
+const fymdSafe = v => v ? String(v).split('T')[0] : '—';
 
 const actionBtns = (formId, formHtml) => `
   <a class="btn btn-sm btn-outline-primary me-1" href="forms/${formHtml}?formulario_id=${formId}">👁️ Visualizar</a>
@@ -101,14 +102,74 @@ async function cargarPerfil() {
       `).join('') || `<tr><td colspan="5" class="text-center text-muted">Sin recetas</td></tr>`;
 
 
-    document.getElementById('tb-presupuestos').innerHTML =
-      (data.presupuestos||[]).map(r => `
-        <tr>
-          <td>${fdate(r.fecha)}</td>
-          <td>${r.tratamiento || '—'}</td>
-          <td>${money(r.costo)}</td>
-          <td>${actionBtns(r.formulario_id, 'presupuesto-dental.html')}</td>
-        </tr>`).join('') || `<tr><td colspan="4" class="text-center text-muted">Sin presupuestos</td></tr>`;
+    // Debug opcional para verificar lo que llega
+    console.debug('presupuestos (muestra):', (data.presupuestos || [])[0]);
+
+   // --- Presupuestos Dentales ---
+  (() => {
+    const rows = Array.isArray(data.presupuestos) ? data.presupuestos : [];
+    const thead = document.querySelector('#tb-presupuestos')?.closest('table')?.querySelector('thead tr');
+    const tbody = document.getElementById('tb-presupuestos');
+
+    if (!tbody || !thead) return;
+
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Sin presupuestos</td></tr>`;
+      return;
+    }
+
+    // ¿Qué shape trae el backend?
+    const useNewShape = rows.some(r => ('total' in r) || ('total_mensual' in r) || ('meses' in r));
+
+    if (useNewShape) {
+      // Ajusta encabezados a: Fecha | Total | Mensualidad | Acciones
+      thead.innerHTML = `
+        <th>Fecha</th>
+        <th>Total</th>
+        <th>Mensualidad</th>
+        <th>Acciones</th>
+      `;
+
+      tbody.innerHTML = rows.map(r => {
+        const fecha   = fymdSafe(r.fecha || r.creado_en);
+        const total   = (r.total != null) ? `$${Number(r.total).toFixed(2)}` : '—';
+        const mensual = (r.total_mensual != null)
+          ? `$${Number(r.total_mensual).toFixed(2)}${r.meses ? ` / ${r.meses} mes(es)` : ''}`
+          : '—';
+        return `
+          <tr>
+            <td>${fecha}</td>
+            <td>${total}</td>
+            <td>${mensual}</td>
+            <td>${actionBtns(r.formulario_id, 'presupuesto-dental.html')}</td>
+          </tr>
+        `;
+      }).join('');
+    } else {
+      //Encabezados: Fecha | Tratamiento | Costo | Acciones
+      thead.innerHTML = `
+        <th>Fecha</th>
+        <th>Tratamiento</th>
+        <th>Costo</th>
+        <th>Acciones</th>
+      `;
+
+      tbody.innerHTML = rows.map(r => {
+        const fecha = fymdSafe(r.fecha || r.creado_en);
+        const trat  = r.tratamiento || '—';
+        const costo = (r.costo != null) ? `$${Number(r.costo).toFixed(2)}` : '—';
+        return `
+          <tr>
+            <td>${fecha}</td>
+            <td>${trat}</td>
+            <td>${costo}</td>
+            <td>${actionBtns(r.formulario_id, 'presupuesto-dental.html')}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+  })();
+
 
     document.getElementById('tb-consent-odont').innerHTML =
       (data.consentimiento_odontologico||[]).map(r => `
@@ -181,6 +242,7 @@ async function cargarPerfil() {
     alert('❌ Error cargando perfil del paciente (ver consola).');
   }
 }
+
 
 // === Estudios del paciente ===
 const tipoLabel = {

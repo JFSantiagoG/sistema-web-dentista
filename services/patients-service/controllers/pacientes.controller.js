@@ -1199,6 +1199,150 @@ async function crearOdontogramaFinal(req, res) {
   }
 }
 
+// === Crear Presupuesto Dental ===
+// Crea: formulario → formulario_presupuesto_dental → (dientes y generales)
+async function crearPresupuestoDental(req, res) {
+  console.log('──────────────────────────────────────────────');
+  console.log('📩 POST /patients/:id/presupuesto');
+  console.log('Auth header presente:', !!req.headers.authorization);
+  console.log('User (token decodificado):', { id: req.user?.id, rol: req.user?.rol, email: req.user?.email });
+
+  const pacienteId = Number(req.params.id || 0);
+  if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
+
+  const b = req.body || {};
+
+  // Payload tolerante (acepta tu front tal cual)
+  // Front te manda:
+  // {
+  //   paciente:{ nombre, numeroPaciente, fechaRegistro },
+  //   odontograma:[{diente,tratamiento,costo}],
+  //   tratamientosGenerales:[{nombre,costo}],
+  //   presupuesto:{ total, mensualidad, meses },
+  //   odontogramaVisual: "data:image/png;base64,... (OPCIONAL, NO SE GUARDA)"
+  // }
+  const pacienteNombre   = b?.paciente?.nombre ?? null;
+  const numeroPaciente   = b?.paciente?.numeroPaciente ?? null;
+  const fechaRegistro    = b?.paciente?.fechaRegistro ?? null; // 'YYYY-MM-DD'
+  const meses            = Number(b?.presupuesto?.meses ?? 1) || 1;
+  const total            = Number(b?.presupuesto?.total ?? 0) || 0;
+  const totalMensual     = Number(b?.presupuesto?.mensualidad ?? 0) || 0;
+
+  const odontoDientes    = Array.isArray(b?.odontograma) ? b.odontograma : [];
+  const txGenerales      = Array.isArray(b?.tratamientosGenerales) ? b.tratamientosGenerales : [];
+
+  if (!fechaRegistro) return res.status(400).json({ error: 'fecha requerida' });
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    console.log('🔹 TX presupuesto iniciada');
+
+    // 1) tipo_id = presupuesto_dental
+    const [tipoRows] = await conn.query(
+      'SELECT id FROM formulario_tipo WHERE nombre = ? LIMIT 1',
+      ['presupuesto_dental']
+    );
+    if (!tipoRows.length) throw new Error('No existe tipo "presupuesto_dental"');
+    const tipoId = tipoRows[0].id;
+
+    // 2) formulario (estado a elección: borrador/firmado/cerrado). Dejamos 'borrador'
+    const creadoPor = req.user?.id || null;
+    const [formIns] = await conn.query(
+      `INSERT INTO formulario (paciente_id, tipo_id, creado_por, estado, fecha_creacion)
+       VALUES (?, ?, ?, 'borrador', NOW())`,
+      [pacienteId, tipoId, creadoPor]
+    );
+    const formularioId = formIns.insertId;
+    console.log('✔️ formulario insertado id =', formularioId);
+
+    // 3) mapear users.id -> medicos.id (puede quedar NULL)
+    let medicoId = null;
+    if (creadoPor) {
+      const [mRow] = await conn.query('SELECT id FROM medicos WHERE user_id = ? LIMIT 1', [creadoPor]);
+      medicoId = mRow[0]?.id ?? null;
+    }
+
+    // 4) Cabecera formulario_presupuesto_dental
+    //    Guardamos un JSON compacto con dientes + generales (para consulta rápida)
+    const odontoJson = JSON.stringify({
+      dientes: odontoDientes,       // [{diente,tratamiento,costo}]
+      generales: txGenerales        // [{nombre,costo}]
+    });
+
+    await conn.query(
+      `INSERT INTO formulario_presupuesto_dental
+        (formulario_id, paciente_id, medico_id, fecha, numero_paciente, meses, total, total_mensual, odontograma_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON))`,
+      [
+        formularioId, pacienteId, medicoId,
+        fechaRegistro, (numeroPaciente ?? String(pacienteId)),
+        meses, total, totalMensual, odontoJson
+      ]
+    );
+    console.log('✔️ cabecera presupuesto insertada');
+
+    // 5) Detalle: dientes
+    if (odontoDientes.length) {
+      const values = [];
+      const params = [];
+      odontoDientes.forEach((it) => {
+        values.push('(?, ?, ?, ?)');
+        params.push(
+          formularioId,
+          String(it?.diente ?? ''),
+          String(it?.tratamiento ?? ''),
+          Number(it?.costo ?? 0) || 0
+        );
+      });
+
+      await conn.query(
+        `INSERT INTO formulario_presupuesto_dental_dientes
+          (formulario_id, diente, tratamiento, costo)
+         VALUES ${values.join(',')}`,
+        params
+      );
+      console.log(`✔️ ${odontoDientes.length} renglones de dientes insertados`);
+    }
+
+    // 6) Detalle: generales
+    if (txGenerales.length) {
+      const values = [];
+      const params = [];
+      txGenerales.forEach((g) => {
+        values.push('(?, ?, ?)');
+        params.push(
+          formularioId,
+          String(g?.nombre ?? ''),
+          Number(g?.costo ?? 0) || 0
+        );
+      });
+
+      await conn.query(
+        `INSERT INTO formulario_presupuesto_dental_generales
+          (formulario_id, tratamiento, costo)
+         VALUES ${values.join(',')}`,
+        params
+      );
+      console.log(`✔️ ${txGenerales.length} renglones de generales insertados`);
+    }
+
+    await conn.commit();
+    console.log('✅ TX confirmada (presupuesto dental)');
+    console.log('──────────────────────────────────────────────');
+
+    return res.status(201).json({ ok: true, formulario_id: formularioId });
+  } catch (err) {
+    try { await conn.rollback(); } catch {}
+    console.error('❌ crearPresupuestoDental error:', err);
+    console.log('──────────────────────────────────────────────');
+    return res.status(500).json({ error: 'Error al crear presupuesto dental', detalle: err.message });
+  } finally {
+    conn.release();
+  }
+}
+
+
 
 module.exports = {
   buscar,
@@ -1212,5 +1356,6 @@ module.exports = {
   crearOrtodoncia,
   crearHistoriaClinica,
   crearOdontogramaFinal,
+  crearPresupuestoDental,
   crearReceta
 };
