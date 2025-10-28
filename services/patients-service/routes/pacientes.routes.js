@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { crearPaciente } = require('../controllers/pacientes.controller');
 const { buscar } = require('../controllers/pacientes.controller');
 const { obtenerPorId } = require('../controllers/pacientes.controller');
 const { obtenerFormsSummary } = require('../controllers/pacientes.controller');
@@ -16,6 +17,7 @@ const { crearPresupuestoDental } = require('../controllers/pacientes.controller'
 const { crearDiagInfantil } = require('../controllers/pacientes.controller');
 const { verificarToken } = require('../middlewares/auth');
 
+router.post('/', crearPaciente);
 router.get('/search', verificarToken, buscar);
 router.get('/:id', verificarToken, obtenerPorId);
 router.get('/:id/forms', verificarToken, obtenerFormsSummary);

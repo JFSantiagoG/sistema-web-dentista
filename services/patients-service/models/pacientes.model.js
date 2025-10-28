@@ -624,6 +624,45 @@ async function getPatientStudies(pacienteId) {
 }
 
 
+  async function insertPaciente(data) {
+    const {
+      nombre,
+      apellido,
+      sexo,
+      fecha_nacimiento, // 'YYYY-MM-DD' o null
+      edad,             // number o null
+      email,
+      estado_civil,
+      telefono_principal,
+      telefono_secundario,
+      domicilio,
+      ocupacion
+    } = data;
+
+    const sql = `
+      INSERT INTO pacientes
+        (nombre, apellido, sexo, fecha_nacimiento, edad, email,
+        telefono_principal, telefono_secundario, domicilio, estado_civil, ocupacion)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const params = [
+      nombre || null,
+      apellido || null,
+      sexo || null,
+      (fecha_nacimiento || null),
+      (Number.isFinite(edad) ? edad : null),
+      (email || null),
+      telefono_principal || null,
+      (telefono_secundario || null),
+      (domicilio || null),
+      (estado_civil || null),
+      (ocupacion || null),
+    ];
+
+    const [res] = await db.query(sql, params);
+    return res.insertId;
+  }
 
 
-module.exports = { buscarPacientes, getFormsSummary, getPatientStudies };
+module.exports = { buscarPacientes, getFormsSummary, getPatientStudies, insertPaciente };

@@ -1,0 +1,13 @@
+.section-title{
+  font-weight: 700;
+  color: #0d6efd;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.req{ color:#dc3545; font-weight:700; }
+
+.card{
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: .8rem;
+}

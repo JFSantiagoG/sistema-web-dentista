@@ -1483,10 +1483,44 @@ async function crearDiagInfantil(req, res) {
   }
 }
 
+const { insertPaciente } = require('../models/pacientes.model');
 
+async function crearPaciente(req, res) {
+  try {
+    const b = req.body || {};
+    if (!b?.nombre || !b?.apellido || !b?.sexo || !b?.telefono_principal) {
+      return res.status(400).json({ error: 'Faltan campos requeridos' });
+    }
+
+    const nuevoId = await insertPaciente({
+      nombre:              b.nombre?.trim(),
+      apellido:            b.apellido?.trim(),
+      sexo:                b.sexo,
+      fecha_nacimiento:    b.fecha_nacimiento || null,
+      edad:                Number.isFinite(b.edad) ? b.edad : null,
+      email:               b.email || null,
+      estado_civil:        b.estado_civil || null,
+      telefono_principal:  b.telefono_principal?.trim(),
+      telefono_secundario: b.telefono_secundario || null,
+      domicilio:           b.domicilio || null,
+      ocupacion:           b.ocupacion || null
+    });
+
+    // 🔴 IMPORTANTE: cerrar la respuesta
+    return res.status(201).json({ id: nuevoId });
+
+  } catch (err) {
+    console.error('❌ crearPaciente error:', err);
+    if (err?.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ error: 'Registro duplicado' });
+    }
+    return res.status(500).json({ error: 'Error al crear paciente' });
+  }
+}
 
 
 module.exports = {
+  crearPaciente,
   buscar,
   obtenerPorId,
   obtenerFormsSummary,
