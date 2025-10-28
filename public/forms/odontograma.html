@@ -6,6 +6,7 @@
   <title>🦷 Odontograma Final - Consultorio Dental</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="../css/odontograma.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-light">
   <div class="container py-4">
@@ -22,8 +23,7 @@
       </button>
     </div>
 
-    <!-- Formulario -->
-    <form id="odontogramaForm" class="step-form">
+  <form id="odontogramaForm" class="step-form">
       <!-- 1. Identificación del Paciente -->
       <div class="card section-card">
         <div class="card-header bg-primary text-white">
@@ -33,11 +33,11 @@
           <div class="row">
             <div class="col-md-6 mb-3">
               <label class="form-label required">Nombre del Paciente</label>
-              <input type="text" name="nombrePaciente" class="form-control" required />
+              <input type="text" id="nombrePaciente" name="nombrePaciente" class="form-control" required />
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label required">Fecha de Término</label>
-              <input type="date" name="fechaTermino" class="form-control" required />
+              <input type="date" id="fechaTermino" name="fechaTermino" class="form-control" required />
             </div>
           </div>
         </div>
@@ -555,16 +555,16 @@
 
       <!-- Botones de Acción -->
       <div class="text-center mt-4">
-        <button type="button" class="btn btn-outline-secondary btn-lg me-2">
+        <button type="button" id="btnGuardarOdonto" class="btn btn-outline-secondary btn-lg me-2">
           💾 Guardar Borrador
         </button>
         <button type="submit" class="btn btn-success btn-lg">
           📤 Enviar Formulario
         </button>
-        <button type="button" class="btn btn-info btn-lg ms-2">
+        <button type="button" id="btnDescargarPDF" class="btn btn-info btn-lg ms-2">
           🖨️ Descargar PDF
         </button>
-      </div>
+    </div>
     </form>
   </div>
 

@@ -1,15 +1,14 @@
-// public/js/ortodoncia.js
 document.addEventListener('DOMContentLoaded', async () => {
   const form = document.getElementById('ortodonciaForm');
   if (!form) return console.error('❌ No se encontró #ortodonciaForm');
 
   // --- refs del DOM
-  const nombreEl      = form.querySelector('[name="nombrePaciente"]');
-  const fechaIngEl    = form.querySelector('[name="fechaIngreso"]');
-  const fechaAltaEl   = form.querySelector('[name="fechaAlta"]');
-  const btnGuardar    = document.getElementById('btnGuardar');
-  const btnEnviar     = document.getElementById('btnEnviar');
-  const btnDescargar  = document.getElementById('descargarPDF');
+  const nombreEl     = form.querySelector('[name="nombrePaciente"]');
+  const fechaIngEl   = form.querySelector('[name="fechaIngreso"]');
+  const fechaAltaEl  = form.querySelector('[name="fechaAlta"]');
+  const btnGuardar   = document.getElementById('btnGuardar');
+  const btnEnviar    = document.getElementById('btnEnviar');
+  const btnDescargar = document.getElementById('descargarPDF'); // opcional
 
   // --- paciente_id desde la URL
   const qs = new URLSearchParams(location.search);
@@ -46,7 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     return new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   })();
 
-  // --- cargar paciente
+  // --- cargar paciente (y setear valores bloqueados)
   async function cargarPaciente() {
     try {
       const res = await fetch(`/api/patients/${pacienteId}`, { headers: authHeaders });
@@ -92,14 +91,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // === helpers nombre archivo ===
-  function stripAccents(str='') {
-    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  }
+  function stripAccents(str='') { return str.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
   function firstAndLast(full='') {
     const parts = (full || '').trim().split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return { first: '', last: '' };
-    if (parts.length === 1) return { first: parts[0], last: '' };
-    return { first: parts[0], last: parts[parts.length - 1] };
+    if (!parts.length) return { first:'', last:'' };
+    if (parts.length === 1) return { first:parts[0], last:'' };
+    return { first:parts[0], last:parts[parts.length-1] };
   }
   function yyyymmdd(dStr) {
     const s = (dStr || '').replaceAll('-', '');
@@ -108,19 +105,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   function buildFilename({ fecha, formKey, fullName }) {
     const { first, last } = firstAndLast(fullName || '');
-    const base = `${yyyymmdd(fecha)}_${formKey}_${[first, last].filter(Boolean).join('_')}`;
+    const base = `${yyyymmdd(fecha)}_${formKey}_${[first,last].filter(Boolean).join('_')}`;
     return stripAccents(base).replace(/\s+/g, '_');
   }
   function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = filename + '.pdf';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    a.href = url; a.download = filename + '.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
   }
+
+  // === util para extraer tablas genéricas (por ID) ===
+  const extraerTabla = (selector, campos) =>
+    Array.from(form.querySelectorAll(`${selector} tbody tr`)).map(row => {
+      const celdas = row.querySelectorAll('input, textarea');
+      const obj = {};
+      campos.forEach((campo, i) => (obj[campo] = (celdas[i]?.value ?? '').toString()));
+      // limpia filas totalmente vacías
+      const hayAlgo = Object.values(obj).some(v => (v ?? '').toString().trim() !== '');
+      return hayAlgo ? obj : null;
+    }).filter(Boolean);
 
   // === construir data ===
   const buildData = () => {
@@ -129,12 +134,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       nombrePaciente: f.querySelector('[name="nombrePaciente"]')?.value || '',
       fechaIngreso:   f.querySelector('[name="fechaIngreso"]')?.value || '',
       fechaAlta:      f.querySelector('[name="fechaAlta"]')?.value || '',
+
+      // 2. Examen clínico
       examenClinico: {
         tipoCuerpo: f.tipoCuerpo?.value || '',
         tipoCara:   f.tipoCara?.value || '',
         tipoCraneo: f.tipoCraneo?.value || '',
         otros:      f.otros?.value || ''
       },
+
+      // 3. Análisis funcional
       analisisFuncional: {
         respiracion:    f.respiracion?.value || '',
         deglucion:      f.deglucion?.value || '',
@@ -152,6 +161,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         horizontalOCRC: f.horizontalOCRC?.value || '',
         otrosOCRC:      f.otrosOCRC?.value || ''
       },
+
+      // 4. Modelos
       analisisModelos: {
         relacionesDentarias: {
           oclusionMolaresDer: f.oclusionMolaresDer?.value || '',
@@ -178,73 +189,61 @@ document.addEventListener('DOMContentLoaded', async () => {
           arcadaInferior: f.querySelector('[name="arcada_inf"]:checked')?.value || ''
         }
       },
+
+      // 5. Índices valorativos
       indicesValorativos: {
         pontMaxilar: {
-          premaxila: {
-            nc:  f.pontPremaxilaNC?.value || '',
-            pac: f.pontPremaxilaPac?.value || '',
-            dif: f.pontPremaxilaDif?.value || ''
-          },
-          premolares: {
-            nc:  f.pontPremolaresNC?.value || '',
-            pac: f.pontPremolaresPac?.value || '',
-            dif: f.pontPremolaresDif?.value || ''
-          },
-          molares: {
-            nc:  f.pontMolaresNC?.value || '',
-            pac: f.pontMolaresPac?.value || '',
-            dif: f.pontMolaresDif?.value || ''
-          }
+          premaxila:  { nc: f.pontPremaxilaNC?.value || '',  pac: f.pontPremaxilaPac?.value || '',  dif: f.pontPremaxilaDif?.value || '' },
+          premolares: { nc: f.pontPremolaresNC?.value || '', pac: f.pontPremolaresPac?.value || '', dif: f.pontPremolaresDif?.value || '' },
+          molares:    { nc: f.pontMolaresNC?.value || '',    pac: f.pontMolaresPac?.value || '',    dif: f.pontMolaresDif?.value || '' }
         },
         pontMandibular: {
-          premolares: {
-            pac: f.pontMandPremolaresPac?.value || '',
-            dif: f.pontMandPremolaresDif?.value || ''
-          },
-          molares: {
-            pac: f.pontMandMolaresPac?.value || '',
-            dif: f.pontMandMolaresDif?.value || ''
-          }
+          premolares: { pac: f.pontMandPremolaresPac?.value || '', dif: f.pontMandPremolaresDif?.value || '' },
+          molares:    { pac: f.pontMandMolaresPac?.value || '',    dif: f.pontMandMolaresDif?.value || '' }
         },
-        sumaIncisivos: f.sumaIncisivos?.value || '',
+        sumaIncisivos:    f.sumaIncisivos?.value || '',
         boltonSuperiores: Array.from(f.querySelectorAll('[placeholder^="1"]')).map(i => i.value || ''),
         boltonInferiores: Array.from(f.querySelectorAll('[placeholder^="4"],[placeholder^="3"]')).map(i => i.value || ''),
         diferenciaBolton: f.diferenciaBolton?.value || '',
         longitudArco: {
-          apinamiento: f.apinamiento?.value || '',
-          protrusionDental: f.protrusionDental?.value || '',
-          curvaSpee: f.curvaSpee?.value || '',
-          totalLongitud: f.totalLongitud?.value || ''
+          apinamiento:       f.apinamiento?.value || '',
+          protrusionDental:  f.protrusionDental?.value || '',
+          curvaSpee:         f.curvaSpee?.value || '',
+          totalLongitud:     f.totalLongitud?.value || ''
         }
       },
+
+      // 6. Plan de tratamiento
       planTratamiento: {
-        ortopediaMaxilar: f.ortopediaMaxilar?.value || '',
+        ortopediaMaxilar:   f.ortopediaMaxilar?.value || '',
         ortopediaMandibula: f.ortopediaMandibula?.value || '',
         dientesInfIncisivo: f.dientesInfIncisivo?.value || '',
-        dientesInfMolar: f.dientesInfMolar?.value || '',
-        dientesSupMolar: f.dientesSupMolar?.value || '',
+        dientesInfMolar:    f.dientesInfMolar?.value || '',
+        dientesSupMolar:    f.dientesSupMolar?.value || '',
         dientesSupIncisivo: f.dientesSupIncisivo?.value || '',
         dientesSupEstetica: f.dientesSupEstetica?.value || '',
         anclaje: {
-          maxilar: f.querySelector('[name="anclaje_max"]:checked')?.value || '',
+          maxilar:    f.querySelector('[name="anclaje_max"]:checked')?.value || '',
           mandibular: f.querySelector('[name="anclaje_man"]:checked')?.value || ''
         }
       },
+
+      // 7–11. Tablas dinámicas
       analisisCefalometrico: {
-        biotipoFacial: [],
-        claseEsqueletica: [],
-        problemasVerticales: [],
-        factoresDentales: [],
+        biotipoFacial:        extraerTabla('#biotipoFacial',       ['factor','nc','paciente','diferencia','dc','resultado']),
+        claseEsqueletica:     extraerTabla('#claseEsqueletica',    ['factor','nc','paciente','dc']),
+        problemasVerticales:  extraerTabla('#problemasVerticales', ['factor','nc','paciente','dc']),
+        factoresDentales:     extraerTabla('#factoresDentales',    ['factor','nc','paciente','dc']),
         diagnosticoCefalometrico: f.diagnosticoCefalometrico?.value || ''
       },
       factoresComplementarios: {
-        claseII: [],
-        claseIII: [],
-        verticales: []
+        claseII:   extraerTabla('#claseII',   ['factor','nc','paciente','dc']),
+        claseIII:  extraerTabla('#claseIII',  ['factor','nc','paciente','dc']),
+        verticales:extraerTabla('#verticales',['factor','nc','paciente','dc'])
       },
-      analisisJaraback: [],
-      medidasLineales: [],
-      analisisMcNamara: []
+      analisisJaraback:   extraerTabla('#jaraback',        ['factor','nc','paciente','dc']),
+      medidasLineales:    extraerTabla('#medidasLineales', ['factor','nc','paciente','dc']),
+      analisisMcNamara:   extraerTabla('#mcnamara',        ['factor','nc','paciente','dc'])
     };
     return data;
   };

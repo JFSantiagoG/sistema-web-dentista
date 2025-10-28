@@ -19,9 +19,7 @@
           Este formulario recopila datos específicos para el diagnóstico y planificación de tratamientos de ortodoncia, incluyendo análisis clínicos, funcionales, de modelos, cefalométricos y valorativos.
         </p>
       </div>
-      <button class="btn btn-outline-secondary" onclick="window.history.back()">
-        ← Volver
-      </button>
+      <button class="btn btn-outline-secondary" onclick="window.history.back()">← Volver</button>
     </div>
 
     <!-- Formulario -->
@@ -58,28 +56,13 @@
           <div class="table-responsive">
             <table class="table table-bordered">
               <thead>
-                <tr>
-                  <th>Característica</th>
-                  <th>Valoración</th>
-                </tr>
+                <tr><th>Característica</th><th>Valoración</th></tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>Tipo de cuerpo</td>
-                  <td><input name="tipoCuerpo" type="text" class="form-control" placeholder="Ej: Ectomorfo"></td>
-                </tr>
-                <tr>
-                  <td>Tipo de cara</td>
-                  <td><input name="tipoCara" type="text" class="form-control" placeholder="Ej: Braquifacial"></td>
-                </tr>
-                <tr>
-                  <td>Tipo de cráneo</td>
-                  <td><input name="tipoCraneo" type="text" class="form-control" placeholder="Ej: Mesocefálico"></td>
-                </tr>
-                <tr>
-                  <td>Otros</td>
-                  <td><input name="otros" type="text" class="form-control" placeholder="Especificar"></td>
-                </tr>
+                <tr><td>Tipo de cuerpo</td><td><input name="tipoCuerpo" type="text" class="form-control" placeholder="Ej: Ectomorfo"></td></tr>
+                <tr><td>Tipo de cara</td><td><input name="tipoCara" type="text" class="form-control" placeholder="Ej: Braquifacial"></td></tr>
+                <tr><td>Tipo de cráneo</td><td><input name="tipoCraneo" type="text" class="form-control" placeholder="Ej: Mesocefálico"></td></tr>
+                <tr><td>Otros</td><td><input name="otros" type="text" class="form-control" placeholder="Especificar"></td></tr>
               </tbody>
             </table>
           </div>
@@ -92,7 +75,6 @@
           <h5 class="mb-0">3. Análisis Funcional</h5>
         </div>
         <div class="card-body">
-          <!-- a) Funciones Básicas -->
           <h6 class="mt-3">a) Funciones Básicas</h6>
           <div class="row">
             <div class="col-md-6 mb-3">
@@ -113,7 +95,6 @@
             </div>
           </div>
 
-          <!-- b) Salud Articular -->
           <h6 class="mt-4">b) Salud Articular</h6>
           <div class="mb-3">
             <label class="form-label">Problemas en la Actualidad</label>
@@ -122,11 +103,7 @@
           <div class="table-responsive mb-3">
             <table class="table table-bordered text-center-sm">
               <thead>
-                <tr>
-                  <th></th>
-                  <th>Sí</th>
-                  <th>No</th>
-                </tr>
+                <tr><th></th><th>Sí</th><th>No</th></tr>
               </thead>
               <tbody>
                 <tr>
@@ -165,15 +142,11 @@
             </div>
           </div>
 
-          <!-- c) Discrepancia OC-RC -->
           <h6 class="mt-4">c) Discrepancia OC-RC</h6>
           <div class="table-responsive mb-3">
             <table class="table table-bordered">
               <thead>
-                <tr>
-                  <th>Vertical (mm)</th>
-                  <th>Horizontal (mm)</th>
-                </tr>
+                <tr><th>Vertical (mm)</th><th>Horizontal (mm)</th></tr>
               </thead>
               <tbody>
                 <tr>
@@ -196,16 +169,11 @@
           <h5 class="mb-0">4. Análisis de Modelos</h5>
         </div>
         <div class="card-body">
-          <!-- I. Relaciones Dentarias -->
           <h6 class="mt-3">I. Relaciones Dentarias</h6>
           <div class="table-responsive">
             <table class="table table-bordered">
               <thead>
-                <tr>
-                  <th>Relación</th>
-                  <th>Der. (mm)</th>
-                  <th>Izq. (mm)</th>
-                </tr>
+                <tr><th>Relación</th><th>Der. (mm)</th><th>Izq. (mm)</th></tr>
               </thead>
               <tbody>
                 <tr>
@@ -246,39 +214,25 @@
             </table>
           </div>
 
-          <!-- II. Anomalías Dentarias -->
           <h6 class="mt-4">II. Anomalías Dentarias</h6>
           <div class="table-responsive">
             <table class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Anomalía</th>
-                  <th>Valoración</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Anomalía</th><th>Valoración</th></tr></thead>
               <tbody>
-                <tr><td>Dientes ausentes</td>            <td><input name="dientesAusentes"     type="text" class="form-control"></td></tr>
-                <tr><td>Dientes con malformación</td>    <td><input name="dientesMalformados"  type="text" class="form-control"></td></tr>
-                <tr><td>Dientes con giroversión</td>     <td><input name="dientesGiroversion"  type="text" class="form-control"></td></tr>
-                <tr><td>Dientes en infraversión</td>     <td><input name="dientesInfraversion" type="text" class="form-control"></td></tr>
-                <tr><td>Dientes en supraversión</td>     <td><input name="dientesSupraversion" type="text" class="form-control"></td></tr>
-                <tr><td>Dientes pigmentados</td>         <td><input name="dientesPigmentados"  type="text" class="form-control"></td></tr>
+                <tr><td>Dientes ausentes</td>         <td><input name="dientesAusentes"     type="text" class="form-control"></td></tr>
+                <tr><td>Malformación</td>            <td><input name="dientesMalformados"  type="text" class="form-control"></td></tr>
+                <tr><td>Giroversión</td>             <td><input name="dientesGiroversion"  type="text" class="form-control"></td></tr>
+                <tr><td>Infraversión</td>            <td><input name="dientesInfraversion" type="text" class="form-control"></td></tr>
+                <tr><td>Supraversión</td>            <td><input name="dientesSupraversion" type="text" class="form-control"></td></tr>
+                <tr><td>Pigmentados</td>             <td><input name="dientesPigmentados"  type="text" class="form-control"></td></tr>
               </tbody>
             </table>
           </div>
 
-          <!-- III. Arcadas Individuales -->
           <h6 class="mt-4">III. Arcadas Individuales</h6>
           <div class="table-responsive">
             <table class="table table-bordered text-center-sm">
-              <thead>
-                <tr>
-                  <th>Arcada</th>
-                  <th>Oval</th>
-                  <th>Cuadrada</th>
-                  <th>Triangular</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Arcada</th><th>Oval</th><th>Cuadrada</th><th>Triangular</th></tr></thead>
               <tbody>
                 <tr>
                   <td>Arcada Superior</td>
@@ -304,18 +258,10 @@
           <h5 class="mb-0">5. Índices Valorativos</h5>
         </div>
         <div class="card-body">
-          <!-- Análisis de Pont -->
           <h6>Análisis de Pont</h6>
           <div class="table-responsive mb-3">
             <table class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Colapso Maxilar</th>
-                  <th>N.C.</th>
-                  <th>Pac.</th>
-                  <th>Dif.</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Colapso Maxilar</th><th>N.C.</th><th>Pac.</th><th>Dif.</th></tr></thead>
               <tbody>
                 <tr>
                   <td>Premaxila</td>
@@ -338,15 +284,10 @@
               </tbody>
             </table>
           </div>
+
           <div class="table-responsive mb-3">
             <table class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Colapso Mandibular</th>
-                  <th>Pac.</th>
-                  <th>Dif.</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Colapso Mandibular</th><th>Pac.</th><th>Dif.</th></tr></thead>
               <tbody>
                 <tr>
                   <td>Premolares</td>
@@ -361,18 +302,18 @@
               </tbody>
             </table>
           </div>
+
           <div class="mb-3">
             <label class="form-label">Suma de los Incisivos</label>
             <input name="sumaIncisivos" type="number" class="form-control" placeholder="Valor numérico">
           </div>
 
-          <!-- Análisis de Bolton -->
           <h6 class="mt-4">Análisis de Bolton</h6>
           <div class="row">
             <div class="col-md-6 mb-3">
               <label class="form-label">Dientes Superiores (16–26)</label>
               <div class="d-flex flex-wrap gap-2">
-                <!-- 12 inputs -->
+                <!-- 12 inputs superiores -->
                 <input type="number" class="form-control input-number" placeholder="16">
                 <input type="number" class="form-control input-number" placeholder="15">
                 <input type="number" class="form-control input-number" placeholder="14">
@@ -390,6 +331,7 @@
             <div class="col-md-6 mb-3">
               <label class="form-label">Dientes Inferiores (46–36)</label>
               <div class="d-flex flex-wrap gap-2">
+                <!-- 12 inputs inferiores -->
                 <input type="number" class="form-control input-number" placeholder="46">
                 <input type="number" class="form-control input-number" placeholder="45">
                 <input type="number" class="form-control input-number" placeholder="44">
@@ -405,23 +347,21 @@
               </div>
             </div>
           </div>
+
           <div class="alert alert-info">
             <strong>Global:</strong> 91.3 ± 3 &nbsp;&nbsp;|&nbsp;&nbsp;
             <strong>Parcial:</strong> 77.2 ± 1 &nbsp;&nbsp;|&nbsp;&nbsp;
-            Los dientes inferiores son <input type="number" class="form-control d-inline input-number" style="width:80px;"> mm más que los superiores.
+            <!-- ✅ CORREGIDO: añadimos name="diferenciaBolton" -->
+            Los dientes inferiores son
+            <input name="diferenciaBolton" type="number" class="form-control d-inline input-number" style="width:80px;">
+            mm más que los superiores.
           </div>
 
-          <!-- Análisis de Longitud de Arco -->
           <h6 class="mt-4">Análisis de Longitud de Arco</h6>
           <div class="table-responsive">
             <table class="table table-bordered">
               <thead>
-                <tr>
-                  <th>Apinamiento (mm)</th>
-                  <th>Protrusión Dental (mm)</th>
-                  <th>Curva de Spee (mm)</th>
-                  <th>Total (mm)</th>
-                </tr>
+                <tr><th>Apinamiento (mm)</th><th>Protrusión Dental (mm)</th><th>Curva de Spee (mm)</th><th>Total (mm)</th></tr>
               </thead>
               <tbody>
                 <tr>
@@ -475,14 +415,7 @@
           <h6 class="mt-3">Anclaje</h6>
           <div class="table-responsive">
             <table class="table table-bordered text-center-sm">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>Máximo</th>
-                  <th>Moderado</th>
-                  <th>Mínimo</th>
-                </tr>
-              </thead>
+              <thead><tr><th></th><th>Máximo</th><th>Moderado</th><th>Mínimo</th></tr></thead>
               <tbody>
                 <tr>
                   <td>Maxilar</td>
@@ -508,62 +441,46 @@
           <h5 class="mb-0">7. Análisis Cefalométrico</h5>
         </div>
         <div class="card-body">
-          <!-- Biotipo Facial -->
           <h6>Biotipo Facial</h6>
           <div class="table-responsive mb-3">
             <table id="biotipoFacial" class="table table-bordered">
               <thead>
-                <tr>
-                  <th>Factor</th>
-                  <th>N.C.</th>
-                  <th>Paciente</th>
-                  <th>Diferencia</th>
-                  <th>D.C.</th>
-                  <th>Resultado</th>
-                </tr>
+                <tr><th>Factor</th><th>N.C.</th><th>Paciente</th><th>Diferencia</th><th>D.C.</th><th>Resultado</th></tr>
               </thead>
               <tbody>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                 </tr>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <!-- Clase Esquelética -->
           <h6 class="mt-4">Clase Esquelética</h6>
           <div class="table-responsive mb-3">
             <table id="claseEsqueletica" class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Factor</th>
-                  <th>N.C.</th>
-                  <th>Paciente</th>
-                  <th>D.C.</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Factor</th><th>N.C.</th><th>Paciente</th><th>D.C.</th></tr></thead>
               <tbody>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                 </tr>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
@@ -572,27 +489,19 @@
             </table>
           </div>
 
-          <!-- Problemas Verticales -->
           <h6 class="mt-4">Problemas Verticales</h6>
           <div class="table-responsive mb-3">
             <table id="problemasVerticales" class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Factor</th>
-                  <th>N.C.</th>
-                  <th>Paciente</th>
-                  <th>D.C.</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Factor</th><th>N.C.</th><th>Paciente</th><th>D.C.</th></tr></thead>
               <tbody>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                 </tr>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
@@ -601,27 +510,19 @@
             </table>
           </div>
 
-          <!-- Factores Dentales -->
           <h6 class="mt-4">Factores Dentales</h6>
           <div class="table-responsive mb-3">
             <table id="factoresDentales" class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Factor</th>
-                  <th>N.C.</th>
-                  <th>Paciente</th>
-                  <th>D.C.</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Factor</th><th>N.C.</th><th>Paciente</th><th>D.C.</th></tr></thead>
               <tbody>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                 </tr>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
@@ -643,27 +544,19 @@
           <h5 class="mb-0">8. Factores Complementarios</h5>
         </div>
         <div class="card-body">
-          <!-- Clase II -->
           <h6>Clase II</h6>
           <div class="table-responsive mb-3">
             <table id="claseII" class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Factor</th>
-                  <th>N.C.</th>
-                  <th>Paciente</th>
-                  <th>D.C.</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Factor</th><th>N.C.</th><th>Paciente</th><th>D.C.</th></tr></thead>
               <tbody>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                 </tr>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
@@ -672,27 +565,19 @@
             </table>
           </div>
 
-          <!-- Clase III -->
           <h6 class="mt-4">Clase III</h6>
           <div class="table-responsive mb-3">
             <table id="claseIII" class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Factor</th>
-                  <th>N.C.</th>
-                  <th>Paciente</th>
-                  <th>D.C.</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Factor</th><th>N.C.</th><th>Paciente</th><th>D.C.</th></tr></thead>
               <tbody>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                 </tr>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
@@ -701,27 +586,19 @@
             </table>
           </div>
 
-          <!-- Factores Complementarios Verticales -->
           <h6 class="mt-4">Factores Complementarios Verticales</h6>
           <div class="table-responsive">
             <table id="verticales" class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Factor</th>
-                  <th>N.C.</th>
-                  <th>Paciente</th>
-                  <th>D.C.</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Factor</th><th>N.C.</th><th>Paciente</th><th>D.C.</th></tr></thead>
               <tbody>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                 </tr>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
@@ -732,7 +609,7 @@
         </div>
       </div>
 
-      <!-- 9. Análisis Cefalométrico de Jaraback -->
+      <!-- 9. Jaraback -->
       <div class="card section-card">
         <div class="card-header bg-orange text-white">
           <h5 class="mb-0">9. Análisis Cefalométrico de Jaraback</h5>
@@ -740,23 +617,16 @@
         <div class="card-body">
           <div class="table-responsive">
             <table id="jaraback" class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Factor</th>
-                  <th>N.C.</th>
-                  <th>Paciente</th>
-                  <th>D.C.</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Factor</th><th>N.C.</th><th>Paciente</th><th>D.C.</th></tr></thead>
               <tbody>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                 </tr>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
@@ -775,23 +645,16 @@
         <div class="card-body">
           <div class="table-responsive">
             <table id="medidasLineales" class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Factor</th>
-                  <th>N.C.</th>
-                  <th>Paciente</th>
-                  <th>D.C.</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Factor</th><th>N.C.</th><th>Paciente</th><th>D.C.</th></tr></thead>
               <tbody>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                 </tr>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
@@ -802,7 +665,7 @@
         </div>
       </div>
 
-      <!-- 11. Análisis de McNamara -->
+      <!-- 11. McNamara -->
       <div class="card section-card">
         <div class="card-header bg-brown text-white">
           <h5 class="mb-0">11. Análisis de McNamara</h5>
@@ -810,23 +673,16 @@
         <div class="card-body">
           <div class="table-responsive">
             <table id="mcnamara" class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Factor</th>
-                  <th>N.C.</th>
-                  <th>Paciente</th>
-                  <th>D.C.</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Factor</th><th>N.C.</th><th>Paciente</th><th>D.C.</th></tr></thead>
               <tbody>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                 </tr>
                 <tr>
-                  <td><input type="text"   class="form-control"></td>
+                  <td><input type="text" class="form-control"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
                   <td><input type="number" class="form-control input-number"></td>
@@ -837,11 +693,11 @@
         </div>
       </div>
 
-      <!-- Botones de Acción -->
+      <!-- Botones -->
       <div class="text-center mt-4">
-          <button type="button" id="btnGuardar" class="btn btn-success">💾 Guardar</button>
-          <button type="button" id="btnEnviar" class="btn btn-info">📤 Enviar al paciente</button>
-          <button type="submit" class="btn btn-primary">🧾 Generar PDF</button>
+        <button type="button" id="btnGuardar" class="btn btn-success">💾 Guardar</button>
+        <button type="button" id="btnEnviar" class="btn btn-info">📤 Enviar al paciente</button>
+        <button type="submit" class="btn btn-primary">🧾 Generar PDF</button>
       </div>
     </form>
   </div>

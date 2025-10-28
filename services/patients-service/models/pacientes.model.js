@@ -148,49 +148,195 @@ async function getFormsSummary(pacienteId) {
     }
 
 
-    // ====== Presupuestos (legacy) – Fecha | Tratamiento | Costo
+    // ====== Presupuestos Dentales — Fecha | Total | Mensualidad | Meses
     let presupuestos = [];
     if (porTipo['presupuesto_dental']?.length) {
       const prIds = porTipo['presupuesto_dental'].map(f => f.id);
 
-      const [firstRows] = await conn.query(
-        `SELECT d.formulario_id,
-                (SELECT MIN(id) FROM formulario_presupuesto_dental_dientes x WHERE x.formulario_id=d.formulario_id) AS minid
-         FROM formulario_presupuesto_dental_dientes d
-         WHERE d.formulario_id IN (${inList(prIds)})
-         GROUP BY d.formulario_id`,
+      // Cabecera: fecha (o fallback a fecha_creacion), total, total_mensual, meses
+      const [hdr] = await conn.query(
+        `
+        SELECT 
+          p.formulario_id,
+          COALESCE(p.fecha, DATE(f.fecha_creacion)) AS fecha,
+          p.total,
+          p.total_mensual,
+          p.meses
+        FROM formulario_presupuesto_dental p
+        JOIN formulario f ON f.id = p.formulario_id
+        WHERE p.formulario_id IN (${inList(prIds)})
+        ORDER BY COALESCE(p.fecha, DATE(f.fecha_creacion)) DESC, p.formulario_id DESC
+        `,
         prIds
       );
-      const minIds = firstRows.map(r => r.minid).filter(Boolean);
 
-      let byId = {};
-      if (minIds.length) {
-        const [detRows] = await conn.query(
-          `SELECT id, formulario_id, tratamiento, costo
-           FROM formulario_presupuesto_dental_dientes
-           WHERE id IN (${inList(minIds)})`,
-          minIds
+      // Si falta total en cabecera, lo calculamos (dientes + generales)
+      const missingTotals = hdr.filter(r => r.total == null);
+      let totalsMap = {};
+      if (missingTotals.length) {
+        const ids = missingTotals.map(r => r.formulario_id);
+        const [sumRows] = await conn.query(
+          `
+          SELECT x.formulario_id,
+                IFNULL((SELECT SUM(costo) FROM formulario_presupuesto_dental_dientes d WHERE d.formulario_id = x.formulario_id), 0) +
+                IFNULL((SELECT SUM(costo) FROM formulario_presupuesto_dental_generales g WHERE g.formulario_id = x.formulario_id), 0) AS total
+          FROM formulario_presupuesto_dental x
+          WHERE x.formulario_id IN (${inList(ids)})
+          `,
+          ids
         );
-        byId = Object.fromEntries(detRows.map(r => [r.formulario_id, r]));
+        totalsMap = Object.fromEntries(sumRows.map(r => [r.formulario_id, Number(r.total || 0)]));
       }
 
-      const [totRows] = await conn.query(
-        `SELECT d.formulario_id,
-                (SELECT IFNULL(SUM(costo),0) FROM formulario_presupuesto_dental_dientes WHERE formulario_id=d.formulario_id) +
-                (SELECT IFNULL(SUM(costo),0) FROM formulario_presupuesto_dental_generales WHERE formulario_id=d.formulario_id) AS total
-         FROM formulario_presupuesto_dental d
-         WHERE d.formulario_id IN (${inList(prIds)})`,
-        prIds
-      );
-      const totalMap = Object.fromEntries(totRows.map(r => [r.formulario_id, r.total]));
-
-      presupuestos = prIds.map(id => ({
-        formulario_id: id,
-        fecha: null,
-        tratamiento: byId[id]?.tratamiento || '—',
-        costo: byId[id]?.costo ?? totalMap[id] ?? null
+      presupuestos = hdr.map(r => ({
+        formulario_id : r.formulario_id,
+        fecha         : r.fecha,                                      // ← AHORA SÍ VIENE FECHA
+        total         : r.total != null ? Number(r.total) : (totalsMap[r.formulario_id] ?? null),
+        total_mensual : r.total_mensual != null ? Number(r.total_mensual) : null,
+        meses         : r.meses ?? null
       }));
     }
+
+// === Crear Diagnóstico Infantil ===
+  async function crearDiagInfantil(req, res) {
+    console.log('──────────────────────────────────────────────');
+    console.log('📩 POST /patients/:id/diag-infantil');
+    console.log('Auth header presente:', !!req.headers.authorization);
+    console.log('User (token decodificado):', { id: req.user?.id, rol: req.user?.rol, email: req.user?.email });
+
+    const pacienteId = Number(req.params.id || 0);
+    if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
+
+    const b = req.body || {};
+    const fechaRegistro = b?.paciente?.fechaRegistro || null;  // 'YYYY-MM-DD'
+    const numeroPaciente = b?.paciente?.numeroPaciente || String(pacienteId);
+
+    const porDiente = Array.isArray(b?.odontograma) ? b.odontograma : [];
+    const generales = Array.isArray(b?.tratamientosGenerales) ? b.tratamientosGenerales : [];
+
+    const meses        = Number(b?.presupuesto?.meses ?? 1) || 1;
+    const totalCosto   = Number(b?.presupuesto?.total ?? 0) || 0;
+    const totalMensual = Number(b?.presupuesto?.mensualidad ?? (meses ? totalCosto/meses : 0)) || 0;
+
+    if (!fechaRegistro) {
+      return res.status(400).json({ error: 'fecha requerida' });
+    }
+
+    const conn = await db.getConnection();
+    try {
+      await conn.beginTransaction();
+      console.log('🔹 TX diag-infantil iniciada');
+
+      // 1) tipo_id = diag_infantil
+      const [tipoRows] = await conn.query(
+        'SELECT id FROM formulario_tipo WHERE nombre = ? LIMIT 1',
+        ['diag_infantil']
+      );
+      if (!tipoRows.length) {
+        throw new Error('No existe tipo "diag_infantil"');
+      }
+      const tipoId = tipoRows[0].id;
+
+      // 2) formulario
+      const creadoPor = req.user?.id || null; // users.id
+      const [formIns] = await conn.query(
+        `INSERT INTO formulario (paciente_id, tipo_id, creado_por, estado, fecha_creacion)
+        VALUES (?, ?, ?, 'borrador', NOW())`,
+        [pacienteId, tipoId, creadoPor]
+      );
+      const formularioId = formIns.insertId;
+      console.log('✔️ formulario insertado id =', formularioId);
+
+      // 3) mapear users.id -> medicos.id (puede quedar NULL)
+      let medicoId = null;
+      if (creadoPor) {
+        const [mRow] = await conn.query('SELECT id FROM medicos WHERE user_id = ? LIMIT 1', [creadoPor]);
+        medicoId = mRow[0]?.id ?? null;
+      }
+
+      // 4) Cabecera formulario_diag_infantil
+      // Guardamos snapshots en JSON:
+      const tratamientosPorDienteJson = JSON.stringify(porDiente || []);
+      const tratamientosGeneralesJson = JSON.stringify(generales || []);
+      // opcional: un pequeño snapshot del “odontograma_json”
+      const odontogramaJson = JSON.stringify({
+        dientes: (porDiente || []).map(x => x?.diente).filter(Boolean)
+      });
+
+      await conn.query(
+        `INSERT INTO formulario_diag_infantil
+          (formulario_id, paciente_id, medico_id, fecha, numero_paciente,
+          odontograma_json, tratamientos_por_diente_json, tratamientos_generales_json,
+          meses, total_costo, total_mensual)
+        VALUES (?, ?, ?, ?, ?, CAST(? AS JSON), CAST(? AS JSON), CAST(? AS JSON), ?, ?, ?)`,
+        [
+          formularioId, pacienteId, medicoId, fechaRegistro, numeroPaciente,
+          odontogramaJson, tratamientosPorDienteJson, tratamientosGeneralesJson,
+          meses, totalCosto, totalMensual
+        ]
+      );
+      console.log('✔️ cabecera diag-infantil insertada');
+
+      // 5) Detalle por diente
+      if (porDiente.length) {
+        const vals = [];
+        const params = [];
+        porDiente.forEach(it => {
+          vals.push('(?, ?, ?, ?)');
+          params.push(
+            formularioId,
+            Number(it?.diente || 0) || 0,
+            String(it?.tratamiento || ''),
+            (it?.costo == null ? null : Number(it.costo))
+          );
+        });
+        await conn.query(
+          `INSERT INTO formulario_diag_infantil_detalle
+            (formulario_id, diente, tratamiento, costo)
+          VALUES ${vals.join(',')}`,
+          params
+        );
+        console.log(`✔️ ${porDiente.length} filas detalle (por diente) insertadas`);
+      }
+
+      // 6) Detalle generales
+      if (generales.length) {
+        const vals = [];
+        const params = [];
+        generales.forEach(g => {
+          vals.push('(?, ?, ?)');
+          params.push(
+            formularioId,
+            String(g?.nombre || ''),
+            (g?.costo == null ? null : Number(g.costo))
+          );
+        });
+        await conn.query(
+          `INSERT INTO formulario_diag_infantil_generales
+            (formulario_id, tratamiento, costo)
+          VALUES ${vals.join(',')}`,
+          params
+        );
+        console.log(`✔️ ${generales.length} filas generales insertadas`);
+      }
+
+      await conn.commit();
+      console.log('✅ TX confirmada (diag-infantil)');
+      console.log('──────────────────────────────────────────────');
+      return res.status(201).json({ ok: true, formulario_id: formularioId });
+
+    } catch (err) {
+      try { await conn.rollback(); } catch {}
+      console.error('❌ crearDiagInfantil error:', err);
+      console.log('──────────────────────────────────────────────');
+      return res.status(500).json({ error: 'Error al crear diagnóstico infantil', detalle: err.message });
+    } finally {
+      conn.release();
+    }
+  }
+
+
+
 // ====== Consentimiento Odontológico – Fecha | Procedimiento | Firmado
       let consentimiento_odontologico = [];
       if (porTipo['consentimiento_odontologico']?.length) {
@@ -383,6 +529,61 @@ async function getFormsSummary(pacienteId) {
       }
     }
 
+    // ====== Diagnóstico Infantil ======
+    let diag_infantil = [];
+    if (porTipo['diag_infantil']?.length) {
+      const ids = porTipo['diag_infantil'].map(f => f.id);
+
+      // Cabecera
+      const [hdr] = await conn.query(
+        `
+        SELECT 
+          d.formulario_id,
+          d.fecha,
+          d.meses,
+          d.total_costo,
+          d.total_mensual
+        FROM formulario_diag_infantil d
+        WHERE d.formulario_id IN (${inList(ids)})
+        ORDER BY d.fecha DESC
+        `,
+        ids
+      );
+
+      // Conteos
+      const [cntD] = await conn.query(
+        `SELECT formulario_id, COUNT(*) AS t_count
+        FROM formulario_diag_infantil_detalle
+        WHERE formulario_id IN (${inList(ids)})
+        GROUP BY formulario_id`,
+        ids
+      );
+      const [cntG] = await conn.query(
+        `SELECT formulario_id, COUNT(*) AS g_count
+        FROM formulario_diag_infantil_generales
+        WHERE formulario_id IN (${inList(ids)})
+        GROUP BY formulario_id`,
+        ids
+      );
+
+      const tCountMap = Object.fromEntries(cntD.map(r => [r.formulario_id, r.t_count]));
+      const gCountMap = Object.fromEntries(cntG.map(r => [r.formulario_id, r.g_count]));
+      const hdrMap = Object.fromEntries(hdr.map(r => [r.formulario_id, r]));
+
+      diag_infantil = ids.map(fid => {
+        const h = hdrMap[fid] || {};
+        return {
+          formulario_id: fid,
+          fecha: h.fecha || null,
+          meses: h.meses != null ? Number(h.meses) : null,
+          total_costo: h.total_costo != null ? Number(h.total_costo) : null,
+          total_mensual: h.total_mensual != null ? Number(h.total_mensual) : null,
+          t_count: tCountMap[fid] || 0,
+          g_count: gCountMap[fid] || 0
+        };
+      });
+    }
+
     return {
       paciente,
       evoluciones,
@@ -394,6 +595,8 @@ async function getFormsSummary(pacienteId) {
       justificantes,
       odontograma_final,
       crearEvolucion,
+      crearDiagInfantil,
+      diag_infantil,
       ortodoncia
     };
   } finally {

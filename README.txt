@@ -18,9 +18,6 @@ Inicia en carpeta sistema-web-dentista
     ./start.sh
 
 Accede
-<<<<<<< HEAD
-    http://localhost:8080/
-=======
     http://localhost:8080/
 
 
@@ -43,4 +40,3 @@ Thumbs.db
 
 # Archivos de uploads
 uploads/
->>>>>>> Hector
