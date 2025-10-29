@@ -18,6 +18,9 @@ const { crearDiagInfantil } = require('../controllers/pacientes.controller');
 const { uploadStudy } = require('../controllers/pacientes.controller');
 const { verificarToken } = require('../middlewares/auth');
 
+//Para obtener información de formularios específicos
+const { getRecetaByFormularioId } = require('../controllers/pacientes.controller');
+
 router.post('/', crearPaciente);
 router.get('/search', verificarToken, buscar);
 router.get('/:id', verificarToken, obtenerPorId);
@@ -33,8 +36,10 @@ router.post('/:id/historia', verificarToken, crearHistoriaClinica);
 router.post('/:id/odontograma', verificarToken, crearOdontogramaFinal);
 router.post('/:id/diag-infantil', verificarToken, crearDiagInfantil);
 router.post('/:id/presupuesto', verificarToken, crearPresupuestoDental);
-
 router.post('/:id/studies/upload', verificarToken, uploadStudy);
+
+//Rutas para realizar el visualizador de los formularios
+router.get('/forms/receta/:formularioId', verificarToken, getRecetaByFormularioId);
 
 
 module.exports = router;

@@ -17,49 +17,38 @@ function insertarFirma(
   } = {}
 ) {
   const pageWidth = doc.page.width;
-  const posX = (pageWidth - width) / 2;  // ✅ centrado horizontal
-  const posY = doc.y;                    // posición actual Y
+  const posX = (pageWidth - width) / 2;   // centrado horizontal
+  const startY = doc.y;                   // ancla vertical (siempre igual)
 
-  if (!firmaBase64) {
-    doc
-      .moveDown(1.5)
-      .fontSize(10)
-      .fillColor("black")
-      .text("__________________________________", { align: "center" })
-      .text(`Firma de ${label} no disponible`, { align: "center" });
-    return;
+  // 1) Intentar dibujar la imagen si existe
+  if (firmaBase64) {
+    try {
+      const data = firmaBase64.replace(/^data:image\/\w+;base64,/, "");
+      const buffer = Buffer.from(data, "base64");
+      doc.image(buffer, posX, startY, { width, height });
+    } catch (err) {
+      console.error("❌ Error al insertar firma:", err);
+      // Si falla, seguimos sin imagen, pero conservamos el layout.
+    }
   }
+  // 2) SIEMPRE dibujar la línea base y el label, con la misma geometría
+  const lineY = startY + height - 10; // pegada al borde inferior de la firma
+  doc
+    .moveTo(posX, lineY)
+    .lineTo(posX + width, lineY)
+    .strokeColor("#000")
+    .lineWidth(1)
+    .stroke();
 
-  try {
-    const data = firmaBase64.replace(/^data:image\/\w+;base64,/, "");
-    const buffer = Buffer.from(data, "base64");
+  // Texto bajo la línea, centrado
+  doc
+    .fontSize(10)
+    .fillColor("black")
+    .text(`${label}`, 0, lineY + 3, { align: "center" });
 
-    // Firma centrada
-    doc.image(buffer, posX, posY, { width, height });
-
-    // Línea base justo debajo de la firma (pegada)
-    const lineY = posY + height - 10; 
-    doc
-      .moveTo(posX, lineY)
-      .lineTo(posX + width, lineY)
-      .strokeColor("#000")
-      .lineWidth(1)
-      .stroke();
-
-    // Texto bajo la línea
-    doc
-      .fontSize(10)
-      .fillColor("black")
-      .text(`${label}`, 0, lineY + 3, { align: "center" });
-
-    doc.moveDown(1.5);
-  } catch (err) {
-    console.error("❌ Error al insertar firma:", err);
-    doc
-      .fontSize(10)
-      .fillColor("red")
-      .text(`Error al mostrar firma de ${label}`, { align: "center" });
-  }
+  // Avanzar el cursor dejando un respiro uniforme
+  doc.y = lineY + 22; // deja espacio bajo el label
+  doc.moveDown(0.5);
 }
 
 module.exports = { insertarFirma };

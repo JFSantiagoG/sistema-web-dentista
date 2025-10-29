@@ -1631,6 +1631,107 @@ const uploadStudy = [
 ];
 
 
+// === Funciones para obtener información de formularios específicos ===
+
+// === Obtener RECETA por formulario_id (cabecera + medicamentos) ===
+async function getRecetaByFormularioId(req, res) {
+  const formularioId = Number(req.params.formularioId || 0);
+  if (!formularioId) return res.status(400).json({ error: 'formulario_id inválido' });
+
+  try {
+    const [hdrRows] = await db.query(
+      `SELECT r.formulario_id, r.paciente_id, r.medico_id, r.fecha,
+              r.edad_texto, r.edad_anios, r.nombre_medico, r.cedula
+       FROM formulario_receta r
+       WHERE r.formulario_id = ? LIMIT 1`,
+      [formularioId]
+    );
+    if (!hdrRows.length) return res.status(404).json({ error: 'Receta no encontrada' });
+
+    const hdr = hdrRows[0];
+
+    const [pacRows] = await db.query(
+      `SELECT id, nombre, apellido, edad FROM pacientes WHERE id = ? LIMIT 1`,
+      [hdr.paciente_id]
+    );
+    const paciente = pacRows[0] || null;
+
+    const [meds] = await db.query(
+      `SELECT medicamento AS nombre, dosis, frecuencia, duracion, indicaciones
+       FROM formulario_receta_medicamentos
+       WHERE formulario_id = ?
+       ORDER BY id ASC`,
+      [formularioId]
+    );
+
+    let doctor = null;
+    if (hdr.medico_id) {
+      const [dRows] = await db.query(
+        `SELECT id, CONCAT_WS(' ', COALESCE(nombre,''), COALESCE(apellido,'')) AS nombre
+         FROM medicos WHERE id = ? LIMIT 1`,
+        [hdr.medico_id]
+      );
+      doctor = dRows[0] || null;
+    }
+
+    return res.json({
+      formulario_id : hdr.formulario_id,
+      paciente_id   : hdr.paciente_id,
+      fecha         : hdr.fecha,                 // YYYY-MM-DD
+      edad_texto    : hdr.edad_texto,
+      edad_anios    : hdr.edad_anios,
+      nombre_medico : hdr.nombre_medico,
+      cedula        : hdr.cedula,
+      paciente,
+      doctor,
+      medicamentos  : meds
+    });
+  } catch (err) {
+    console.error('❌ getRecetaByFormularioId error:', err);
+    return res.status(500).json({ error: 'Error al consultar receta' });
+  }
+}
+
+async function getRecetaDetalle(req, res) {
+  const { formularioId } = req.params;
+
+  const [cabRows] = await db.query(
+    `SELECT f.id AS formulario_id, f.tipo_id, f.estado,
+            fr.fecha, fr.paciente_id, fr.edad_anios, fr.edad_texto,
+            fr.nombre_medico, fr.cedula, fr.firma_path,
+            p.nombre, p.apellido, p.edad
+     FROM formulario f
+     JOIN formulario_receta fr ON fr.formulario_id = f.id
+     JOIN pacientes p          ON p.id = fr.paciente_id
+     WHERE f.id = ?`, [formularioId]
+  );
+  if (!cabRows.length) return res.status(404).json({ error: 'No existe la receta' });
+
+  const cab = cabRows[0];
+  const [meds] = await db.query(
+    `SELECT medicamento, dosis, frecuencia, duracion, indicaciones
+     FROM formulario_receta_medicamentos
+     WHERE formulario_id = ?
+     ORDER BY id`, [formularioId]
+  );
+
+  res.json({
+    formulario_id: cab.formulario_id,
+    tipo_id: cab.tipo_id,
+    estado: cab.estado,
+    fecha: cab.fecha, // YYYY-MM-DD en tu BD
+    paciente_id: cab.paciente_id,
+    paciente: { nombre: cab.nombre, apellido: cab.apellido, edad: cab.edad },
+    edad_anios: cab.edad_anios,
+    edad_texto: cab.edad_texto,
+    nombre_medico: cab.nombre_medico,
+    cedula: cab.cedula,
+    firma_path: cab.firma_path, // null si no hay
+    medicamentos: meds
+  });
+}
+
+
 module.exports = {
   crearPaciente,
   buscar,
@@ -1647,5 +1748,8 @@ module.exports = {
   crearPresupuestoDental,
   crearDiagInfantil,
   crearReceta,
-  uploadStudy
+  uploadStudy,
+  // Obtener info específica de formularios
+  getRecetaByFormularioId,
+  getRecetaDetalle
 };

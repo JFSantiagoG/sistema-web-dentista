@@ -142,3 +142,6 @@ h2 {
       font-weight: bold;
       text-align: center;
     }
+    .mode-pill { font-size:.85rem; }
+    .firma-wrap{border:1px dashed #bbb; border-radius:8px; background:#fff}
+    .d-none-important{display:none !important;}

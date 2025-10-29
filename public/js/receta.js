@@ -5,26 +5,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- refs del DOM
   const nombreEl   = form.querySelector('[name="nombrePaciente"]');
-  const fechaEl    = form.querySelector('[name="fecha"]'); // fecha de emisión (HOY)
+  const fechaEl    = form.querySelector('[name="fecha"]'); // fecha de emisión (YYYY-MM-DD)
   const edadEl     = form.querySelector('[name="edad"]');
   const hiddenId   = document.getElementById('pacienteId');
   const tablaBody  = document.querySelector('#tablaMedicamentos tbody');
   const addBtn     = document.getElementById('addMedicamentoBtn');
   const btnGuardar = document.getElementById('btnGuardar');
   const btnEnviar  = document.getElementById('btnEnviar');
-  const canvas     = document.getElementById('signature-pad'); // firma (solo para PDF)
+  const canvas     = document.getElementById('signature-pad'); // firma (para PDF y visualizar)
+  const btnClear   = document.getElementById('clearSignature-pad');
 
-  // --- paciente_id desde la URL
+  // --- QueryString (nuevo o visualizar)
   const qs = new URLSearchParams(location.search);
-  const pacienteId = qs.get('paciente_id') || qs.get('id');
-  if (hiddenId && pacienteId) hiddenId.value = pacienteId;
+  const pacienteIdQS   = qs.get('paciente_id') || qs.get('id');
+  const formularioIdQS = qs.get('formulario_id');
 
-  // --- estado local: folio (formulario_id) guardado
+  if (hiddenId && pacienteIdQS) hiddenId.value = pacienteIdQS;
+
+  // --- Estado local: folio (formulario_id) guardado por paciente
   const SS_KEY   = (pid) => `receta:formId:${pid}`;
   const SAVE_KEY = (pid) => `receta:saved:${pid}`;
-  let formularioId = pacienteId ? Number(sessionStorage.getItem(SS_KEY(pacienteId))) || null : null;
+  let formularioId = formularioIdQS
+    ? Number(formularioIdQS)
+    : (pacienteIdQS ? Number(sessionStorage.getItem(SS_KEY(pacienteIdQS))) || null : null);
 
-  // --- canal para avisar al perfil (paciente.html) que refresque
+  // --- Canal para avisar al perfil (paciente.html) que refresque
   const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('recetas') : null;
   function notificarRecetaGuardada(pid, folio) {
     try {
@@ -33,27 +38,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch {}
   }
 
-  // --- bloquear edición de nombre/edad y fijar HOY
-  [nombreEl, edadEl].forEach(el => el && (el.readOnly = true));
+  // --- Helpers de fecha
   const hoyISO = (() => {
     const now = new Date();
     const iso = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     return iso;
   })();
-  if (fechaEl) {
-    fechaEl.value = hoyISO;              // siempre hoy
-    fechaEl.readOnly = true;
-    fechaEl.min = hoyISO;
-    fechaEl.max = hoyISO;
-  }
 
   // --- auth headers (JWT)
   const token = localStorage.getItem('token');
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
-  // --- helpers varios
+  // --- Helpers varios
+  function setInput(el, val) { if (el) el.value = val ?? ''; }
+
+  // nombre desde objeto paciente (evita [object Object])
+  function nombreDesdePaciente(p) {
+    return [p?.nombre, p?.apellido].filter(Boolean).join(' ').trim();
+  }
+
+  // Construye nombre desde respuesta /api/patients/:id (puede traer más apellidos)
   const buildNombre = (p) =>
-    [p?.nombre, p?.apellido, p?.apellido_paterno, p?.apellido_materno].filter(Boolean).join(' ');
+    [p?.nombre, p?.apellido, p?.apellido_paterno, p?.apellido_materno].filter(Boolean).join(' ').trim();
 
   const crearFila = () => {
     const tr = document.createElement('tr');
@@ -69,28 +75,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     return tr;
   };
 
-  const buildData = () => {
-    const data = {
-      pacienteId,
-      nombrePaciente: nombreEl?.value || '',
-      fecha: fechaEl?.value || '',    // SOLO fecha de emisión
-      edad:  edadEl?.value || '',
-      nombreMedico: form.nombreMedico.value,
-      cedula:       form.cedula.value,
-      medicamentos: []
-      // ❌ SIN firma para guardar en BD
-    };
-    tablaBody.querySelectorAll('tr').forEach(fila => {
-      data.medicamentos.push({
-        nombre:       fila.querySelector('[name="medicamento[]"]').value,
-        dosis:        fila.querySelector('[name="dosis[]"]').value,
-        frecuencia:   fila.querySelector('[name="frecuencia[]"]').value,
-        duracion:     fila.querySelector('[name="duracion[]"]').value,
-        indicaciones: fila.querySelector('[name="indicaciones[]"]').value
-      });
-    });
-    return data;
-  };
+  // --- Firma: limpiar y leer base64 (para PDF)
+  function clearCanvas(cnv = canvas) {
+    if (!cnv) return;
+    const ctx = cnv.getContext('2d');
+    ctx.clearRect(0, 0, cnv.width, cnv.height);
+  }
+  btnClear?.addEventListener('click', () => clearCanvas());
+
+  function getFirmaBase64() {
+    if (!canvas) return null;
+    try {
+      // Si está en blanco, retorna null
+      const blank = document.createElement('canvas');
+      blank.width = canvas.width; blank.height = canvas.height;
+      if (canvas.toDataURL() === blank.toDataURL()) return null;
+      return canvas.toDataURL('image/png');
+    } catch { return null; }
+  }
 
   // --- helpers nombre de archivo + descarga
   function stripAccents(str='') {
@@ -123,47 +125,154 @@ document.addEventListener('DOMContentLoaded', async () => {
     URL.revokeObjectURL(url);
   }
 
-  // Firma SOLO para PDF
-  function getFirmaBase64() {
-    if (!canvas) return null;
-    try {
-      // Si usas firma.js para dibujar, esto funciona. Si no, será canvas en blanco y retornará null.
-      const blank = document.createElement('canvas');
-      blank.width = canvas.width; blank.height = canvas.height;
-      const isBlank = canvas.toDataURL() === blank.toDataURL();
-      if (isBlank) return null;
-      return canvas.toDataURL('image/png');
-    } catch (e) {
-      console.warn('No se pudo leer la firma:', e);
-      return null;
-    }
-  }
-
-  // --- cargar paciente (nombre/edad)
-  async function cargarPaciente() {
-    if (!pacienteId) {
-      await Swal.fire({
-        title: 'ID no encontrado',
-        text: 'La URL debe incluir ?paciente_id=<id> (o ?id=).',
-        icon: 'warning',
-        confirmButtonText: 'Ok'
+  // --- Construir payload desde la UI (para guardar/pdf)
+  const buildData = () => {
+    const data = {
+      pacienteId: pacienteIdQS || null,
+      nombrePaciente: nombreEl?.value || '',
+      fecha: fechaEl?.value || '',    // SOLO fecha de emisión YYYY-MM-DD
+      edad:  edadEl?.value || '',
+      nombreMedico: form.nombreMedico.value,
+      cedula:       form.cedula.value,
+      medicamentos: []
+      // firmaMedico se agrega sólo al generar PDF
+    };
+    tablaBody.querySelectorAll('tr').forEach(fila => {
+      data.medicamentos.push({
+        nombre:       fila.querySelector('[name="medicamento[]"]')?.value || '',
+        dosis:        fila.querySelector('[name="dosis[]"]')?.value || '',
+        frecuencia:   fila.querySelector('[name="frecuencia[]"]')?.value || '',
+        duracion:     fila.querySelector('[name="duracion[]"]')?.value || '',
+        indicaciones: fila.querySelector('[name="indicaciones[]"]')?.value || ''
       });
-      return;
-    }
+    });
+    return data;
+  };
+
+  // =========================================================
+  //                 MODO NUEVO (paciente_id)
+  // =========================================================
+  async function cargarPaciente() {
+    if (!pacienteIdQS) return;
     try {
-      const res = await fetch(`/api/patients/${pacienteId}`, { headers: authHeaders });
+      const res = await fetch(`/api/patients/${pacienteIdQS}`, { headers: authHeaders });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const p = await res.json();
       if (nombreEl) nombreEl.value = buildNombre(p) || '';
-      if (edadEl)   edadEl.value   = (p?.edad != null) ? `${p.edad} años` : '';
+      if (edadEl)   edadEl.value   = (p?.edad != null) ? `${p.edad} años` : '— años';
     } catch (e) {
       console.error('Error al cargar paciente:', e);
-      await Swal.fire({ icon:'error', title:'Error', text:'No se pudo cargar la información del paciente.' });
+      Swal.fire({ icon:'error', title:'Error', text:'No se pudo cargar la información del paciente.' });
     }
   }
-  await cargarPaciente();
 
-  // --- agregar/eliminar medicamentos
+  // Inicializa fecha para modo NUEVO (hoy). En visualizar se sobrescribe.
+  if (fechaEl && !formularioIdQS) {
+    fechaEl.value = hoyISO;
+    fechaEl.readOnly = true;
+    fechaEl.min = hoyISO;
+    fechaEl.max = hoyISO;
+  }
+
+  // Bloquea edición de nombre/edad (siempre son de sólo lectura en tu flujo)
+  [nombreEl, edadEl].forEach(el => el && (el.readOnly = true));
+
+  // =========================================================
+  //                 MODO VISUALIZAR (formulario_id)
+  // =========================================================
+  async function drawSignatureIfAny(cnv, firmaPath) {
+    if (!cnv) return;
+    const ctx = cnv.getContext('2d');
+    ctx.clearRect(0, 0, cnv.width, cnv.height);
+    if (!firmaPath) return; // queda en blanco si no hay firma
+    await new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(cnv.width / img.width, cnv.height / img.height);
+        const w = img.width * scale, h = img.height * scale;
+        const x = (cnv.width - w)/2, y = (cnv.height - h)/2;
+        ctx.drawImage(img, x, y, w, h);
+        resolve();
+      };
+      img.src = firmaPath.startsWith('/') ? firmaPath : `/visualizador/uploads/${firmaPath}`;
+    });
+  }
+  // ✅ Normaliza un renglón de medicamento a un mismo esquema
+  function normMed(m = {}) {
+    return {
+      medicamento: m.medicamento ?? m.nombre ?? m.nombre_medicamento ?? m.drug ?? '',
+      dosis:       m.dosis ?? m.dose ?? '',
+      frecuencia:  m.frecuencia ?? m.freq ?? m.frecuencia_texto ?? '',
+      duracion:    m.duracion ?? m.dias ?? m.duracion_dias ?? '',
+      indicaciones:m.indicaciones ?? m.indicacion ?? m.notas ?? ''
+    };
+  }
+  // ✅ Pinta la tabla usando el esquema normalizado
+  function renderMedicamentos(tbody, meds = []) {
+    tbody.innerHTML = '';
+
+    if (!Array.isArray(meds) || meds.length === 0) {
+      tbody.appendChild(crearFila());
+      return;
+    }
+
+    meds.forEach(raw => {
+      const m = normMed(raw);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" class="form-control" name="medicamento[]" value="${m.medicamento}"></td>
+        <td><input type="text" class="form-control" name="dosis[]" value="${m.dosis}"></td>
+        <td><input type="text" class="form-control" name="frecuencia[]" value="${m.frecuencia}"></td>
+        <td><input type="text" class="form-control" name="duracion[]" value="${m.duracion}"></td>
+        <td><input type="text" class="form-control" name="indicaciones[]" value="${m.indicaciones}"></td>
+        <td class="text-center">
+          <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row">🗑️</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+
+  async function populateFromDetalle(raw) {
+    // Nombre (evita [object Object])
+    const nombre =
+      nombreDesdePaciente(raw.paciente) ||
+      (typeof raw.nombrePaciente === 'string' ? raw.nombrePaciente : '') ||
+      '—';
+    setInput(nombreEl, nombre);
+
+    // Fecha sólo YYYY-MM-DD
+    const fecha = (raw.fecha || '').slice(0, 10);
+    setInput(fechaEl, fecha);
+
+    // Edad: usa edad_anios o paciente.edad
+    const edadNum = (raw.edad_anios ?? raw?.paciente?.edad ?? null);
+    setInput(edadEl, (edadNum != null) ? `${edadNum} años` : '— años');
+
+    // Medicamentos
+    renderMedicamentos(tablaBody, raw.medicamentos || []);
+
+    // Firma
+    await drawSignatureIfAny(canvas, raw.firma_path);
+  }
+
+  async function cargarParaVisualizar(formId) {
+    try {
+      const res = await fetch(`/api/patients/forms/receta/${encodeURIComponent(formId)}`, {
+        headers: { 'Accept':'application/json', ...(token ? {Authorization:`Bearer ${token}`} : {}) }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      await populateFromDetalle(json);
+    } catch (e) {
+      console.error('No se pudo visualizar la receta:', e);
+      Swal.fire({ icon:'error', title:'Error', text:'No se pudo cargar la receta para visualizar.' });
+    }
+  }
+
+  // =========================================================
+  //                   LISTENERS DE LA UI
+  // =========================================================
   addBtn?.addEventListener('click', () => {
     tablaBody.appendChild(crearFila());
     Swal.fire({ icon:'success', title:'Medicamento agregado', timer:900, showConfirmButton:false });
@@ -181,17 +290,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   // --- guardar receta en BD (SIN firma)
   async function guardarRecetaEnBD() {
     const data = buildData();
+    const pacienteId = pacienteIdQS;
+
     if (!pacienteId) {
       await Swal.fire({ icon:'warning', title:'ID no encontrado', text:'La URL debe incluir ?paciente_id=<id>' });
       return null;
     }
-    if (!data.medicamentos.length) {
+    if (!data.medicamentos.length || !data.medicamentos.some(m => m.nombre?.trim())) {
       await Swal.fire({ icon:'warning', title:'Faltan datos', text:'Agrega al menos un medicamento.' });
       return null;
     }
 
     // Si ya existe folio, confirma si deseas crear OTRA receta nueva
-    if (formularioId) {
+    if (formularioId && !formularioIdQS) {
       const r = await Swal.fire({
         title: `Esta receta ya fue guardada (folio ${formularioId}).`,
         text: '¿Deseas guardar otra receta nueva con estos datos?',
@@ -201,17 +312,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         cancelButtonText: 'Cancelar'
       });
       if (!r.isConfirmed) return null;
-      // se creará un nuevo registro (no re-usa el folio anterior)
     }
 
-    // Anti doble clic durante la petición
     btnGuardar && (btnGuardar.disabled = true);
 
     try {
       const res = await fetch(`/api/patients/${pacienteId}/recetas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify(data) // <-- SIN firma
+        body: JSON.stringify(data) // SIN firma
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
@@ -219,7 +328,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (formularioId && pacienteId) {
         sessionStorage.setItem(SS_KEY(pacienteId), String(formularioId));
-        notificarRecetaGuardada(pacienteId, formularioId); // 🔔 avisa al perfil
+        notificarRecetaGuardada(pacienteId, formularioId);
       }
 
       await Swal.fire({ icon:'success', title:'Guardado', text:`Folio: ${formularioId ?? '—'}` });
@@ -233,7 +342,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // --- botones
   btnGuardar?.addEventListener('click', guardarRecetaEnBD);
 
   btnEnviar?.addEventListener('click', async () => {
@@ -255,7 +363,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // 👉 NO guardamos automáticamente:
     if (!formularioId) {
       await Swal.fire({
         title: 'Primero guarda la receta',
@@ -266,7 +373,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    // Aviso previo como en quirúrgico
     const pre = await Swal.fire({
       icon: 'info',
       title: 'Se abrirá el PDF en otra pestaña',
@@ -276,7 +382,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!pre.isConfirmed) return;
 
     const data = buildData();
-    const firma = getFirmaBase64(); // 👈 solo para PDF (no se guarda)
+    const firma = getFirmaBase64(); // sólo para PDF (puede ser null si está en blanco)
     if (firma) data.firmaMedico = firma;
     data.formularioId = formularioId; // folio para el PDF
 
@@ -294,7 +400,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const viewUrl = URL.createObjectURL(blob);
       window.open(viewUrl, '_blank');
 
-      // Sugerir descarga con nombre: YYYYMMDD_receta_Nombre_Apellido.pdf
+      // Sugerir descarga
       const fullName = (nombreEl?.value || '').trim();
       const fecha    = fechaEl?.value || hoyISO;
       const filename = buildFilename({ fecha, formKey: 'receta', fullName });
@@ -320,4 +426,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       await Swal.fire({ icon:'error', title:'Error', text:'No se pudo generar el PDF.' });
     }
   });
+
+  // =========================================================
+  //        Flujo de inicio según QS (nuevo vs visualizar)
+  // =========================================================
+  if (formularioIdQS) {
+    const btnGuardar = document.getElementById('btnGuardar');
+    if (btnGuardar) btnGuardar.style.display = 'none'; 
+    await cargarParaVisualizar(formularioIdQS);
+  } else if (pacienteIdQS) {
+    // Nuevo (precarga paciente y deja fecha=HOY)
+    await cargarPaciente();
+  }
 });
