@@ -15,6 +15,7 @@ const { crearHistoriaClinica } = require('../controllers/pacientes.controller');
 const { crearOdontogramaFinal } = require('../controllers/pacientes.controller');
 const { crearPresupuestoDental } = require('../controllers/pacientes.controller');
 const { crearDiagInfantil } = require('../controllers/pacientes.controller');
+const { uploadStudy } = require('../controllers/pacientes.controller');
 const { verificarToken } = require('../middlewares/auth');
 
 router.post('/', crearPaciente);
@@ -32,6 +33,8 @@ router.post('/:id/historia', verificarToken, crearHistoriaClinica);
 router.post('/:id/odontograma', verificarToken, crearOdontogramaFinal);
 router.post('/:id/diag-infantil', verificarToken, crearDiagInfantil);
 router.post('/:id/presupuesto', verificarToken, crearPresupuestoDental);
+
+router.post('/:id/studies/upload', verificarToken, uploadStudy);
 
 
 module.exports = router;

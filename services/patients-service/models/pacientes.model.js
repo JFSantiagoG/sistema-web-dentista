@@ -664,5 +664,35 @@ async function getPatientStudies(pacienteId) {
     return res.insertId;
   }
 
+ // === INSERT patient_files ===
+async function insertPatientFile({
+  paciente_id,
+  tipo,
+  nombre_archivo, // <- SOLO el nombre hasheado
+  storage_path,   // <- ruta pública servible por el gateway/visualizador
+  size_bytes,
+  mime_type,
+  notas
+}) {
+  // Inserta el registro
+  const [result] = await db.query(
+    `INSERT INTO patient_files
+      (paciente_id, tipo, nombre_archivo, storage_path, size_bytes, mime_type, notas)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [paciente_id, tipo, nombre_archivo, storage_path, size_bytes ?? null, mime_type ?? null, notas ?? null]
+  );
 
-module.exports = { buscarPacientes, getFormsSummary, getPatientStudies, insertPaciente };
+  // Retorna el row insertado (incluye fecha_subida autogenerada)
+  const [rows] = await db.query(
+    `SELECT id, paciente_id, tipo, nombre_archivo, storage_path,
+            size_bytes, mime_type, fecha_subida, notas
+       FROM patient_files
+      WHERE id = ?`,
+    [result.insertId]
+  );
+
+  return rows[0];
+}
+
+
+module.exports = { buscarPacientes, getFormsSummary, getPatientStudies, insertPaciente, insertPatientFile };

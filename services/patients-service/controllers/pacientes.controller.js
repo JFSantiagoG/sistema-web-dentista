@@ -1,6 +1,17 @@
 // services/patients-service/controllers/pacientes.controller.js
 const db = require('../db/connection');
-const { buscarPacientes, getFormsSummary, getPatientStudies } = require('../models/pacientes.model');
+const { buscarPacientes, getFormsSummary, getPatientStudies,insertPatientFile } = require('../models/pacientes.model');
+
+const crypto = require('crypto');
+const multer = require('multer');
+const path = require('path');
+const axios = require('axios');
+const FormData = require('form-data');
+const mime = require('mime-types');
+
+const ALLOWED_EXT = ['.png','.jpg','.jpeg','.webp','.bmp','.tif','.tiff','.gif','.dcm'];
+const IMAGE_MIME_PREFIX = 'image/';
+const upload = multer({ storage: multer.memoryStorage() });
 
 
 /* =======================
@@ -1518,6 +1529,107 @@ async function crearPaciente(req, res) {
   }
 }
 
+const uploadStudy = [
+  upload.single('file'),
+  async (req, res) => {
+    try {
+      const pacienteId = Number(req.params.id);
+      if (!pacienteId) {
+        return res.status(400).json({ error: 'paciente_id inválido' });
+      }
+      if (!req.file) {
+        return res.status(400).json({ error: 'Archivo no proporcionado (campo: file)' });
+      }
+
+      const originalName = req.file.originalname || 'archivo';
+      const ext = (path.extname(originalName) || '').toLowerCase();
+
+      if (!ALLOWED_EXT.includes(ext)) {
+        return res.status(400).json({ 
+          error: `Extensión no permitida. Usar: ${ALLOWED_EXT.join(', ')}`
+        });
+      }
+
+      // Detectar MIME (si no viene, inferir por extensión)
+      const detectedMime = req.file.mimetype || mime.lookup(ext) || 'application/octet-stream';
+
+      // Validar "imagen" vs "DICOM"
+      const isDicom = (ext === '.dcm') || detectedMime === 'application/dicom' || detectedMime === 'application/dicom+json';
+      const isImage = (!isDicom && detectedMime.startsWith(IMAGE_MIME_PREFIX));
+
+      if (!isDicom && !isImage) {
+        return res.status(400).json({ 
+          error: 'Sólo se aceptan imágenes (image/*) o archivos .dcm (DICOM)'
+        });
+      }
+
+      // Hash de nombre (evita colisiones) + conservar extensión
+      const hash = crypto
+        .createHash('sha256')
+        .update(originalName + Date.now().toString() + crypto.randomBytes(16))
+        .digest('hex')
+        .slice(0, 24); // compacto
+      const hashedName = `${hash}${ext}`;
+
+      // Enviar al Visualizador Flask (/upload) con el nombre hasheado
+      // IMPORTANTE: Flask espera el campo 'imagen'
+      const form = new FormData();
+      form.append('imagen', req.file.buffer, { filename: hashedName, contentType: detectedMime });
+
+      const VISUALIZADOR_BASE = process.env.VISUALIZADOR_BASE || 'http://localhost:3010';
+      const flaskUrl = `${VISUALIZADOR_BASE}/upload`;
+
+      // Nota: Flask devolverá el HTML; no necesitamos parsear
+      // Lo importante es que guardará el archivo exactamente con 'hashedName'
+      await axios.post(flaskUrl, form, { headers: form.getHeaders() });
+
+      // Construir storage_path ruteable por tu gateway
+      // (Asegúrate que el proxy del gateway no reescriba el path)
+      const storage_path = `/visualizador/uploads/${hashedName}`;
+
+      // Tipo: usar el provisto o inferir
+      let tipo = (req.body.tipo || '').toLowerCase();
+      const ALLOWED_TIPOS = ['rx','panoramica','tac','cbct','foto','otro'];
+      if (!ALLOWED_TIPOS.includes(tipo)) {
+        // Inferencia básica: imagen => 'foto', DICOM => 'otro' (o lo que prefieras)
+        tipo = isDicom ? 'otro' : 'foto';
+      }
+
+      const notas = (req.body.notas || '').toString().slice(0, 500) || null;
+
+      // Insertar en BD
+      const record = await insertPatientFile({
+        paciente_id: pacienteId,
+        tipo,
+        nombre_archivo: hashedName,            // ✅ solo el nombre hasheado
+        storage_path,                           // ✅ ruta pública ruteable via gateway
+        size_bytes: req.file.size || null,
+        mime_type: detectedMime || null,
+        notas
+      });
+
+      return res.status(201).json({
+        ok: true,
+        file: {
+          id: record.id,
+          paciente_id: pacienteId,
+          tipo,
+          nombre_archivo: hashedName,
+          storage_path,
+          size_bytes: req.file.size || null,
+          mime_type: detectedMime || null,
+          fecha_subida: record.fecha_subida,
+          notas
+        }
+      });
+
+    } catch (err) {
+      console.error('❌ uploadStudy error:', err);
+      return res.status(500).json({ error: 'Error al subir estudio' });
+    }
+  }
+];
+
 
 module.exports = {
   crearPaciente,
@@ -1534,5 +1646,6 @@ module.exports = {
   crearOdontogramaFinal,
   crearPresupuestoDental,
   crearDiagInfantil,
-  crearReceta
+  crearReceta,
+  uploadStudy
 };
