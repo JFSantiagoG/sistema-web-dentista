@@ -431,10 +431,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   //        Flujo de inicio según QS (nuevo vs visualizar)
   // =========================================================
   if (formularioIdQS) {
-    const btnGuardar = document.getElementById('btnGuardar');
-    if (btnGuardar) btnGuardar.style.display = 'none'; 
+    // Ocultar botones para no editar ni agregar
+    btnGuardar?.classList.add("d-none");
+    addBtn?.classList.add("d-none");
+    btnClear?.classList.add("d-none");
+
+    // Bloquear inputs del formulario (incluye edad, nombre, cedula, medico)
+    form.querySelectorAll("input, textarea, select").forEach(el => {
+      el.setAttribute("readonly", true);
+      el.setAttribute("disabled", true);
+    });
+
+    // PERMITIR SOLO botones de Enviar y Generar PDF
+    btnEnviar?.removeAttribute("disabled");
+    form.querySelector('[type="submit"]')?.removeAttribute("disabled");
+
+    // Bloquear tabla de medicamentos después de pintar filas
     await cargarParaVisualizar(formularioIdQS);
-  } else if (pacienteIdQS) {
+
+    // Ahora sí, deshabilitar inputs de medicamentos
+    tablaBody.querySelectorAll("input").forEach(input => {
+      input.setAttribute("readonly", true);
+      input.classList.add("bg-light");
+    });
+
+    // Ocultar botones eliminar fila
+    tablaBody.querySelectorAll(".btn-delete-row").forEach(btn => btn.style.display = "none");
+  }else if (pacienteIdQS) {
     // Nuevo (precarga paciente y deja fecha=HOY)
     await cargarPaciente();
   }

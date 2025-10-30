@@ -11,6 +11,8 @@
 </head>
 <body class="bg-light">
   <div class="container py-4 position-relative">
+    <span id="modeBadge" class="badge bg-secondary badge-top-left d-none"></span>
+
     <!-- Encabezado profesional -->
     <div class="header-section mb-4">
       <div class="professional-info text-center">
@@ -31,7 +33,7 @@
         </div>
         <div class="card-body">
           <!-- Fecha -->
-          <div class="mb-3 d-flex align-items-center gap-2">
+          <div class="mb-3 d-flex align-items-center gap-2 flex-wrap">
             <span>México D.F. a</span>
             <input type="date" id="fechaEmision" class="form-control" required style="max-width: 200px;" />
             <span>.</span>
@@ -76,10 +78,10 @@
       </div>
 
       <!-- Botones -->
-      <div class="text-center mt-4">
-        <button type="button" class="btn btn-outline-secondary btn-lg me-2">💾 Guardar Borrador</button>
-        <button type="submit" class="btn btn-success btn-lg">📤 Enviar Justificante</button>
-        <button type="button" id="descargarPDF" class="btn btn-info btn-lg ms-2">🖨️ Descargar PDF</button>
+      <div class="text-center mt-4 d-flex justify-content-center gap-2 flex-wrap">
+        <button type="button" id="btnGuardar" class="btn btn-outline-secondary btn-lg">💾 Guardar Borrador</button>
+        <button type="submit" id="btnEnviar" class="btn btn-success btn-lg">📤 Enviar Justificante</button>
+        <button type="button" id="descargarPDF" class="btn btn-info btn-lg">🖨️ Descargar PDF</button>
       </div>
     </form>
   </div>

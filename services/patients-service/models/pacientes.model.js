@@ -694,5 +694,71 @@ async function insertPatientFile({
   return rows[0];
 }
 
+async function insertJustificante(pacienteId, medicoId, data) {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
 
-module.exports = { buscarPacientes, getFormsSummary, getPatientStudies, insertPaciente, insertPatientFile };
+    // Insertar folio en tabla formulario
+    const [formRes] = await conn.query(
+      `INSERT INTO formulario (paciente_id, medico_id, tipo_id) VALUES (?, ?, 'justificante')`,
+      [pacienteId, medicoId]
+    );
+    const formularioId = formRes.insertId;
+
+    // Insertar datos del justificante
+    await conn.query(
+      `INSERT INTO justificante (formulario_id, fecha_emision, procedimiento, fecha_procedimiento, dias_reposo) 
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        formularioId,
+        data.fechaEmision,
+        data.procedimiento,
+        data.fechaProcedimiento,
+        data.diasReposo
+      ]
+    );
+
+    await conn.commit();
+    return { formulario_id: formularioId };
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+// ✅ Obtener justificante por formulario_id
+async function getJustificanteByFormId(formularioId) {
+  const [rows] = await db.query(
+    `SELECT 
+        f.id AS formulario_id,
+        j.paciente_id,
+        j.nombre_paciente,
+        j.fecha_emision,
+        j.procedimiento,
+        j.fecha_procedimiento,
+        j.dias_reposo
+     FROM formulario_justificante j
+     INNER JOIN formulario f ON f.id = j.formulario_id
+     WHERE j.formulario_id = ?
+       AND f.eliminado_logico = 0
+     LIMIT 1`,
+    [formularioId]
+  );
+  return rows[0] || null;
+}
+
+
+
+
+module.exports = { 
+  buscarPacientes, 
+  getFormsSummary, 
+  getPatientStudies, 
+  insertPaciente, 
+  insertPatientFile, 
+  insertJustificante, 
+  getJustificanteByFormId 
+};

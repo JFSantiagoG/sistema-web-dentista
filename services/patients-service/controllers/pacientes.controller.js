@@ -1,6 +1,6 @@
 // services/patients-service/controllers/pacientes.controller.js
 const db = require('../db/connection');
-const { buscarPacientes, getFormsSummary, getPatientStudies,insertPatientFile } = require('../models/pacientes.model');
+const { buscarPacientes, getFormsSummary, getPatientStudies,insertPatientFile,getJustificanteByFormId } = require('../models/pacientes.model');
 
 const crypto = require('crypto');
 const multer = require('multer');
@@ -1730,8 +1730,21 @@ async function getRecetaDetalle(req, res) {
     medicamentos: meds
   });
 }
+async function obtenerJustificante(req, res) {
+  try {
+    const { formularioId } = req.params;
+    const data = await getJustificanteByFormId(formularioId);
 
+    if (!data) {
+      return res.status(404).json({ error: 'Justificante no encontrado' });
+    }
 
+    res.json(data);
+  } catch (err) {
+    console.error("❌ Error obtenerJustificante:", err);
+    res.status(500).json({ error: 'Error obteniendo justificante' });
+  }
+}
 module.exports = {
   crearPaciente,
   buscar,
@@ -1751,5 +1764,6 @@ module.exports = {
   uploadStudy,
   // Obtener info específica de formularios
   getRecetaByFormularioId,
-  getRecetaDetalle
+  getRecetaDetalle,
+  obtenerJustificante
 };
