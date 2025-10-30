@@ -284,13 +284,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ===== inicialización por modo =====
   modeBadge.classList.remove('d-none');
   if (viewMode) {
-    //modeBadge.className = 'badge bg-dark badge-top-left';
-    //modeBadge.textContent = `Visualizar · folio ${formularioId}`;
     btnGuardar.classList.add('d-none');             // 👈 ocultar Guardar en visualizar
     await cargarJustificantePorFolio(formularioId);
   } else {
-    modeBadge.className = 'badge bg-info badge-top-left';
-    modeBadge.textContent = 'Nuevo justificante';
     await cargarPaciente();
   }
 });
