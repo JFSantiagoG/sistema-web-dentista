@@ -1,14 +1,15 @@
 // public/js/consent-odont.js
 document.addEventListener('DOMContentLoaded', () => {
+  // --- Auth
   const token = localStorage.getItem('token') || '';
   const authHeaders = token ? { Authorization: `Bearer ${token}`, Accept: 'application/json' } : {};
 
-  // --- refs
+  // --- Refs
   const form = document.getElementById('consentForm');
 
   // Paso 1 (captura)
-  const pacienteSelect       = document.getElementById('pacienteSelect');   // oculto, compat
-  const nombreVis            = document.getElementById('nombrePacienteVisible'); // visible, readonly (si existe)
+  const pacienteSelect       = document.getElementById('pacienteSelect');      // oculto (compat)
+  const nombreVis            = document.getElementById('nombrePacienteVisible'); // visible, readonly
   const fechaInput           = document.getElementById('fechaRegistroInput');
   const numeroPacienteInput  = document.getElementById('numeroPacienteInput');
 
@@ -34,11 +35,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const canvasFirma   = document.getElementById('signature-pad');
   const clearFirmaBtn = document.getElementById('clearSignature-pad');
 
-  // --- paciente_id desde URL
-  const qs = new URLSearchParams(location.search);
-  const pacienteId = qs.get('paciente_id') || qs.get('id');
+  // Botón PDF
+  const btnDescargarPDF = document.getElementById('btnDescargarPDF') || document.querySelector('.btn-info');
 
-  // --- util
+  // QueryString
+  const qs = new URLSearchParams(location.search);
+  const pacienteId   = qs.get('paciente_id') || qs.get('id') || null;
+  const formularioIdQS = qs.get('formulario_id') || null;
+
+  // Estado local (folio por paciente)
+  const SS_KEY = (pid) => `consent-odont:formId:${pid}`;
+  let formularioId = (formularioIdQS) ? Number(formularioIdQS) :
+    (pacienteId ? Number(sessionStorage.getItem(SS_KEY(pacienteId))) || null : null);
+
+  // Canal para refrescar perfil (opcional)
+  const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('consent-odont') : null;
+  function notificarGuardado(pid, folio) {
+    try {
+      localStorage.setItem(`consent-odont:saved:${pid}`, String(Date.now()));
+      bc?.postMessage?.({ type: 'consent-odont-saved', pacienteId: String(pid), formularioId: folio });
+    } catch {}
+  }
+
+  // Utils
   const todayISO = () => {
     const now = new Date();
     const z = new Date(now.getTime() - now.getTimezoneOffset()*60000);
@@ -51,10 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const hasSwal = typeof window.Swal !== 'undefined';
   async function info(t, m)  { return hasSwal ? Swal.fire({icon:'info',    title:t, text:m})    : alert(`${t}\n${m||''}`); }
   async function ok(t, m)    { return hasSwal ? Swal.fire({icon:'success', title:t, text:m})    : alert(`${t}\n${m||''}`); }
-  async function err(t, m)   { return hasSwal ? Swal.fire({icon:'error',   title:t, text:m})    : alert(`${t}\n${m||''}`); }
+  async function errbox(t, m){ return hasSwal ? Swal.fire({icon:'error',   title:t, text:m})    : alert(`${t}\n${m||''}`); }
   async function warn(t, m)  { return hasSwal ? Swal.fire({icon:'warning', title:t, text:m})    : alert(`${t}\n${m||''}`); }
 
-  // Nombre de archivo sugerido
+  // Nombre de archivo
   function stripAccents(str='') { return str.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
   function firstAndLast(full='') {
     const parts = (full || '').trim().split(/\s+/).filter(Boolean);
@@ -83,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     URL.revokeObjectURL(url);
   }
 
-  // ====== Init firma con leyenda interna ======
+  // ====== Firma: pad simple con leyenda ======
   function initSignaturePad(canvasEl) {
     if (!canvasEl) return { getB64: () => null, clear: () => {} };
 
@@ -161,13 +180,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const sigPaciente = initSignaturePad(canvasFirma);
   clearFirmaBtn?.addEventListener('click', sigPaciente.clear);
 
-  // --- cargar paciente + prefills
+  // ====== Prefill paciente (modo nuevo)
   async function cargarPacienteYPrefill() {
-    if (!pacienteId) {
-      await warn('Falta el ID del paciente', 'Agrega ?paciente_id=<id> en la URL.');
-      return;
-    }
-    // Fecha = HOY (readonly)
+    if (!pacienteId) return;
     if (fechaInput) {
       const iso = todayISO();
       fechaInput.value = iso;
@@ -175,24 +190,19 @@ document.addEventListener('DOMContentLoaded', () => {
       fechaInput.min = iso;
       fechaInput.max = iso;
     }
-    // Número de paciente = id
     if (numeroPacienteInput) {
       numeroPacienteInput.value = String(pacienteId);
       numeroPacienteInput.readOnly = true;
     }
 
     try {
-      const res = await fetch(`/api/patients/${encodeURIComponent(pacienteId)}`, {
-        headers: authHeaders
-      });
+      const res = await fetch(`/api/patients/${encodeURIComponent(pacienteId)}`, { headers: authHeaders });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const p = await res.json();
       const nombre = buildNombre(p) || '(Sin nombre)';
 
-      // Visible (si existe campo visible)
       if (nombreVis) nombreVis.value = nombre;
 
-      // Select oculto (para compatibilidad con tu showPatientStep)
       if (pacienteSelect) {
         pacienteSelect.innerHTML = '';
         const opt = document.createElement('option');
@@ -203,13 +213,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (e) {
       console.error('Error cargando paciente:', e);
-      await err('Error', 'No se pudo cargar el paciente.');
+      await errbox('Error', 'No se pudo cargar el paciente.');
     }
   }
 
-  // --- navegación pasos (expuestas global)
+  // ====== Paso a confirmación (expuesta global por compat)
   window.showPatientStep = function showPatientStep() {
-    const nombrePaciente = (function() {
+    const nombrePaciente = (() => {
       if (pacienteSelect && pacienteSelect.selectedIndex >= 0) {
         return pacienteSelect.options[pacienteSelect.selectedIndex].text;
       }
@@ -217,21 +227,17 @@ document.addEventListener('DOMContentLoaded', () => {
     })();
 
     const fecha = fechaInput?.value || todayISO();
-    const numero = numeroPacienteInput?.value || String(pacienteId);
-    const tratamiento = tratInput?.value || '';
+    const numero = numeroPacienteInput?.value || (pacienteId ? String(pacienteId) : '');
+    const tratamiento = (tratInput?.value || '').trim();
     const monto = (montoInput?.value ?? '').trim();
     const ausenciaDias = (ausenInput?.value ?? '').trim();
 
     if (!nombrePaciente || !fecha || !tratamiento || monto === '' || ausenciaDias === '') {
-      Swal?.fire?.({
-        icon: 'warning',
-        title: 'Faltan datos',
-        text: 'Completa nombre, fecha, tratamiento, monto y ausencia.',
-      }) || alert('Faltan datos: nombre, fecha, tratamiento, monto y ausencia.');
+      Swal?.fire?.({ icon: 'warning', title: 'Faltan datos', text: 'Completa nombre, fecha, tratamiento, monto y ausencia.' }) ||
+      alert('Faltan datos: nombre, fecha, tratamiento, monto y ausencia.');
       return;
     }
 
-    // Pasar valores a paso 2
     if (confirmNombre) confirmNombre.value = nombrePaciente;
     if (confirmFecha)  confirmFecha.value  = fecha;
     if (confirmNum)    confirmNum.value    = numero;
@@ -239,28 +245,33 @@ document.addEventListener('DOMContentLoaded', () => {
     if (confirmMonto)  confirmMonto.textContent = monto || '0.00';
     if (confirmAus)    confirmAus.textContent   = ausenciaDias || '0';
 
-    // Mostrar paso 2
-    if (step1) step1.style.display = 'none';
-    if (step2) step2.style.display = 'block';
+    step1 && (step1.style.display = 'none');
+    step2 && (step2.style.display = 'block');
     ind1?.classList.remove('active');
     ind2?.classList.add('active');
   };
 
   window.showDoctorStep = function showDoctorStep() {
-    if (step2) step2.style.display = 'none';
-    if (step1) step1.style.display = 'block';
+    step2 && (step2.style.display = 'none');
+    step1 && (step1.style.display = 'block');
     ind2?.classList.remove('active');
     ind1?.classList.add('active');
   };
 
-  // --- submit: guardar en BD (SIN firma)
+  // ====== Guardar en BD (submit del formulario) — sin firma en BD
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    // En visualizar, no guardes nada
+    if (formularioIdQS) {
+      await warn('Solo visualización', 'Este folio está en modo solo lectura.');
+      return;
+    }
+
     const nombrePaciente = confirmNombre?.value || nombreVis?.value || '';
     const fecha = confirmFecha?.value || fechaInput?.value || todayISO();
-    const numero = confirmNum?.value || numeroPacienteInput?.value || String(pacienteId);
-    const tratamiento = confirmTrat?.value || tratInput?.value || '';
+    const numero = confirmNum?.value || numeroPacienteInput?.value || (pacienteId ? String(pacienteId) : '');
+    const tratamiento = (confirmTrat?.value || tratInput?.value || '').trim();
     const monto = (confirmMonto?.textContent ?? montoInput?.value ?? '').trim();
     const ausenciaDias = (confirmAus?.textContent ?? ausenInput?.value ?? '').trim();
 
@@ -275,15 +286,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const body = {
-      fecha,
-      numero_paciente: numero,
+      fecha,                   // YYYY-MM-DD
+      numero_paciente: numero, // string
       tratamiento,
       monto,
       ausencia_dias: ausenciaDias,
       autorizacion,
       economico,
       ausencia
-      // sin firma en BD por ahora
+      // (sin firma en BD aún)
     };
 
     try {
@@ -295,31 +306,42 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
 
-      await ok('Guardado', `Folio ${json.formulario_id ?? '—'} creado correctamente`);
+      formularioId = Number(json.formulario_id) || null;
+      if (formularioId && pacienteId) {
+        sessionStorage.setItem(SS_KEY(pacienteId), String(formularioId));
+        notificarGuardado(pacienteId, formularioId);
+      }
+
+      await ok('Guardado', `Folio ${formularioId ?? '—'} creado correctamente.`);
     } catch (err) {
       console.error('Error al guardar consentimiento:', err);
-      await err('Error', 'No se pudo guardar el consentimiento.');
+      await errbox('Error', 'No se pudo guardar el consentimiento.');
     }
   });
 
-  // --- Descargar PDF (con firma SOLO para el PDF): abrir en otra pestaña + botón de descarga
-  document.querySelector('.btn-info')?.addEventListener('click', async () => {
+  // ====== Descargar / Ver PDF (con firma SOLO para PDF)
+  btnDescargarPDF?.addEventListener('click', async () => {
     const nombre = confirmNombre?.value || nombreVis?.value || '';
     const fecha  = confirmFecha?.value  || fechaInput?.value || todayISO();
-    const numero = confirmNum?.value    || numeroPacienteInput?.value || String(pacienteId);
-    const tratamiento = confirmTrat?.value || tratInput?.value || '';
+    const numero = confirmNum?.value    || numeroPacienteInput?.value || (pacienteId ? String(pacienteId) : '');
+    const tratamiento = (confirmTrat?.value || tratInput?.value || '').trim();
     const monto = (confirmMonto?.textContent ?? montoInput?.value ?? '').trim();
     const ausencia = (confirmAus?.textContent ?? ausenInput?.value ?? '').trim();
-
-    // firma del paciente SOLO para PDF
-    const firmaPaciente = sigPaciente.getB64();
 
     if (!nombre || !fecha || !tratamiento || monto === '' || ausencia === '') {
       await warn('Faltan datos', 'Completa la información para el PDF.');
       return;
     }
 
-    // Aviso: se abrirá en otra pestaña
+    // Requiere folio
+    if (!formularioId) {
+      await warn('Primero guarda', 'Debes guardar para obtener un folio.');
+      return;
+    }
+
+    // firma del paciente SOLO para PDF
+    const firmaPaciente = sigPaciente.getB64(); // puede ser null
+
     await info('Se abrirá el PDF en otra pestaña', 'Al regresar, podrás descargarlo con un nombre sugerido.');
 
     try {
@@ -327,6 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          formularioId, // para que el PDF muestre el folio si lo deseas
           paciente: { nombre, fecha, numeroPaciente: numero },
           tratamiento,
           monto,
@@ -338,11 +361,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const blob = await res.blob();
 
-      // Abrir para visualizar
       const viewUrl = URL.createObjectURL(blob);
       window.open(viewUrl, '_blank');
 
-      // Sugerir descarga con nombre: YYYYMMDD_consent-odont_Nombre_Apellido.pdf
       const filename = buildFilename({ fecha, formKey: 'consent-odont', fullName: nombre });
 
       if (hasSwal) {
@@ -368,13 +389,97 @@ document.addEventListener('DOMContentLoaded', () => {
       URL.revokeObjectURL(viewUrl);
     } catch (e) {
       console.error('Error generando PDF:', e);
-      await err('Error', 'No se pudo generar el PDF.');
+      await errbox('Error', 'No se pudo generar el PDF.');
     }
   });
 
-  // botón limpiar firma (por si SweetAlert/firma.js no lo gestiona)
-  clearFirmaBtn?.addEventListener('click', sigPaciente.clear);
+  // ====== VISUALIZAR (solo lectura) ======
+  async function cargarParaVisualizar(formId) {
+    const url = `/api/patients/forms/consent-odont/${encodeURIComponent(formId)}`;
+    try {
+      // 1) Verifica token para no “morir” en silencio con 401
+      if (!token) {
+        await errbox('No autenticado', 'No hay token en localStorage. Inicia sesión antes de visualizar.');
+        console.warn('[Visualizar] Falta token, se intentará de todos modos:', url);
+      }
+
+      const res = await fetch(url, {
+        headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      });
+
+      // 2) Si falla, muestro el texto de error para saber la causa
+      const raw = await res.text();
+      if (!res.ok) {
+        console.error('[Visualizar] HTTP ' + res.status, raw);
+        let msg = `HTTP ${res.status}`;
+        try { const jErr = JSON.parse(raw); msg += ` – ${jErr.error || jErr.message || 'Error'} `; } catch {}
+        await errbox('No se pudo cargar el consentimiento', msg);
+        return;
+      }
+
+      // 3) Si OK, parseo
+      let j = {};
+      try { j = JSON.parse(raw); } catch (e) {
+        console.error('[Visualizar] JSON inválido:', raw);
+        await errbox('Error', 'Respuesta del servidor inválida.');
+        return;
+      }
+
+      // 4) Mapeo de campos
+      const nombre = j?.paciente?.nombre_completo
+        || ([j?.paciente?.nombre, j?.paciente?.apellido].filter(Boolean).join(' '))
+        || j?.nombre_paciente
+        || '(Sin nombre)';
+
+      const fecha  = (j?.fecha || j?.fecha_emision || '').slice(0,10) || todayISO();
+      const numero = j?.numero_paciente || (j?.paciente?.id ? String(j.paciente.id) : '');
+
+      // Paso 1
+      if (nombreVis) nombreVis.value = nombre;
+      if (fechaInput) fechaInput.value = fecha;
+      if (numeroPacienteInput) numeroPacienteInput.value = numero;
+
+      // Paso 2
+      if (confirmNombre) confirmNombre.value = nombre;
+      if (confirmFecha)  confirmFecha.value  = fecha;
+      if (confirmNum)    confirmNum.value    = numero;
+
+      if (confirmTrat)  confirmTrat.value = j?.tratamiento || '';
+      if (confirmMonto) confirmMonto.textContent = (j?.monto != null ? String(j.monto) : '0.00');
+      if (confirmAus)   confirmAus.textContent   = (j?.ausencia_dias != null ? String(j.ausencia_dias) : '0');
+
+      // Mostrar paso 2 (solo lectura)
+      step1 && (step1.style.display = 'none');
+      step2 && (step2.style.display = 'block');
+      ind1?.classList.remove('active');
+      ind2?.classList.add('active');
+
+      // Desactivar inputs (excepto botón PDF)
+      document.body.classList.add('view-only');
+      form.querySelectorAll('input, textarea, select, button.btn-step').forEach(el => {
+        if (el === btnDescargarPDF) return;
+        el.setAttribute('readonly', true);
+        if (!el.matches('#btnDescargarPDF, .btn-info')) el.setAttribute('disabled', true);
+      });
+
+      clearFirmaBtn?.classList.add('d-none');
+
+      console.info('[Visualizar] OK', j);
+    } catch (e) {
+      console.error('[Visualizar] Excepción', e);
+      await errbox('Error', 'No se pudo cargar el consentimiento para visualizar.');
+    }
+  }
+
 
   // GO
-  cargarPacienteYPrefill();
+  if (formularioIdQS) {
+    cargarParaVisualizar(formularioIdQS);
+  } else {
+    if (!pacienteId) {
+      warn('Falta el ID del paciente', 'Agrega ?paciente_id=<id> en la URL.');
+    } else {
+      cargarPacienteYPrefill();
+    }
+  }
 });

@@ -1745,6 +1745,72 @@ async function obtenerJustificante(req, res) {
     res.status(500).json({ error: 'Error obteniendo justificante' });
   }
 }
+
+// === Obtener CONSENTIMIENTO ODONTOLÓGICO por formulario_id ===
+// === Obtener CONSENT-ODONT por formulario_id (visualización) ===
+async function obtenerConsentOdont(req, res) {
+  try {
+    const formularioId = Number(req.params.formId || req.params.formularioId || 0);
+    if (!formularioId) return res.status(400).json({ error: 'formulario_id inválido' });
+
+    const [rows] = await db.query(`
+      SELECT
+        f.id AS formulario_id,
+        f.estado AS estado_formulario,
+        f.eliminado_logico,
+        co.paciente_id,
+        co.medico_id,
+        co.fecha,
+        co.numero_paciente,
+        co.tratamiento,
+        co.monto,
+        co.ausencia_dias,
+        co.autorizacion_check,
+        co.economico_check,
+        co.ausencia_check,
+        co.firma_paciente_at,
+        p.id AS paciente_id_real,
+        p.nombre AS paciente_nombre,
+        p.apellido AS paciente_apellido,
+        CONCAT_WS(' ', COALESCE(p.nombre,''), COALESCE(p.apellido,'')) AS paciente_nombre_completo
+      FROM formulario f
+      JOIN formulario_consent_odont co ON co.formulario_id = f.id
+      JOIN pacientes p ON p.id = co.paciente_id
+      WHERE f.id = ?
+        AND f.eliminado_logico = 0
+      LIMIT 1
+    `, [formularioId]);
+
+    if (!rows.length) return res.status(404).json({ error: 'Consentimiento odontológico no encontrado' });
+
+    const r = rows[0];
+    return res.json({
+      formulario_id: r.formulario_id,
+      estado: r.estado_formulario,
+      fecha: r.fecha,                          // YYYY-MM-DD
+      numero_paciente: r.numero_paciente,
+      tratamiento: r.tratamiento,
+      monto: r.monto != null ? Number(r.monto) : null,
+      ausencia_dias: r.ausencia_dias != null ? Number(r.ausencia_dias) : null,
+      autorizacion_check: !!r.autorizacion_check,
+      economico_check: !!r.economico_check,
+      ausencia_check: !!r.ausencia_check,
+      firmado: r.firma_paciente_at != null,
+      firma_paciente_at: r.firma_paciente_at,
+      paciente: {
+        id: r.paciente_id_real,
+        nombre: r.paciente_nombre,
+        apellido: r.paciente_apellido,
+        nombre_completo: r.paciente_nombre_completo
+      },
+      medico_id: r.medico_id
+    });
+  } catch (err) {
+    console.error('❌ obtenerConsentOdont error:', err);
+    return res.status(500).json({ error: 'Error al consultar consentimiento odontológico' });
+  }
+}
+
 module.exports = {
   crearPaciente,
   buscar,
@@ -1765,5 +1831,6 @@ module.exports = {
   // Obtener info específica de formularios
   getRecetaByFormularioId,
   getRecetaDetalle,
-  obtenerJustificante
+  obtenerJustificante,
+  obtenerConsentOdont
 };

@@ -21,6 +21,7 @@ const { verificarToken } = require('../middlewares/auth');
 //Para obtener información de formularios específicos
 const { getRecetaByFormularioId } = require('../controllers/pacientes.controller');
 const { obtenerJustificante } = require('../controllers/pacientes.controller');
+const { obtenerConsentOdont } = require('../controllers/pacientes.controller');
 
 router.post('/', crearPaciente);
 router.get('/search', verificarToken, buscar);
@@ -42,6 +43,7 @@ router.post('/:id/studies/upload', verificarToken, uploadStudy);
 //Rutas para realizar el visualizador de los formularios
 router.get('/forms/receta/:formularioId', verificarToken, getRecetaByFormularioId);
 router.get('/forms/justificante/:formularioId', verificarToken, obtenerJustificante);
+router.get('/forms/consent-odont/:formId', verificarToken, obtenerConsentOdont);
 
 
 module.exports = router;

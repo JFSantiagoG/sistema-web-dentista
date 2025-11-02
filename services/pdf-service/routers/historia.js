@@ -1,7 +1,7 @@
 const express = require('express');
 const PDFDocument = require('pdfkit');
 const { insertarEncabezado, insertarPie } = require('../utils/pdfHelpers');
-const { insertarFirma } = require('../utils/pdfFirma');
+const { insertarFirma } = require('../utils/pdffirma');
 
 const router = express.Router();
 

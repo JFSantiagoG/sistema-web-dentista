@@ -115,3 +115,12 @@
         font-size: 0.9rem;
     }
 }
+.view-only input,
+.view-only textarea,
+.view-only select {
+  pointer-events: none !important;
+  background-color: #f8f9fa !important;
+}
+.view-only .btn-step {
+  display: none !important;
+}
