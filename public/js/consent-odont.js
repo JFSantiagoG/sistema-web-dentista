@@ -262,11 +262,12 @@ document.addEventListener('DOMContentLoaded', () => {
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // En visualizar, no guardes nada
+   // En visualizar: permitir "Enviar" (simulado), igual que consent-quiro
     if (formularioIdQS) {
-      await warn('Solo visualización', 'Este folio está en modo solo lectura.');
+      await ok('Formulario enviado', '(Simulado) Enviado al paciente.');
       return;
     }
+
 
     const nombrePaciente = confirmNombre?.value || nombreVis?.value || '';
     const fecha = confirmFecha?.value || fechaInput?.value || todayISO();
