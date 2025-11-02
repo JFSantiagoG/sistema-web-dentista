@@ -785,6 +785,160 @@ async function getConsentQuiroById(formularioId) {
   return rows[0] || null;
 }
 
+async function getOrtodonciaByFormId(formularioId) {
+  const sql = `
+    SELECT 
+      fo.*,
+      f.paciente_id,
+      p.nombre AS paciente_nombre,
+      p.apellido AS paciente_apellido,
+      p.edad AS paciente_edad,
+      CONCAT_WS(' ', COALESCE(m.nombre,''), COALESCE(m.apellido,'')) AS medico_nombre
+    FROM formulario_ortodoncia fo
+    JOIN formulario f ON fo.formulario_id = f.id
+    LEFT JOIN pacientes p ON f.paciente_id = p.id
+    LEFT JOIN medicos m   ON fo.medico_id = m.id
+    WHERE fo.formulario_id = ?
+    LIMIT 1
+  `;
+
+  const [rows] = await db.query(sql, [Number(formularioId)]);
+  if (!rows.length) return null;
+
+  const r = rows[0];
+
+  // Helper robusto para parsear columnas JSON (pueden venir como string u objeto)
+  const J = (v, fallback = []) => {
+    if (v == null) return fallback;
+    if (typeof v === 'string') {
+      try { return JSON.parse(v); } catch { return fallback; }
+    }
+    if (typeof v === 'object') return v;
+    return fallback;
+  };
+
+  return {
+    formularioId: r.formulario_id,
+    paciente: {
+      id: r.paciente_id,
+      nombre: `${r.paciente_nombre || ''} ${r.paciente_apellido || ''}`.trim(),
+      edad: r.paciente_edad ?? null
+    },
+    medico: r.medico_nombre || '—',
+
+    nombrePaciente: r.nombre_paciente,
+    fechaIngreso: r.fecha_ingreso,
+    fechaAlta: r.fecha_alta,
+
+    examenClinico: {
+      tipoCuerpo: r.tipo_cuerpo,
+      tipoCara: r.tipo_cara,
+      tipoCraneo: r.tipo_craneo,
+      otros: r.examen_otros
+    },
+
+    analisisFuncional: {
+      respiracion: r.fun_respiracion,
+      deglucion: r.fun_deglucion,
+      masticacion: r.fun_masticacion,
+      fonacion: r.fun_fonacion,
+      problemasATM: r.atm_problemas_actuales,
+      dolorATM: r.atm_dolor_si ? 'si' : 'no',
+      ruidosATM: r.atm_ruidos_si ? 'si' : 'no',
+      dolorPalpacion: r.atm_dolor_palpacion,
+      aperturaMax: r.atm_max_apertura_mm,
+      latIzq: r.atm_lateralidad_izq_mm,
+      protrusion: r.atm_protrusion_mm,
+      latDer: r.atm_lateralidad_der_mm,
+      verticalOCRC: r.dis_ocrc_vertical_mm,
+      horizontalOCRC: r.dis_ocrc_horizontal_mm,
+      otrosOCRC: r.dis_ocrc_otro
+    },
+
+    analisisModelos: {
+      relacionesDentarias: {
+        oclusionMolaresDer: r.mod_ocl_molares_der_mm,
+        oclusionMolaresIzq: r.mod_ocl_molares_izq_mm,
+        oclusionCaninosDer: r.mod_ocl_caninos_der_mm,
+        oclusionCaninosIzq: r.mod_ocl_caninos_izq_mm,
+        resalteHorizontal: r.mod_resalte_horizontal_mm,
+        resalteVertical: r.mod_resalte_vertical_mm,
+        lineaMediaSup: r.mod_linea_media_sup_mm,
+        lineaMediaInf: r.mod_linea_media_inf_mm,
+        mordidaCruzadaDer: r.mod_mordida_cruzada_post_der_mm,
+        mordidaCruzadaIzq: r.mod_mordida_cruzada_post_izq_mm
+      },
+      anomaliasDentarias: {
+        dientesAusentes: r.mod_anom_ausentes,
+        dientesMalformados: r.mod_anom_malformacion,
+        dientesGiroversion: r.mod_anom_giroversion,
+        dientesInfraversion: r.mod_anom_infraversion,
+        dientesSupraversion: r.mod_anom_supraversion,
+        dientesPigmentados: r.mod_anom_pigmentados
+      },
+      arcadasIndividuales: {
+        arcadaSuperior: r.arcada_sup,
+        arcadaInferior: r.arcada_inf
+      }
+    },
+
+    indicesValorativos: {
+      pontMaxilar: {
+        premaxila:  { nc: r.pont_premaxila_nc,  pac: r.pont_premaxila_pac,  dif: r.pont_premaxila_dif },
+        premolares: { nc: r.pont_premolares_nc, pac: r.pont_premolares_pac, dif: r.pont_premolares_dif },
+        molares:    { nc: r.pont_molares_nc,    pac: r.pont_molares_pac,    dif: r.pont_molares_dif }
+      },
+      pontMandibular: {
+        premolares: { pac: r.col_mand_premolares_pac, dif: r.col_mand_premolares_dif },
+        molares:    { pac: r.col_mand_molares_pac,    dif: r.col_mand_molares_dif }
+      },
+      sumaIncisivos: r.suma_incisivos,
+      boltonSuperiores: J(r.bolton_sup_json, []),
+      boltonInferiores: J(r.bolton_inf_json, []),
+      diferenciaBolton: r.bolton_dif_mm,
+      longitudArco: {
+        apinamiento:       r.long_apinamiento_mm,
+        protrusionDental:  r.long_protrusion_dental_mm,
+        curvaSpee:         r.long_curva_spee_mm,
+        totalLongitud:     r.long_total_mm
+      }
+    },
+
+    planTratamiento: {
+      ortopediaMaxilar:  r.plan_ortopedia_maxilar,
+      ortopediaMandibula:r.plan_ortopedia_mandibula,
+      dientesInfIncisivo:r.plan_inf_incisivo,
+      dientesInfMolar:   r.plan_inf_molar,
+      dientesSupMolar:   r.plan_sup_molar,
+      dientesSupIncisivo:r.plan_sup_incisivo,
+      dientesSupEstetica:r.plan_sup_estetica,
+      anclaje: {
+        maxilar:   r.anclaje_max,
+        mandibular:r.anclaje_man
+      }
+    },
+
+    analisisCefalometrico: {
+      biotipoFacial:        J(r.biotipo_facial_json),
+      claseEsqueletica:     J(r.clase_esqueletica_json),
+      problemasVerticales:  J(r.problemas_verticales_json),
+      factoresDentales:     J(r.factores_dentales_json),
+      diagnosticoCefalometrico: r.diagnostico
+    },
+
+    factoresComplementarios: {
+      claseII:   J(r.clase_ii_json),
+      claseIII:  J(r.clase_iii_json),
+      verticales:J(r.compl_verticales_json)
+    },
+
+    analisisJaraback:   J(r.jaraback_json),
+    medidasLineales:    J(r.medidas_lineales_json),
+    analisisMcNamara:   J(r.mcnamara_json)
+  };
+}
+
+
 
 
 module.exports = { 
@@ -795,5 +949,6 @@ module.exports = {
   insertPatientFile, 
   insertJustificante, 
   getJustificanteByFormId,
-  getConsentQuiroById
+  getConsentQuiroById,
+  getOrtodonciaByFormId
 };

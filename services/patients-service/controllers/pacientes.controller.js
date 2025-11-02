@@ -1,6 +1,6 @@
 // services/patients-service/controllers/pacientes.controller.js
 const db = require('../db/connection');
-const { buscarPacientes, getFormsSummary, getPatientStudies,insertPatientFile,getJustificanteByFormId, getConsentQuiroById } = require('../models/pacientes.model');
+const { buscarPacientes, getFormsSummary, getPatientStudies,insertPatientFile,getJustificanteByFormId, getConsentQuiroById, getOrtodonciaByFormId } = require('../models/pacientes.model');
 
 const crypto = require('crypto');
 const multer = require('multer');
@@ -1852,6 +1852,192 @@ async function obtenerConsentQuiro(req, res) {
   }
 }
 
+// 📌 obtener detalle ORTODONCIA
+async function obtenerOrtodonciaDetalle(req, res) {
+  const { formularioId } = req.params;
+  console.log(`🔍 Buscando ortodoncia folio ${formularioId}`);
+
+  const conn = await db.getConnection();
+  try {
+    const [rows] = await conn.query(
+      `
+      SELECT fo.*, f.paciente_id
+      FROM formulario_ortodoncia fo
+      JOIN formulario f ON f.id = fo.formulario_id
+      WHERE fo.formulario_id = ? AND f.eliminado_logico = 0
+      LIMIT 1
+      `,
+      [formularioId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ error: "No existe ortodoncia" });
+    }
+
+    const r = rows[0];
+    const J = (v) => {
+      if (v == null) return [];
+      if (Array.isArray(v)) return v;           // ya es arreglo
+      if (typeof v === 'object') return v;      // ya es objeto (MySQL JSON)
+      try { return JSON.parse(v); } catch { return []; }
+    };
+    const num = v => (v !== null && v !== undefined && v !== '' ? Number(v) : null);
+
+    // 🧩 #2 Examen clínico
+    const examenClinico = {
+      tipoCuerpo: r.tipo_cuerpo,
+      tipoCara: r.tipo_cara,
+      tipoCraneo: r.tipo_craneo,
+      otros: r.examen_otros
+    };
+
+    // 🧠 #3 Funcional
+    const analisisFuncional = {
+      respiracion: r.fun_respiracion,
+      deglucion: r.fun_deglucion,
+      masticacion: r.fun_masticacion,
+      fonacion: r.fun_fonacion,
+      problemasATM: r.atm_problemas_actuales,
+      dolorATM: r.atm_dolor_si ? "si" : "no",
+      ruidosATM: r.atm_ruidos_si ? "si" : "no",
+      dolorPalpacion: r.atm_dolor_palpacion,
+      aperturaMax: num(r.atm_max_apertura_mm),
+      latIzq: num(r.atm_lateralidad_izq_mm),
+      protrusion: num(r.atm_protrusion_mm),
+      latDer: num(r.atm_lateralidad_der_mm),
+      verticalOCRC: num(r.dis_ocrc_vertical_mm),
+      horizontalOCRC: num(r.dis_ocrc_horizontal_mm),
+      otrosOCRC: r.dis_ocrc_otro
+    };
+
+    // 🦷 #4 Modelos
+    const analisisModelos = {
+      relacionesDentarias: {
+        oclusionMolaresDer: num(r.mod_ocl_molares_der_mm),
+        oclusionMolaresIzq: num(r.mod_ocl_molares_izq_mm),
+        oclusionCaninosDer: num(r.mod_ocl_caninos_der_mm),
+        oclusionCaninosIzq: num(r.mod_ocl_caninos_izq_mm),
+        resalteHorizontal: num(r.mod_resalte_horizontal_mm),
+        resalteVertical: num(r.mod_resalte_vertical_mm),
+        lineaMediaSup: num(r.mod_linea_media_sup_mm),
+        lineaMediaInf: num(r.mod_linea_media_inf_mm),
+        mordidaCruzadaDer: num(r.mod_mordida_cruzada_post_der_mm),
+        mordidaCruzadaIzq: num(r.mod_mordida_cruzada_post_izq_mm)
+      },
+      anomaliasDentarias: {
+        dientesAusentes: r.mod_anom_ausentes,
+        dientesMalformados: r.mod_anom_malformacion,
+        dientesGiroversion: r.mod_anom_giroversion,
+        dientesInfraversion: r.mod_anom_infraversion,
+        dientesSupraversion: r.mod_anom_supraversion,
+        dientesPigmentados: r.mod_anom_pigmentados
+      },
+      arcadasIndividuales: {
+        arcadaSuperior: r.arcada_sup,
+        arcadaInferior: r.arcada_inf
+      }
+    };
+
+    // 📏 #5 Índices
+    const indicesValorativos = {
+      pontMaxilar: {
+        premaxila: { nc: num(r.pont_premaxila_nc), pac: num(r.pont_premaxila_pac), dif: num(r.pont_premaxila_dif) },
+        premolares: { nc: num(r.pont_premolares_nc), pac: num(r.pont_premolares_pac), dif: num(r.pont_premolares_dif) },
+        molares: { nc: num(r.pont_molares_nc), pac: num(r.pont_molares_pac), dif: num(r.pont_molares_dif) }
+      },
+      pontMandibular: {
+        premolares: { pac: num(r.col_mand_premolares_pac), dif: num(r.col_mand_premolares_dif) },
+        molares: { pac: num(r.col_mand_molares_pac), dif: num(r.col_mand_molares_dif) }
+      },
+      sumaIncisivos: num(r.suma_incisivos),
+      boltonSuperiores: J(r.bolton_sup_json),
+      boltonInferiores: J(r.bolton_inf_json),
+      diferenciaBolton: num(r.bolton_dif_mm),
+      longitudArco: {
+        apinamiento: num(r.long_apinamiento_mm),
+        protrusionDental: num(r.long_protrusion_dental_mm),
+        curvaSpee: num(r.long_curva_spee_mm),
+        totalLongitud: num(r.long_total_mm)
+      }
+    };
+
+    // ⚙️ #6 Plan
+    const planTratamiento = {
+      ortopediaMaxilar: r.plan_ortopedia_maxilar,
+      ortopediaMandibula: r.plan_ortopedia_mandibula,
+      dientesInfIncisivo: r.plan_inf_incisivo,
+      dientesInfMolar: r.plan_inf_molar,
+      dientesSupMolar: r.plan_sup_molar,
+      dientesSupIncisivo: r.plan_sup_incisivo,
+      dientesSupEstetica: r.plan_sup_estetica,
+      anclaje: { maxilar: r.anclaje_max, mandibular: r.anclaje_man }
+    };
+
+    // 🧠 #7 Cefalometría
+    const analisisCefalometrico = {
+      biotipoFacial: J(r.biotipo_facial_json).map(it => ({
+        factor: it.factor, nc: num(it.nc), paciente: num(it.paciente), diferencia: num(it.diferencia), dc: num(it.dc), resultado: num(it.resultado)
+      })),
+      claseEsqueletica: J(r.clase_esqueletica_json).map(it => ({
+        factor: it.factor, nc: num(it.nc), paciente: num(it.paciente), dc: num(it.dc)
+      })),
+      problemasVerticales: J(r.problemas_verticales_json).map(it => ({
+        factor: it.factor, nc: num(it.nc), paciente: num(it.paciente), dc: num(it.dc)
+      })),
+      factoresDentales: J(r.factores_dentales_json).map(it => ({
+        factor: it.factor, nc: num(it.nc), paciente: num(it.paciente), dc: num(it.dc)
+      })),
+      diagnosticoCefalometrico: r.diagnostico
+    };
+
+    // ➕ #8 Factores complementarios
+    const factoresComplementarios = {
+      claseII: J(r.clase_ii_json).map(it => ({
+        factor: it.factor, nc: num(it.nc), paciente: num(it.paciente), dc: num(it.dc)
+      })),
+      claseIII: J(r.clase_iii_json).map(it => ({
+        factor: it.factor, nc: num(it.nc), paciente: num(it.paciente), dc: num(it.dc)
+      })),
+      verticales: J(r.compl_verticales_json).map(it => ({
+        factor: it.factor, nc: num(it.nc), paciente: num(it.paciente), dc: num(it.dc)
+      }))
+    };
+
+    // 📊 #9–11 Tablas finales
+    const analisisJaraback = J(r.jaraback_json).map(it => ({ factor: it.factor, nc: num(it.nc), paciente: num(it.paciente), dc: num(it.dc) }));
+    const medidasLineales = J(r.medidas_lineales_json).map(it => ({ factor: it.factor, nc: num(it.nc), paciente: num(it.paciente), dc: num(it.dc) }));
+    const analisisMcNamara = J(r.mcnamara_json).map(it => ({ factor: it.factor, nc: num(it.nc), paciente: num(it.paciente), dc: num(it.dc) }));
+
+    // ✅ Salida lista para FE
+    const out = {
+      formularioId: r.formulario_id,
+      pacienteId: r.paciente_id,
+      nombrePaciente: r.nombre_paciente,
+      fechaIngreso: r.fecha_ingreso,
+      fechaAlta: r.fecha_alta,
+      examenClinico,
+      analisisFuncional,
+      analisisModelos,
+      indicesValorativos,
+      planTratamiento,
+      analisisCefalometrico,
+      factoresComplementarios,
+      analisisJaraback,
+      medidasLineales,
+      analisisMcNamara
+    };
+
+    return res.json(out);
+    
+  } catch (err) {
+    console.error("❌ Error ORTO detalle:", err);
+    return res.status(500).json({ error: "Error al consultar ortodoncia" });
+  } finally {
+    conn.release();
+  }
+}
+
+
 
 module.exports = {
   crearPaciente,
@@ -1875,5 +2061,6 @@ module.exports = {
   getRecetaDetalle,
   obtenerJustificante,
   obtenerConsentOdont,
-  obtenerConsentQuiro
+  obtenerConsentQuiro,
+  obtenerOrtodonciaDetalle
 };

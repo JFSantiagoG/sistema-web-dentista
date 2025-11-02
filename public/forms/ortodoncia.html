@@ -313,7 +313,6 @@
             <div class="col-md-6 mb-3">
               <label class="form-label">Dientes Superiores (16–26)</label>
               <div class="d-flex flex-wrap gap-2">
-                <!-- 12 inputs superiores -->
                 <input type="number" class="form-control input-number" placeholder="16">
                 <input type="number" class="form-control input-number" placeholder="15">
                 <input type="number" class="form-control input-number" placeholder="14">
@@ -331,7 +330,6 @@
             <div class="col-md-6 mb-3">
               <label class="form-label">Dientes Inferiores (46–36)</label>
               <div class="d-flex flex-wrap gap-2">
-                <!-- 12 inputs inferiores -->
                 <input type="number" class="form-control input-number" placeholder="46">
                 <input type="number" class="form-control input-number" placeholder="45">
                 <input type="number" class="form-control input-number" placeholder="44">
@@ -351,7 +349,6 @@
           <div class="alert alert-info">
             <strong>Global:</strong> 91.3 ± 3 &nbsp;&nbsp;|&nbsp;&nbsp;
             <strong>Parcial:</strong> 77.2 ± 1 &nbsp;&nbsp;|&nbsp;&nbsp;
-            <!-- ✅ CORREGIDO: añadimos name="diferenciaBolton" -->
             Los dientes inferiores son
             <input name="diferenciaBolton" type="number" class="form-control d-inline input-number" style="width:80px;">
             mm más que los superiores.
@@ -695,9 +692,9 @@
 
       <!-- Botones -->
       <div class="text-center mt-4">
-        <button type="button" id="btnGuardar" class="btn btn-success">💾 Guardar</button>
-        <button type="button" id="btnEnviar" class="btn btn-info">📤 Enviar al paciente</button>
-        <button type="submit" class="btn btn-primary">🧾 Generar PDF</button>
+        <button type="button" id="btnGuardar" class="btn btn-success btn-step">💾 Guardar</button>
+        <button type="button" id="btnEnviar" class="btn btn-info btn-step">📤 Enviar al paciente</button>
+        <button type="submit" id="descargarPDF" class="btn btn-primary">🧾 Generar PDF</button>
       </div>
     </form>
   </div>
