@@ -1,6 +1,6 @@
 // services/patients-service/controllers/pacientes.controller.js
 const db = require('../db/connection');
-const { buscarPacientes, getFormsSummary, getPatientStudies,insertPatientFile,getJustificanteByFormId } = require('../models/pacientes.model');
+const { buscarPacientes, getFormsSummary, getPatientStudies,insertPatientFile,getJustificanteByFormId, getConsentQuiroById } = require('../models/pacientes.model');
 
 const crypto = require('crypto');
 const multer = require('multer');
@@ -1747,7 +1747,6 @@ async function obtenerJustificante(req, res) {
 }
 
 // === Obtener CONSENTIMIENTO ODONTOLÓGICO por formulario_id ===
-// === Obtener CONSENT-ODONT por formulario_id (visualización) ===
 async function obtenerConsentOdont(req, res) {
   try {
     const formularioId = Number(req.params.formId || req.params.formularioId || 0);
@@ -1811,6 +1810,49 @@ async function obtenerConsentOdont(req, res) {
   }
 }
 
+async function obtenerConsentQuiro(req, res) {
+  try {
+    const formId = Number(req.params.formId);
+    if (!formId) return res.status(400).json({ error: 'formId inválido' });
+
+    const row = await getConsentQuiroById(formId);
+    if (!row) return res.status(404).json({ error: 'No encontrado' });
+
+    const out = {
+      formulario_id: row.formulario_id,
+      fecha: row.fecha,
+      numero_paciente: row.numero_paciente,
+
+      pronostico: row.pronostico,
+      condiciones_posop: row.condiciones_posop,
+      recuperacion_dias: row.recuperacion_dias,
+
+      historia_aceptada:        !!row.historia_aceptada,
+      anestesia_consentida:     !!row.anestesia_consentida,
+      pronostico_entendido:     !!row.pronostico_entendido,
+      recuperacion_entendida:   !!row.recuperacion_entendida,
+      responsabilidad_aceptada: !!row.responsabilidad_aceptada,
+      economico_aceptado:       !!row.economico_aceptado,
+
+      acuerdo_economico: row.acuerdo_economico,
+
+      firma_paciente_at: row.firma_paciente_at,
+      firma_medico_at:   row.firma_medico_at,
+
+      paciente: {
+        id: row.paciente_id,
+        nombre_completo: row.paciente_nombre
+      }
+    };
+
+    return res.json(out);
+  } catch (err) {
+    console.error('obtenerConsentQuiro error:', err?.sqlMessage || err?.message, err);
+    return res.status(500).json({ error: 'Error interno' });
+  }
+}
+
+
 module.exports = {
   crearPaciente,
   buscar,
@@ -1832,5 +1874,6 @@ module.exports = {
   getRecetaByFormularioId,
   getRecetaDetalle,
   obtenerJustificante,
-  obtenerConsentOdont
+  obtenerConsentOdont,
+  obtenerConsentQuiro
 };

@@ -750,6 +750,40 @@ async function getJustificanteByFormId(formularioId) {
   return rows[0] || null;
 }
 
+async function getConsentQuiroById(formularioId) {
+  const sql = `
+    SELECT
+      cq.formulario_id,
+      cq.paciente_id,
+      cq.fecha,
+      cq.numero_paciente,
+
+      -- Nombre completo construido solo con columnas existentes
+      TRIM(CONCAT(COALESCE(p.nombre,''),' ',COALESCE(p.apellido,''))) AS paciente_nombre,
+
+      cq.pronostico,
+      cq.condiciones_posop,
+      cq.recuperacion_dias,
+
+      cq.historia_aceptada,
+      cq.anestesia_consentida,
+      cq.pronostico_entendido,
+      cq.recuperacion_entendida,
+      cq.responsabilidad_aceptada,
+      cq.economico_aceptado,
+
+      cq.acuerdo_economico,
+      cq.firma_paciente_at,
+      cq.firma_medico_at
+    FROM formulario_consent_quiro cq
+    INNER JOIN formulario f ON f.id = cq.formulario_id AND f.eliminado_logico = 0
+    INNER JOIN pacientes  p ON p.id = cq.paciente_id
+    WHERE cq.formulario_id = ?
+    LIMIT 1
+  `;
+  const [rows] = await db.query(sql, [formularioId]);
+  return rows[0] || null;
+}
 
 
 
@@ -760,5 +794,6 @@ module.exports = {
   insertPaciente, 
   insertPatientFile, 
   insertJustificante, 
-  getJustificanteByFormId 
+  getJustificanteByFormId,
+  getConsentQuiroById
 };

@@ -30,14 +30,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const confirmAcuerdoSpan = document.getElementById('confirmAcuerdo');
 
   // Checkboxes
-  const historiaCheck       = document.getElementById('historiaCheck');
-  const anestesiaCheck      = document.getElementById('anestesiaCheck');
-  const pronosticoCheck     = document.getElementById('pronosticoCheck');
-  const recuperacionCheck   = document.getElementById('recuperacionCheck');
-  const responsabilidadCheck= document.getElementById('responsabilidadCheck');
-  const economicoCheck      = document.getElementById('economicoCheck');
+  const historiaCheck        = document.getElementById('historiaCheck');
+  const anestesiaCheck       = document.getElementById('anestesiaCheck');
+  const pronosticoCheck      = document.getElementById('pronosticoCheck');
+  const recuperacionCheck    = document.getElementById('recuperacionCheck');
+  const responsabilidadCheck = document.getElementById('responsabilidadCheck');
+  const economicoCheck       = document.getElementById('economicoCheck');
 
-  // Firmas
+  // Firmas (solo para PDF; no se guardan en BD)
   const canvasPac = document.getElementById('signature-pad-paciente');
   const canvasMed = document.getElementById('signature-pad-medico');
   const clearPac  = document.getElementById('clearSignature-pad-paciente');
@@ -55,10 +55,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const ind1  = document.getElementById('step1-indicator');
   const ind2  = document.getElementById('step2-indicator');
 
-  // --- Utils
+  // QS
   const qs = new URLSearchParams(location.search);
-  const pacienteId = qs.get('paciente_id') || qs.get('id');
+  const pacienteId     = qs.get('paciente_id') || qs.get('id');
+  const formularioIdQS = qs.get('formulario_id') || null;
 
+  // Fecha hoy (ISO)
   const hoyISO = (() => {
     const now = new Date();
     const tzo = now.getTimezoneOffset() * 60000;
@@ -66,9 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
   })();
 
   // Helpers nombre/filename
-  function stripAccents(str='') {
-    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  }
+  function stripAccents(str='') { return str.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
   function firstAndLast(full='') {
     const parts = (full || '').trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) return { first: '', last: '' };
@@ -78,9 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function yyyymmdd(dStr) {
     const s = (dStr || '').replaceAll('-', '');
     if (s && s.length === 8) return s;
-    const now = new Date();
-    const tzo = now.getTimezoneOffset() * 60000;
-    return new Date(now - tzo).toISOString().slice(0,10).replaceAll('-', '');
+    return hoyISO.replaceAll('-', '');
   }
   function buildFilename({ fecha, formKey, fullName }) {
     const { first, last } = firstAndLast(fullName || '');
@@ -98,7 +96,81 @@ document.addEventListener('DOMContentLoaded', () => {
     URL.revokeObjectURL(url);
   }
 
-  // --- Carga paciente por ID
+  // ====== Firma simple con leyenda (clic para dibujar) ======
+  function initSignaturePad(canvasEl) {
+    if (!canvasEl) return { getB64: () => null, clear: () => {} };
+    const ctx = canvasEl.getContext('2d');
+
+    function drawLegend() {
+      const text = 'Haz click aquí para firmar';
+      ctx.save();
+      ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+      ctx.fillStyle = '#6c757d';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, canvasEl.width / 2, canvasEl.height / 2);
+      ctx.restore();
+    }
+    drawLegend();
+
+    let drawing = false, started = false, last = { x: 0, y: 0 };
+
+    function pos(evt) {
+      const r = canvasEl.getBoundingClientRect();
+      const x = (evt.touches ? evt.touches[0].clientX : evt.clientX) - r.left;
+      const y = (evt.touches ? evt.touches[0].clientY : evt.clientY) - r.top;
+      return { x, y };
+    }
+    function down(e) {
+      e.preventDefault?.();
+      drawing = true;
+      if (!started) { started = true; ctx.clearRect(0, 0, canvasEl.width, canvasEl.height); }
+      last = pos(e);
+    }
+    function move(e) {
+      if (!drawing) return;
+      const p = pos(e);
+      ctx.beginPath();
+      ctx.moveTo(last.x, last.y);
+      ctx.lineTo(p.x, p.y);
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      last = p;
+    }
+    function up() { drawing = false; }
+
+    canvasEl.addEventListener('mousedown', down);
+    canvasEl.addEventListener('mousemove', move);
+    canvasEl.addEventListener('mouseup', up);
+    canvasEl.addEventListener('mouseleave', up);
+
+    canvasEl.addEventListener('touchstart', down, { passive: false });
+    canvasEl.addEventListener('touchmove',  move, { passive: false });
+    canvasEl.addEventListener('touchend',   up,   { passive: false });
+
+    canvasEl.style.cursor = 'crosshair';
+
+    function isBlank() {
+      const { data } = ctx.getImageData(0, 0, canvasEl.width, canvasEl.height);
+      for (let i = 3; i < data.length; i += 4) if (data[i] !== 0) return false;
+      return true;
+    }
+    function getB64() {
+      if (!started || isBlank()) return null;
+      return canvasEl.toDataURL('image/png');
+    }
+    function clear() { started = false; drawLegend(); }
+
+    return { getB64, clear };
+  }
+  const sigPac = initSignaturePad(canvasPac);
+  const sigMed = initSignaturePad(canvasMed);
+  clearPac?.addEventListener('click', sigPac.clear);
+  clearMed?.addEventListener('click', sigMed.clear);
+
+  // --- Carga paciente por ID (modo nuevo)
   async function cargarPaciente() {
     if (!pacienteId) {
       await Swal.fire({ icon:'warning', title:'Falta paciente', text:'La URL debe incluir ?paciente_id=<id>' });
@@ -110,99 +182,21 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(`/api/patients/${encodeURIComponent(pacienteId)}`, { headers: authHeaders });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const p = await res.json();
-      const nombre = [p?.nombre, p?.apellido, p?.apellido_paterno, p?.apellido_materno].filter(Boolean).join(' ');
+      const nombre = [p?.nombre, p?.apellido, p?.apellido_paterno, p?.apellido_materno].filter(Boolean).join(' ').trim();
       pacienteNombreEl.value = nombre || '—';
     } catch (err) {
       console.error('Error cargando paciente:', err);
       pacienteNombreEl.value = '(no disponible)';
     }
   }
-
   function setFechaHoy() {
     fechaInput.value = hoyISO;
-    fechaInput.min   = hoyISO;
-    fechaInput.max   = hoyISO;
+    fechaInput.readOnly = true;
+    fechaInput.min = hoyISO;
+    fechaInput.max = hoyISO;
   }
 
-  // --- Firmas (leyenda dentro del canvas)
-  function initSignaturePad(canvas) {
-    if (!canvas) return { getB64: () => null, clear: () => {} };
-    const ctx = canvas.getContext('2d');
-    let drawing = false, started = false;
-    let last = { x: 0, y: 0 };
-
-    function drawLegend() {
-      ctx.save();
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      ctx.fillStyle = '#f8f9fa';
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-      const txt = 'Haz click aquí para firmar';
-      ctx.fillStyle = '#6c757d';
-      ctx.font = '14px sans-serif';
-      const tw = ctx.measureText(txt).width;
-      ctx.fillText(txt, (canvas.width - tw) / 2, canvas.height / 2);
-      ctx.restore();
-    }
-    drawLegend();
-
-    function pos(evt) {
-      const r = canvas.getBoundingClientRect();
-      const x = (evt.touches ? evt.touches[0].clientX : evt.clientX) - r.left;
-      const y = (evt.touches ? evt.touches[0].clientY : evt.clientY) - r.top;
-      return { x, y };
-    }
-    function down(e) {
-      e.preventDefault?.();
-      if (!started) { ctx.clearRect(0,0,canvas.width,canvas.height); started = true; }
-      drawing = true;
-      last = pos(e);
-    }
-    function move(e) {
-      if (!drawing) return;
-      const p = pos(e);
-      ctx.beginPath();
-      ctx.moveTo(last.x, last.y);
-      ctx.lineTo(p.x, p.y);
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = '#000';
-      ctx.stroke();
-      last = p;
-    }
-    function up() { drawing = false; }
-
-    canvas.addEventListener('mousedown', down);
-    canvas.addEventListener('mousemove', move);
-    canvas.addEventListener('mouseup',   up);
-    canvas.addEventListener('mouseleave',up);
-
-    canvas.addEventListener('touchstart', down, { passive: false });
-    canvas.addEventListener('touchmove',  move, { passive: false });
-    canvas.addEventListener('touchend',   up,   { passive: false });
-
-    function isBlank() {
-      const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      for (let i = 3; i < data.length; i += 4) if (data[i] !== 0) return false;
-      return true;
-    }
-    function getB64() {
-      if (!started || isBlank()) return null;
-      return canvas.toDataURL('image/png');
-    }
-    function clear() {
-      started = false;
-      drawLegend();
-    }
-    canvas.style.cursor = 'crosshair';
-    return { getB64, clear };
-  }
-
-  const sigPac = initSignaturePad(canvasPac);
-  const sigMed = initSignaturePad(canvasMed);
-  clearPac?.addEventListener('click', sigPac.clear);
-  clearMed?.addEventListener('click', sigMed.clear);
-
-  // --- Navegación pasos
+  // ====== Navegación de pasos
   function goStep2() {
     if (!pacienteNombreEl.value || !fechaInput.value || !numeroPacienteEl.value) {
       Swal.fire({ icon:'warning', title:'Faltan datos', text:'Completa nombre, fecha y número de paciente.' });
@@ -212,13 +206,11 @@ document.addEventListener('DOMContentLoaded', () => {
       Swal.fire({ icon:'warning', title:'Faltan datos', text:'Completa pronóstico, condiciones, recuperación y acuerdo.' });
       return;
     }
-
-    // Copy → Confirmación
-    confirmNombreEl.value     = pacienteNombreEl.value;
-    confirmFechaEl.value      = fechaInput.value;
-    confirmNumeroEl.value     = numeroPacienteEl.value;
-    confirmPronEl.value       = pronosticoInput.value;
-    confirmCondEl.value       = condicionesInput.value;
+    confirmNombreEl.value          = pacienteNombreEl.value;
+    confirmFechaEl.value           = fechaInput.value;
+    confirmNumeroEl.value          = numeroPacienteEl.value;
+    confirmPronEl.value            = pronosticoInput.value;
+    confirmCondEl.value            = condicionesInput.value;
     confirmRecupSpan.textContent   = recuperacionInput.value;
     confirmAcuerdoSpan.textContent = acuerdoInput.value;
 
@@ -236,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
   btnNext?.addEventListener('click', goStep2);
   btnBack?.addEventListener('click', backStep1);
 
-  // --- Armado payload BD (sin firmas)
+  // ====== Payload BD (sin firmas)
   function buildPayloadBD() {
     return {
       fecha: fechaInput.value,
@@ -256,11 +248,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // --- Guardar (borrador) → BD
+  // ====== Guardar (borrador) → BD
   btnDraft?.addEventListener('click', async () => {
     if (!pacienteId) return Swal.fire({ icon:'warning', title:'Falta paciente', text:'?paciente_id en URL' });
     const body = buildPayloadBD();
-
     try {
       const res = await fetch(`/api/patients/${encodeURIComponent(pacienteId)}/consent-quiro`, {
         method: 'POST',
@@ -269,11 +260,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-
-      console.log('📩 POST /patients/:id/consent-quiro');
-      console.log('Body:', body);
-      console.log('✔️ Guardado BD (consent-quiro):', json);
-
       await Swal.fire({ icon:'success', title:'Guardado', text:`Folio: ${json.formulario_id}` });
     } catch (err) {
       console.error('Error guardando consentimiento:', err);
@@ -281,12 +267,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // --- Submit (por ahora: guarda y simula envío)
+  // ====== Submit (simulado; no re-guarda en visualizar)
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (formularioIdQS) {
+      await Swal.fire({ icon:'success', title:'Formulario enviado', text:'(Simulado) Enviado al paciente.' });
+      return;
+    }
     if (!pacienteId) return Swal.fire({ icon:'warning', title:'Falta paciente', text:'?paciente_id en URL' });
     const body = buildPayloadBD();
-
     try {
       const res = await fetch(`/api/patients/${encodeURIComponent(pacienteId)}/consent-quiro`, {
         method: 'POST',
@@ -294,9 +283,6 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify(body)
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-
-      console.log('✔️ Enviar (guardado previo):', json);
       await Swal.fire({ icon:'success', title:'Formulario enviado', text:'(Simulado) Enviado al paciente.' });
     } catch (err) {
       console.error('Error en enviar (guardar primero):', err);
@@ -304,12 +290,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // --- Generar PDF (con firmas base64; no se guardan en BD)
+  // ====== PDF (con firmas base64 solo para PDF)
   btnPDF?.addEventListener('click', async () => {
     const pre = await Swal.fire({
       icon: 'info',
       title: 'Se abrirá el PDF en otra pestaña',
-      text: 'Al regresar, podrás descargarlo desde aquí.',
+      text: 'Al regresar, podrás descargarlo con nombre sugerido.',
       confirmButtonText: 'Entendido'
     });
     if (!pre.isConfirmed) return;
@@ -331,6 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
       acuerdo:               (confirmAcuerdoSpan.textContent || acuerdoInput.value || ''),
       acuerdoAceptado:      !!economicoCheck.checked,
 
+      // firmas solo para PDF (interactivas también en visualizar)
       firmaPaciente: (typeof sigPac.getB64 === 'function') ? sigPac.getB64() : null,
       firmaMedico:   (typeof sigMed.getB64 === 'function') ? sigMed.getB64() : null
     };
@@ -344,12 +331,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const blob = await res.blob();
-
-      // Ver en otra pestaña
       const viewUrl = URL.createObjectURL(blob);
       window.open(viewUrl, '_blank');
 
-      // Botón para descargar con nombre sugerido
       const fullName = dataPDF.paciente.nombre || '';
       const fecha    = dataPDF.paciente.fecha || hoyISO;
       const filename = buildFilename({ fecha, formKey: 'consent_quiro', fullName });
@@ -365,23 +349,102 @@ document.addEventListener('DOMContentLoaded', () => {
         showCancelButton: true,
         confirmButtonText: '⬇️ Descargar PDF',
         cancelButtonText: 'Cerrar'
-      }).then((r) => {
-        if (r.isConfirmed) downloadBlob(blob, filename);
-      });
+      }).then((r) => { if (r.isConfirmed) downloadBlob(blob, filename); });
 
       URL.revokeObjectURL(viewUrl);
-
-      // Logs de tamaños de firmas (KB)
-      const sizePac = dataPDF.firmaPaciente ? Math.round((dataPDF.firmaPaciente.length * 3 / 4) / 1024) : 0;
-      const sizeMed = dataPDF.firmaMedico ? Math.round((dataPDF.firmaMedico.length * 3 / 4) / 1024) : 0;
-      console.log(`🖊️ Firma paciente: ${sizePac} KB | 🖊️ Firma médico: ${sizeMed} KB`);
     } catch (err) {
       console.error('Error al generar PDF:', err);
       await Swal.fire({ icon:'error', title:'Error', text:'No se pudo generar el PDF.' });
     }
   });
 
-  // --- Init
-  setFechaHoy();
-  cargarPaciente();
+  // ====== VISUALIZAR (solo lectura, pero **firmas interactivas**)
+  async function cargarParaVisualizar(formularioId) {
+    const url = `/api/patients/forms/consent-quiro/${encodeURIComponent(formularioId)}`;
+    try {
+      const res = await fetch(url, {
+        headers: { 'Accept': 'application/json', Authorization: `Bearer ${token}` }
+      });
+      const raw = await res.text();
+      if (!res.ok) {
+        console.error('[Visualizar] HTTP ' + res.status, raw);
+        let msg = `HTTP ${res.status}`;
+        try { const jErr = JSON.parse(raw); msg += ` – ${jErr.error || jErr.message || 'Error'}`; } catch {}
+        await Swal.fire({ icon:'error', title:'No se pudo cargar', text: msg });
+        return;
+      }
+
+      let j = {};
+      try { j = JSON.parse(raw); } catch { await Swal.fire({icon:'error',title:'Error',text:'Respuesta inválida del servidor.'}); return; }
+
+      const nombre = j?.paciente?.nombre_completo || '(Sin nombre)';
+      const fecha  = (j?.fecha || '').slice(0,10) || hoyISO;
+      const numero = j?.numero_paciente || (j?.paciente?.id ? String(j.paciente.id) : '');
+
+      // Paso 1 visibles
+      pacienteNombreEl.value = nombre;
+      fechaInput.value       = fecha;
+      numeroPacienteEl.value = numero;
+
+      // Paso 2
+      confirmNombreEl.value = nombre;
+      confirmFechaEl.value  = fecha;
+      confirmNumeroEl.value = numero;
+
+      confirmPronEl.value   = j?.pronostico || '';
+      confirmCondEl.value   = j?.condiciones_posop || '';
+      confirmRecupSpan.textContent   = (j?.recuperacion_dias != null ? String(j.recuperacion_dias) : '0');
+      confirmAcuerdoSpan.textContent = j?.acuerdo_economico || '';
+
+      // Checkboxes
+      historiaCheck.checked        = !!j?.historia_aceptada;
+      anestesiaCheck.checked       = !!j?.anestesia_consentida;
+      pronosticoCheck.checked      = !!j?.pronostico_entendido;
+      recuperacionCheck.checked    = !!j?.recuperacion_entendida;
+      responsabilidadCheck.checked = !!j?.responsabilidad_aceptada;
+      economicoCheck.checked       = !!j?.economico_aceptado;
+
+      // Mostrar paso 2
+      step1.style.display = 'none';
+      step2.style.display = 'block';
+      ind1.classList.remove('active');
+      ind2.classList.add('active');
+
+      // Bloquear controles de captura/edición...
+      btnDraft?.classList.add('d-none'); // ocultar Guardar Borrador
+      btnNext?.classList.add('d-none');  // ocultar Siguiente
+      btnBack?.classList.add('d-none');  // ocultar Volver
+
+      // ...pero **mantener las firmas interactivas** y sus botones de limpiar
+      // (NO bloqueamos los canvas, ni ocultamos clearPac/clearMed)
+
+      // Deshabilitar inputs/checkboxes/selects y botones "step" (no PDF ni submit)
+      form.querySelectorAll('input, textarea, select, button.btn-step').forEach(el => {
+        if (el === btnPDF) return;               // permitir PDF
+        if (el.type === 'submit') return;        // permitir Enviar (simulado)
+        if (el === clearPac || el === clearMed) return; // permitir limpiar firma
+        el.setAttribute('readonly', 'true');
+        el.setAttribute('disabled', 'true');
+      });
+
+      // IMPORTANTE: no tocar pointerEvents de los canvas -> quedan dibujables
+      // if (canvasPac) canvasPac.style.pointerEvents = 'auto';
+      // if (canvasMed) canvasMed.style.pointerEvents = 'auto';
+
+    } catch (e) {
+      console.error('No se pudo visualizar consent-quiro:', e);
+      await Swal.fire({ icon:'error', title:'Error', text:'No se pudo cargar el consentimiento para visualizar.' });
+    }
+  }
+
+  // ====== Init (nuevo vs visualizar)
+  (function init() {
+    if (formularioIdQS) {
+      cargarParaVisualizar(formularioIdQS);
+    } else {
+      setFechaHoy();
+      cargarPaciente();
+    }
+  })();
+
 });
