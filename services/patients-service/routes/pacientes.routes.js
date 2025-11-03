@@ -24,6 +24,7 @@ const { obtenerJustificante } = require('../controllers/pacientes.controller');
 const { obtenerConsentOdont } = require('../controllers/pacientes.controller');
 const { obtenerConsentQuiro } = require('../controllers/pacientes.controller');
 const { obtenerOrtodonciaDetalle } = require('../controllers/pacientes.controller');
+const { obtenerHistoriaDetalle } = require('../controllers/pacientes.controller');
 
 router.post('/', crearPaciente);
 router.get('/search', verificarToken, buscar);
@@ -48,5 +49,6 @@ router.get('/forms/justificante/:formularioId', verificarToken, obtenerJustifica
 router.get('/forms/consent-odont/:formId', verificarToken, obtenerConsentOdont);
 router.get('/forms/consent-quiro/:formId', verificarToken, obtenerConsentQuiro);
 router.get('/forms/ortodoncia/:formularioId', verificarToken, obtenerOrtodonciaDetalle);
+router.get('/forms/historia/:formularioId', verificarToken, obtenerHistoriaDetalle);
 
 module.exports = router;

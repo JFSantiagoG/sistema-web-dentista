@@ -1,6 +1,6 @@
 // services/patients-service/controllers/pacientes.controller.js
 const db = require('../db/connection');
-const { buscarPacientes, getFormsSummary, getPatientStudies,insertPatientFile,getJustificanteByFormId, getConsentQuiroById, getOrtodonciaByFormId } = require('../models/pacientes.model');
+const { buscarPacientes, getFormsSummary, getPatientStudies,insertPatientFile,getJustificanteByFormId, getConsentQuiroById, getHistoriaByFormId } = require('../models/pacientes.model');
 
 const crypto = require('crypto');
 const multer = require('multer');
@@ -2037,6 +2037,38 @@ async function obtenerOrtodonciaDetalle(req, res) {
   }
 }
 
+async function obtenerHistoriaDetalle(req, res) {
+  try {
+    const { formularioId } = req.params;
+    const folio = Number(formularioId);
+    if (!folio) {
+      return res.status(400).json({ error: 'formularioId inválido' });
+    }
+
+    const data = await getHistoriaByFormId(folio);
+    if (!data) {
+      return res.status(404).json({ error: 'Historia no encontrada' });
+    }
+
+    // Normaliza columnas JSON por si el driver devuelve string
+    const jsonFields = [
+      'antecedentes_patologicos_json',
+      'solo_mujeres_json',
+      'no_patologicos_json',
+      'antecedentes_familiares_json',
+    ];
+    jsonFields.forEach((k) => {
+      if (typeof data[k] === 'string') {
+        try { data[k] = JSON.parse(data[k]); } catch {}
+      }
+    });
+
+    return res.json(data);
+  } catch (err) {
+    console.error('❌ Error obtenerHistoriaDetalle:', err);
+    return res.status(500).json({ error: 'Error al consultar historia' });
+  }
+}
 
 
 module.exports = {
@@ -2062,5 +2094,6 @@ module.exports = {
   obtenerJustificante,
   obtenerConsentOdont,
   obtenerConsentQuiro,
-  obtenerOrtodonciaDetalle
+  obtenerOrtodonciaDetalle, 
+  obtenerHistoriaDetalle
 };

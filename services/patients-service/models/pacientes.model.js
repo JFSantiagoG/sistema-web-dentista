@@ -938,6 +938,67 @@ async function getOrtodonciaByFormId(formularioId) {
   };
 }
 
+async function getHistoriaByFormId(formularioId) {
+  const [rows] = await db.query(
+    `
+    SELECT
+      formulario_id,
+      paciente_id,
+      medico_id,
+      nombre_paciente,
+      domicilio,
+      telefono,
+      sexo,
+      DATE_FORMAT(fecha_nacimiento, '%Y-%m-%d') AS fecha_nacimiento,
+      edad,
+      estado_civil,
+      ocupacion,
+      motivo_consulta,
+
+      -- JSON y flags
+      antecedentes_patologicos,
+      antecedentes_patologicos_json,
+      tratamiento_medico_si,
+      tratamiento_medico_cual,
+      medicamento_si,
+      medicamento_cual,
+      problema_dental_si,
+      problema_dental_cual,
+      solo_mujeres_json,
+      no_patologicos_json,
+      antecedentes_familiares_json,
+
+      -- Interrogatorio por sistemas
+      sis_cardiovascular,
+      sis_circulatorio,
+      sis_respiratorio,
+      sis_digestivo,
+      sis_urinario,
+      sis_genital,
+      sis_musculoesqueletico,
+      sis_snc,
+
+      -- Exploración
+      expl_cabeza_cuello_cara_perfil,
+      expl_atm,
+      expl_labios_frenillos_lengua_paladar_orofaringe_yugal,
+      expl_piso_boca_glandulas_salivales_carrillos,
+      expl_encias_procesos_alveolares,
+
+      -- Otros
+      observaciones,
+      hallazgos,
+      firma_paciente_at,
+      creado_en,
+      actualizado_en
+    FROM formulario_historia_clinica
+    WHERE formulario_id = ?
+    LIMIT 1
+    `,
+    [formularioId]
+  );
+  return rows[0] || null;
+}
 
 
 
@@ -950,5 +1011,6 @@ module.exports = {
   insertJustificante, 
   getJustificanteByFormId,
   getConsentQuiroById,
-  getOrtodonciaByFormId
+  getOrtodonciaByFormId,
+  getHistoriaByFormId
 };

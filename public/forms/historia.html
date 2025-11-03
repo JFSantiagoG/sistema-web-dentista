@@ -24,65 +24,65 @@
 
     <!-- Formulario -->
     <form id="historiaClinicaForm" class="step-form">
-    <!-- 1. Datos Generales del Paciente -->
-    <div class="card section-card">
-      <div class="card-header bg-primary text-white">
-        <h5 class="mb-0">1. Datos Generales del Paciente</h5>
-      </div>
-      <div class="card-body">
-        <input type="hidden" id="pacienteId" />
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label class="form-label required">Nombre</label>
-            <input type="text" class="form-control" id="nombrePaciente" required readonly />
-          </div>
-          <div class="col-md-6 mb-3">
-            <label class="form-label required">Domicilio</label>
-            <input type="text" class="form-control" id="domicilioPaciente" required readonly />
-          </div>
-          <div class="col-md-4 mb-3">
-            <label class="form-label required">Teléfono</label>
-            <input type="text" class="form-control" id="telefonoPaciente" required readonly />
-          </div>
-          <div class="col-md-4 mb-3">
-            <label class="form-label">Sexo</label>
-            <select class="form-select" id="sexoPaciente" disabled>
-              <option value="">Seleccionar...</option>
-              <option value="Masculino">Masculino</option>
-              <option value="Femenino">Femenino</option>
-              <option value="Otro">Otro</option>
-            </select>
-          </div>
-          <div class="col-md-4 mb-3">
-            <label class="form-label required">Fecha de Nacimiento</label>
-            <input type="date" class="form-control" id="fechaNacimiento" required disabled />
-          </div>
-          <div class="col-md-4 mb-3">
-            <label class="form-label">Edad</label>
-            <input type="text" class="form-control" id="edadPaciente" readonly />
-          </div>
-          <div class="col-md-4 mb-3">
-            <label class="form-label">Estado Civil</label>
-            <select class="form-select" id="estadoCivil" disabled>
-              <option value="">Seleccionar...</option>
-              <option value="Soltero/a">Soltero/a</option>
-              <option value="Casado/a">Casado/a</option>
-              <option value="Viudo/a">Viudo/a</option>
-              <option value="Divorciado/a">Divorciado/a</option>
-              <option value="Unión Libre">Unión Libre</option>
-            </select>
-          </div>
-          <div class="col-md-4 mb-3">
-            <label class="form-label">Ocupación</label>
-            <input type="text" class="form-control" id="ocupacionPaciente" readonly />
-          </div>
-          <div class="col-12 mb-3">
-            <label class="form-label required">Motivo de la Consulta</label>
-            <textarea class="form-control" id="motivoConsulta" rows="2" required></textarea>
+      <!-- 1. Datos Generales del Paciente -->
+      <div class="card section-card">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">1. Datos Generales del Paciente</h5>
+        </div>
+        <div class="card-body">
+          <input type="hidden" id="pacienteId" />
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label required">Nombre</label>
+              <input type="text" class="form-control" id="nombrePaciente" required readonly />
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label required">Domicilio</label>
+              <input type="text" class="form-control" id="domicilioPaciente" required readonly />
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label required">Teléfono</label>
+              <input type="text" class="form-control" id="telefonoPaciente" required readonly />
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Sexo</label>
+              <select class="form-select" id="sexoPaciente" disabled>
+                <option value="">Seleccionar...</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Femenino">Femenino</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label required">Fecha de Nacimiento</label>
+              <input type="date" class="form-control" id="fechaNacimiento" required disabled />
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Edad</label>
+              <input type="text" class="form-control" id="edadPaciente" readonly />
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Estado Civil</label>
+              <select class="form-select" id="estadoCivil" disabled>
+                <option value="">Seleccionar...</option>
+                <option value="Soltero/a">Soltero/a</option>
+                <option value="Casado/a">Casado/a</option>
+                <option value="Viudo/a">Viudo/a</option>
+                <option value="Divorciado/a">Divorciado/a</option>
+                <option value="Unión Libre">Unión Libre</option>
+              </select>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Ocupación</label>
+              <input type="text" class="form-control" id="ocupacionPaciente" readonly />
+            </div>
+            <div class="col-12 mb-3">
+              <label class="form-label required">Motivo de la Consulta</label>
+              <textarea class="form-control" id="motivoConsulta" rows="2" required></textarea>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
       <!-- 2. Antecedentes Personales Patológicos -->
       <div class="card section-card">
@@ -100,46 +100,44 @@
                   <th>Fecha</th>
                 </tr>
               </thead>
-              <tbody id="tablaPatologicos">
-                <!-- (Opcional: tus scripts pueden generar filas aquí) -->
-              </tbody>
+              <tbody id="tablaPatologicos"></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- 3. Preguntas Adicionales sobre Tratamiento Médico -->
+      <!-- 3. Tratamiento Médico / Medicación / Problema Dental -->
       <div class="card section-card">
         <div class="card-header bg-warning text-dark">
-          <h5 class="mb-0">3. Preguntas Adicionales sobre Tratamiento Médico</h5>
+          <h5 class="mb-0">3. Tratamiento Médico / Medicación / Problema Dental</h5>
         </div>
         <div class="card-body">
           <div class="mb-3">
             <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="tratamientoMedicoSi" onchange="toggleConditional('tratamientoMedicoSi', 'tratamientoMedicoCual')">
+              <input class="form-check-input" type="checkbox" id="tratamientoMedicoSi">
               <label class="form-check-label" for="tratamientoMedicoSi">¿Se encuentra bajo tratamiento médico?</label>
             </div>
-            <div id="tratamientoMedicoCual" class="conditional-field" style="display:none;">
+            <div id="tratamientoMedicoCual" class="conditional-field mt-2" style="display:none;">
               <label class="form-label">¿Cuál?</label>
               <input type="text" class="form-control" placeholder="Especificar tratamiento">
             </div>
           </div>
           <div class="mb-3">
             <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="medicamentoSi" onchange="toggleConditional('medicamentoSi', 'medicamentoCual')">
+              <input class="form-check-input" type="checkbox" id="medicamentoSi">
               <label class="form-check-label" for="medicamentoSi">¿Está tomando algún medicamento?</label>
             </div>
-            <div id="medicamentoCual" class="conditional-field" style="display:none;">
+            <div id="medicamentoCual" class="conditional-field mt-2" style="display:none;">
               <label class="form-label">¿Cuál?</label>
               <input type="text" class="form-control" placeholder="Especificar medicamento">
             </div>
           </div>
           <div class="mb-3">
             <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="problemaDentalSi" onchange="toggleConditional('problemaDentalSi', 'problemaDentalCual')">
+              <input class="form-check-input" type="checkbox" id="problemaDentalSi">
               <label class="form-check-label" for="problemaDentalSi">¿Ha tenido un problema serio o asociado con algún tratamiento dental previo?</label>
             </div>
-            <div id="problemaDentalCual" class="conditional-field" style="display:none;">
+            <div id="problemaDentalCual" class="conditional-field mt-2" style="display:none;">
               <label class="form-label">¿Cuál?</label>
               <input type="text" class="form-control" placeholder="Especificar problema">
             </div>
@@ -149,7 +147,7 @@
 
       <!-- 4. Solo Mujeres -->
       <div class="card section-card" id="seccionMujeres">
-        <div class="card-header bg-pink text-white">
+        <div class="card-header bg-pink text-white" style="background-color:#e83e8c;">
           <h5 class="mb-0">4. Solo Mujeres</h5>
         </div>
         <div class="card-body">
@@ -163,9 +161,7 @@
                   <th>Fecha</th>
                 </tr>
               </thead>
-              <tbody id="tablaMujeres">
-                <!-- (Opcional: tus scripts pueden generar filas aquí) -->
-              </tbody>
+              <tbody id="tablaMujeres"></tbody>
             </table>
           </div>
         </div>
@@ -187,9 +183,7 @@
                   <th>Cantidad</th>
                 </tr>
               </thead>
-              <tbody id="tablaNoPatologicos">
-                <!-- (Opcional: tus scripts pueden generar filas aquí) -->
-              </tbody>
+              <tbody id="tablaNoPatologicos"></tbody>
             </table>
           </div>
         </div>
@@ -216,9 +210,7 @@
                   <th>Otros</th>
                 </tr>
               </thead>
-              <tbody id="tablaFamiliares">
-                <!-- (Opcional: tus scripts pueden generar filas aquí) -->
-              </tbody>
+              <tbody id="tablaFamiliares"></tbody>
             </table>
           </div>
         </div>
@@ -230,38 +222,38 @@
           <h5 class="mb-0">7. Interrogatorio por Aparatos y Sistemas</h5>
         </div>
         <div class="card-body">
-          <div class="row">
-            <div class="col-md-6 mb-3">
+          <div class="row g-3">
+            <div class="col-md-6">
               <label class="form-label">Cardiovascular</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea class="form-control sis" data-key="Cardiovascular" rows="2"></textarea>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6">
               <label class="form-label">Circulatorio</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea class="form-control sis" data-key="Circulatorio" rows="2"></textarea>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6">
               <label class="form-label">Respiratorio</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea class="form-control sis" data-key="Respiratorio" rows="2"></textarea>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6">
               <label class="form-label">Digestivo</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea class="form-control sis" data-key="Digestivo" rows="2"></textarea>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6">
               <label class="form-label">Urinario</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea class="form-control sis" data-key="Urinario" rows="2"></textarea>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6">
               <label class="form-label">Genital</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea class="form-control sis" data-key="Genital" rows="2"></textarea>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6">
               <label class="form-label">Musculoesquelético</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea class="form-control sis" data-key="Musculoesquelético" rows="2"></textarea>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6">
               <label class="form-label">SNC (Sistema Nervioso Central)</label>
-              <textarea class="form-control" rows="2"></textarea>
+              <textarea class="form-control sis" data-key="SNC" rows="2"></textarea>
             </div>
           </div>
         </div>
@@ -275,23 +267,23 @@
         <div class="card-body">
           <div class="mb-3">
             <label class="form-label">Cabeza, Cuello, Cara, Perfil</label>
-            <textarea class="form-control" rows="2"></textarea>
+            <textarea class="form-control expl" data-key="Cabeza, Cuello, Cara, Perfil" rows="2"></textarea>
           </div>
           <div class="mb-3">
             <label class="form-label">ATM (Articulación Temporomandibular)</label>
-            <textarea class="form-control" rows="2"></textarea>
+            <textarea class="form-control expl" data-key="ATM (Articulación Temporomandibular)" rows="2"></textarea>
           </div>
           <div class="mb-3">
             <label class="form-label">Labios, Frenillos, Lengua, Paladar Duro, Blando, Orofaringe, Región Yugal</label>
-            <textarea class="form-control" rows="2"></textarea>
+            <textarea class="form-control expl" data-key="Labios, Frenillos, Lengua, Paladar Duro, Blando, Orofaringe, Región Yugal" rows="2"></textarea>
           </div>
           <div class="mb-3">
             <label class="form-label">Piso de Boca, Glándulas Salivales, Carrillos</label>
-            <textarea class="form-control" rows="2"></textarea>
+            <textarea class="form-control expl" data-key="Piso de Boca, Glándulas Salivales, Carrillos" rows="2"></textarea>
           </div>
           <div class="mb-3">
             <label class="form-label">Encías, Procesos Alveolares</label>
-            <textarea class="form-control" rows="2"></textarea>
+            <textarea class="form-control expl" data-key="Encías, Procesos Alveolares" rows="2"></textarea>
           </div>
         </div>
       </div>
@@ -302,7 +294,7 @@
           <h5 class="mb-0">9. Observaciones Generales</h5>
         </div>
         <div class="card-body">
-          <textarea class="form-control" rows="3" placeholder="Notas adicionales..."></textarea>
+          <textarea id="observacionesGenerales" class="form-control" rows="3" placeholder="Notas adicionales..."></textarea>
         </div>
       </div>
 
@@ -312,7 +304,7 @@
           <h5 class="mb-0">10. Hallazgos Radiográficos y de Laboratorio</h5>
         </div>
         <div class="card-body">
-          <textarea class="form-control" rows="3" placeholder="Resultados de estudios diagnósticos..."></textarea>
+          <textarea id="hallazgos" class="form-control" rows="3" placeholder="Resultados de estudios diagnósticos..."></textarea>
         </div>
       </div>
 
@@ -335,7 +327,6 @@
         <button type="submit" class="btn btn-success btn-lg">📤 Enviar Formulario</button>
         <button type="button" id="descargarPDF" class="btn btn-info btn-lg ms-2">🖨️ Descargar PDF</button>
       </div>
-
     </form>
   </div>
 
