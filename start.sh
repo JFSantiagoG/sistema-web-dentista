@@ -1,110 +1,47 @@
 #!/bin/bash
 BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOG_DIR="$BASE/logs"
+mkdir -p "$LOG_DIR"
 
-echo "🔄 Iniciando servicios clínicos..."
+start_service() {
+  local name="$1"
+  local dir="$2"
+  local cmd="$3"
 
-# 🚪 Gateway
-echo "🚪 Iniciando Gateway..."
-cd "$BASE/gateway" && npm install && node server.js &
+  echo "▶️ Iniciando $name..."
+  cd "$dir" || { echo "❌ Directorio no encontrado: $dir"; exit 1; }
 
-# 🔐 Auth Service
-echo "🔐 Iniciando Auth Service..."
-cd "$BASE/services/auth-service" && npm install && node server.js &
+  if [[ -f "package.json" ]]; then
+    npm install --omit=dev >/dev/null 2>&1
+  fi
 
-# 📋 Forms Service
-echo "📋 Iniciando Forms Service..."
-cd "$BASE/services/forms-service" && npm install && node server.js &
+  if [[ "$name" == "visualizador" ]]; then
+    if [ ! -d "venv" ]; then
+      python3 -m venv venv
+      source venv/bin/activate
+      pip install flask werkzeug
+    else
+      source venv/bin/activate
+    fi
+    export FLASK_ENV=production
+    export FLASK_DEBUG=0
+  fi
 
-# 📄 PDF Service
-echo "📄 Iniciando PDF Service..."
-cd "$BASE/services/pdf-service" && npm install && node server.js &
+  # Usamos printf %q para escapar comandos de forma segura
+  local full_cmd
+  printf -v full_cmd "%s >> %s 2>&1" "$cmd" "$LOG_DIR/$name.log"
 
-# 📅 Appointments Service
-echo "📅 Iniciando Appointments Service..."
-cd "$BASE/services/appointments-service" && npm install && node server.js &
+  screen -dmS "clinica_$name" bash -c "$full_cmd"
+}
 
-# 👤 Patients Service
-echo "👤 Iniciando Patients Service..."
-cd "$BASE/services/patients-service" && npm install && node server.js &
+# Iniciar servicios
+start_service "gateway"      "$BASE/gateway"                     "node server.js"
+start_service "auth"         "$BASE/services/auth-service"        "node server.js"
+start_service "forms"        "$BASE/services/forms-service"       "node server.js"
+start_service "pdf"          "$BASE/services/pdf-service"         "node server.js"
+start_service "appointments" "$BASE/services/appointments-service" "node server.js"
+start_service "patients"     "$BASE/services/patients-service"    "node server.js"
+start_service "visualizador" "$BASE/services/visualizador-service" "python3 app.py"
 
-# 🖼️ Visualizador Service (Python Flask)
-echo "🖼️ Iniciando Visualizador Service..."
-cd "$BASE/services/visualizador-service"
-
-# Activar entorno virtual si existe
-if [ -d "venv" ]; then
-  source venv/bin/activate
-else
-  echo "⚠️ Entorno virtual no encontrado. Creando uno..."
-  python3 -m venv venv
-  source venv/bin/activate
-  pip install flask werkzeug
-fi
-
-python app.py &
-
-# 🧹 Manejo de cierre limpio
-trap "echo '⛔ Deteniendo servicios...'; pkill -P $$; exit" SIGINT SIGTERM
-wait
-
-
-
-
-
-
-
-
-
-
-
----------------------
-
-#!/bin/bash
-BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-echo "🔄 Iniciando servicios clínicos..."
-mkdir -p "$BASE/logs"
-
-# 🚪 Gateway
-echo "🚪 Iniciando Gateway..."
-cd "$BASE/gateway"
-nohup node server.js >> "$BASE/logs/gateway.log" 2>&1 &
-
-# 🔐 Auth Service
-echo "🔐 Iniciando Auth Service..."
-cd "$BASE/services/auth-service"
-nohup node server.js >> "$BASE/logs/auth-service.log" 2>&1 &
-
-# 📋 Forms Service
-echo "📋 Iniciando Forms Service..."
-cd "$BASE/services/forms-service"
-nohup node server.js >> "$BASE/logs/forms-service.log" 2>&1 &
-
-# 📄 PDF Service
-echo "📄 Iniciando PDF Service..."
-cd "$BASE/services/pdf-service"
-nohup node server.js >> "$BASE/logs/pdf-service.log" 2>&1 &
-
-# 📅 Appointments Service
-echo "📅 Iniciando Appointments Service..."
-cd "$BASE/services/appointments-service"
-nohup node server.js >> "$BASE/logs/appointments-service.log" 2>&1 &
-
-# 👤 Patients Service
-echo "👤 Iniciando Patients Service..."
-cd "$BASE/services/patients-service"
-nohup node server.js >> "$BASE/logs/patients-service.log" 2>&1 &
-
-# 🖼️ Visualizador Service (Python Flask)
-echo "🖼️ Iniciando Visualizador Service..."
-cd "$BASE/services/visualizador-service"
-
-# ✅ Solo activar entorno virtual, sin reinstalar nada
-source venv/bin/activate
-export FLASK_ENV=production
-export FLASK_DEBUG=0
-nohup python3 app.py >> "$BASE/logs/visualizador.log" 2>&1 &
-
-echo "✅ Todos los servicios iniciados correctamente."
-echo "📂 Logs disponibles en: $BASE/logs"
-echo "👉 Usa: tail -f logs/gateway.log (o el que necesites)"
+echo "✅ Todos los servicios iniciados en sesiones screen."
+echo "👉 Usa './stop.sh' desde cualquier terminal para detenerlos."

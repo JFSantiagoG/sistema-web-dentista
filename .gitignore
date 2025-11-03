@@ -20,3 +20,6 @@ uploads/
 # Archivos ngrok (no subir)
 ngrok-stable-linux-amd64.zip
 ngrok-v3-stable-linux-amd64.tgz
+
+# Archivos de configuración local
+logs/
