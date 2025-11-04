@@ -14,7 +14,6 @@ const fymdSafe = v => v ? String(v).split('T')[0] : '—';
 
 const actionBtns = (formId, formHtml) => `
   <a class="btn btn-sm btn-outline-primary me-1" href="forms/${formHtml}?formulario_id=${formId}">👁️ Visualizar</a>
-  <a class="btn btn-sm btn-outline-secondary me-1" href="forms/${formHtml}?formulario_id=${formId}&edit=1">✏️ Editar</a>
   <button class="btn btn-sm btn-outline-success" data-form="${formId}">📤 Enviar</button>
 `;
 

@@ -1119,7 +1119,74 @@ async function getPresupuestoByFormIdModel(formularioId) {
   }
 }
 
+// =================== OBTENER POR FORMULARIO_ID ===================
+async function getDiagInfantilByFormularioId(formularioId) {
+  const conn = await db.getConnection();
+  try {
+    const [rows] = await conn.query(
+      `SELECT 
+         fdi.formulario_id,
+         DATE_FORMAT(fdi.fecha, '%Y-%m-%d') AS fecha,
+         fdi.paciente_id,
+         f.estado,
+         fdi.numero_paciente,
+         fdi.meses,
+         fdi.total_costo,
+         fdi.total_mensual,
+         p.nombre, p.apellido
+       FROM formulario_diag_infantil fdi
+       JOIN formulario f ON f.id = fdi.formulario_id
+       LEFT JOIN pacientes p ON p.id = f.paciente_id
+       WHERE fdi.formulario_id = ?
+       LIMIT 1`,
+      [formularioId]
+    );
+    if (!rows.length) return null;
+    const main = rows[0];
 
+    const [det] = await conn.query(
+      `SELECT diente, tratamiento, IFNULL(costo,0) AS costo
+       FROM formulario_diag_infantil_detalle
+       WHERE formulario_id = ?
+       ORDER BY diente ASC, tratamiento ASC`,
+      [formularioId]
+    );
+
+    const [gen] = await conn.query(
+      `SELECT tratamiento AS nombre, IFNULL(costo,0) AS costo
+       FROM formulario_diag_infantil_generales
+       WHERE formulario_id = ?
+       ORDER BY id ASC`,
+      [formularioId]
+    );
+
+    const nombrePaciente = [main.nombre, main.apellido].filter(Boolean).join(' ').trim();
+
+    return {
+      formulario_id: main.formulario_id,
+      estado: main.estado,
+      paciente_id: main.paciente_id,
+      paciente: { id: main.paciente_id, nombre: nombrePaciente || '' },
+      fecha: main.fecha, // yyyy-MM-dd para <input type="date">
+      odontograma: det.map(r => ({
+        diente: String(r.diente),
+        tratamiento: r.tratamiento,
+        costo: Number(r.costo || 0),
+      })),
+      tratamientosGenerales: gen.map(g => ({
+        nombre: g.nombre,
+        costo: Number(g.costo || 0),
+      })),
+      presupuesto: {
+        meses: Number(main.meses || 1),
+        total: Number(main.total_costo || 0),
+        mensualidad: Number(main.total_mensual || 0),
+      },
+    };
+  } finally {
+    conn.release();
+  }
+}
 
 module.exports = { 
   buscarPacientes, 
@@ -1133,5 +1200,6 @@ module.exports = {
   getOrtodonciaByFormId,
   getHistoriaByFormId,
   getOdontogramaFinalByFormularioId,
-  getPresupuestoByFormIdModel
+  getPresupuestoByFormIdModel,
+  getDiagInfantilByFormularioId
 };

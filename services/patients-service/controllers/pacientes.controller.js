@@ -8,7 +8,8 @@ const { buscarPacientes,
   getConsentQuiroById, 
   getHistoriaByFormId,
   getOdontogramaFinalByFormularioId,
-   getPresupuestoByFormIdModel
+  getPresupuestoByFormIdModel,
+  getDiagInfantilByFormularioId
  } = require('../models/pacientes.model');
 
 const crypto = require('crypto');
@@ -2114,6 +2115,25 @@ async function getPresupuestoByFormId(req, res) {
   }
 }
 
+// =================== GET POR FORMULARIO_ID ===================
+async function getDiagInfantilByFormId(req, res) {
+  try {
+    const formularioId = Number(req.params.formularioId);
+    if (!formularioId) {
+      return res.status(400).json({ ok: false, error: 'formularioId inválido' });
+    }
+
+    const data = await getDiagInfantilByFormularioId(formularioId);
+    if (!data) return res.status(404).json({ ok: false, error: 'No encontrado' });
+
+    return res.json({ ok: true, ...data });
+  } catch (err) {
+    console.error('getDiagInfantilByFormId error:', err);
+    return res.status(500).json({ ok: false, error: 'Error al obtener diag-infantil' });
+  }
+}
+
+
 module.exports = {
   crearPaciente,
   buscar,
@@ -2140,5 +2160,6 @@ module.exports = {
   obtenerOrtodonciaDetalle, 
   obtenerHistoriaDetalle,
   obtenerOdontogramaFinal,
-  getPresupuestoByFormId
+  getPresupuestoByFormId,
+  getDiagInfantilByFormId
 };
