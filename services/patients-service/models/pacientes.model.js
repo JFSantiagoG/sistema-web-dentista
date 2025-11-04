@@ -1063,6 +1063,62 @@ async function getOdontogramaFinalByFormularioId(formularioId) {
   }
 }
 
+async function getPresupuestoByFormIdModel(formularioId) {
+  const conn = await db.getConnection();
+  try {
+    const [cab] = await conn.query(
+      `SELECT fpd.*, f.estado, f.paciente_id, p.nombre, p.apellido
+       FROM formulario_presupuesto_dental fpd
+       JOIN formulario f ON f.id = fpd.formulario_id
+       LEFT JOIN pacientes p ON p.id = f.paciente_id
+       WHERE fpd.formulario_id = ? LIMIT 1`,
+      [formularioId]
+    );
+    if (!cab.length) return null;
+    const h = cab[0];
+
+    const [detDientes] = await conn.query(
+      `SELECT diente, tratamiento, costo
+       FROM formulario_presupuesto_dental_dientes
+       WHERE formulario_id = ?
+       ORDER BY id ASC`,
+      [formularioId]
+    );
+
+    const [detGenerales] = await conn.query(
+      `SELECT tratamiento AS nombre, costo
+       FROM formulario_presupuesto_dental_generales
+       WHERE formulario_id = ?
+       ORDER BY id ASC`,
+      [formularioId]
+    );
+
+    return {
+      formulario_id: formularioId,
+      estado: h.estado,
+      paciente_id: h.paciente_id,
+      paciente: [h.nombre, h.apellido].filter(Boolean).join(' '),
+      fecha: h.fecha,
+      datos: {
+        meses: h.meses,
+        total: Number(h.total || 0),
+        mensualidad: Number(h.total_mensual || 0),
+        odontograma: detDientes.map(r => ({
+          diente: r.diente,
+          tratamiento: r.tratamiento,
+          costo: Number(r.costo || 0)
+        })),
+        tratamientosGenerales: detGenerales.map(g => ({
+          nombre: g.nombre,
+          costo: Number(g.costo || 0)
+        }))
+      }
+    };
+  } finally {
+    conn.release();
+  }
+}
+
 
 
 module.exports = { 
@@ -1076,5 +1132,6 @@ module.exports = {
   getConsentQuiroById,
   getOrtodonciaByFormId,
   getHistoriaByFormId,
-  getOdontogramaFinalByFormularioId
+  getOdontogramaFinalByFormularioId,
+  getPresupuestoByFormIdModel
 };

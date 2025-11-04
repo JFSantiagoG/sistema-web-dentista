@@ -3,12 +3,12 @@ const fs = require('fs');
 
 function insertarEncabezado(doc, tituloPrincipal = 'CONSULTORIO DENTAL NIMAFESI', subtitulos = []) {
   const assets = path.join(__dirname, '../assets');
-  const logoUNAM = path.join(assets, 'logo.png');
-  const logoFESI = path.join(assets, 'diente.png');
-  const fondo    = path.join(assets, 'diente.png');
+  const logoUNAM = path.join(assets, 'logo.jpg');
+  const logoFESI = path.join(assets, 'diente.jpg');
+  const fondo    = path.join(assets, 'diente.jpg');
 
   if (fs.existsSync(fondo)) {
-    doc.opacity(0.08)
+    doc.opacity(0.15)
        .image(fondo, 0, 0, {
          width: doc.page.width,
          height: doc.page.height
@@ -20,7 +20,7 @@ function insertarEncabezado(doc, tituloPrincipal = 'CONSULTORIO DENTAL NIMAFESI'
     doc.image(logoFESI, 35, 40, { width: 50 });
   }
   if (fs.existsSync(logoUNAM)) {
-    doc.image(logoUNAM, doc.page.width - 90, 40, { width: 50 });
+    doc.image(logoUNAM, doc.page.width - 90, 40, { width: 60 });
   }
 
   doc

@@ -1,7 +1,14 @@
 // services/patients-service/controllers/pacientes.controller.js
 const db = require('../db/connection');
-const { buscarPacientes, getFormsSummary, getPatientStudies,insertPatientFile,getJustificanteByFormId, getConsentQuiroById, getHistoriaByFormId,
-  getOdontogramaFinalByFormularioId
+const { buscarPacientes, 
+  getFormsSummary, 
+  getPatientStudies,
+  insertPatientFile,
+  getJustificanteByFormId, 
+  getConsentQuiroById, 
+  getHistoriaByFormId,
+  getOdontogramaFinalByFormularioId,
+   getPresupuestoByFormIdModel
  } = require('../models/pacientes.model');
 
 const crypto = require('crypto');
@@ -2089,6 +2096,24 @@ async function obtenerOdontogramaFinal(req, res) {
   }
 }
 
+async function getPresupuestoByFormId(req, res) {
+  try {
+    const formularioId = Number(req.params.formularioId);
+    if (!formularioId) {
+      return res.status(400).json({ ok: false, error: 'formularioId inválido' });
+    }
+
+    const data = await getPresupuestoByFormIdModel(formularioId);
+    if (!data) return res.status(404).json({ ok: false, error: 'No encontrado' });
+
+    return res.json({ ok: true, ...data });
+
+  } catch (err) {
+    console.error('getPresupuestoByFormId error:', err);
+    return res.status(500).json({ ok: false, error: 'Error al obtener presupuesto dental' });
+  }
+}
+
 module.exports = {
   crearPaciente,
   buscar,
@@ -2114,5 +2139,6 @@ module.exports = {
   obtenerConsentQuiro,
   obtenerOrtodonciaDetalle, 
   obtenerHistoriaDetalle,
-  obtenerOdontogramaFinal
+  obtenerOdontogramaFinal,
+  getPresupuestoByFormId
 };

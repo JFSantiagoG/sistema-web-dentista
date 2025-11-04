@@ -1,4 +1,4 @@
-// ======================= presupuesto.js (completo) =======================
+// ======================= presupuesto.js (flujo corregido) =======================
 
 // ===== Helpers de fecha/nombre/descarga =====
 const hoyYYYYMMDD = () => {
@@ -9,6 +9,20 @@ const hoyYYYYMMDD = () => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
+function toYYYYMMDD(val) {
+  if (!val) return hoyYYYYMMDD();
+  if (val instanceof Date) {
+    const yyyy = val.getFullYear();
+    const mm = String(val.getMonth() + 1).padStart(2, '0');
+    const dd = String(val.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  const s = String(val);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (s.includes('T')) return s.slice(0, 10);
+  return s;
+}
+
 function yyyymmddCompact(dateStrOrDate) {
   const d = dateStrOrDate ? new Date(dateStrOrDate) : new Date();
   const yyyy = d.getFullYear();
@@ -17,13 +31,11 @@ function yyyymmddCompact(dateStrOrDate) {
   return `${yyyy}${mm}${dd}`;
 }
 
-// "ana maría lópez" -> "Ana_Maria_Lopez"
 function nombreTitulo(str = '') {
   return (str || '')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .trim()
-    .split(/\s+/)
-    .filter(Boolean)
+    .split(/\s+/).filter(Boolean)
     .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
     .join('_');
 }
@@ -46,7 +58,9 @@ function downloadBlob(blob, filename) {
 
 // ===== Contexto & refs =====
 const qs = new URLSearchParams(location.search);
-const pacienteId = qs.get('paciente_id') || qs.get('id'); // ?paciente_id=15
+const pacienteId   = qs.get('paciente_id') || qs.get('id');
+const formularioId = qs.get('formulario_id');
+
 const token = localStorage.getItem('token');
 const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -56,110 +70,130 @@ const numeroInput = document.getElementById('numeroPacienteInput');
 
 const btnGuardar = document.getElementById('btnGuardar');
 const btnPdf     = document.getElementById('btnPdf');
+const btnEnviar  = document.getElementById('btnEnviar');
 const form       = document.getElementById('presupuestoForm');
 
+const generalChecks = Array.from(document.querySelectorAll('.general-treatment-checkbox'));
+
 // ===== Estado =====
-const tratamientosPorDiente = {};   // { "11": { nombre, costo }, ... }
-const tratamientosGenerales = [];   // [ { nombre, costo }, ... ]
+const tratamientosPorDiente = {};
+const tratamientosGenerales = [];
 let totalCosto = 0;
 let dienteActual = null;
 
-const tratamientoModal = new bootstrap.Modal(document.getElementById("tratamientoModal"));
+// ===== Modal =====
+const tratamientoModalEl = document.getElementById("tratamientoModal");
+const tratamientoModal = tratamientoModalEl ? new bootstrap.Modal(tratamientoModalEl) : null;
 
-// ===== Auto-carga de datos del paciente (nombre/fecha/id readonly) =====
+// ===== Modo crear: cargar paciente =====
 async function cargarPaciente() {
   if (!pacienteId) {
     await Swal.fire({ icon:'warning', title:'Falta ID', text:'Incluye ?paciente_id=<id> en la URL.' });
     return;
   }
-
   try {
     const res = await fetch(`/api/patients/${pacienteId}`, { headers: authHeaders });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const p = await res.json();
 
-    // Nombre completo
     const nombreCompleto = [p?.nombre, p?.apellido, p?.apellido_paterno, p?.apellido_materno]
       .filter(Boolean).join(' ').trim();
 
     nombreInput.value = nombreCompleto || '(Sin nombre)';
     nombreInput.readOnly = true;
 
-    // Fecha de hoy (readonly)
     fechaInput.value = hoyYYYYMMDD();
     fechaInput.readOnly = true;
 
-    // Número de paciente (ID)
     numeroInput.value = String(pacienteId);
     numeroInput.readOnly = true;
-
   } catch (err) {
     console.error('Error al cargar paciente:', err);
     await Swal.fire({ icon:'error', title:'Error', text:'No se pudo cargar el paciente.' });
   }
 }
 
-// ===== Interacción con dientes / modal =====
-document.querySelectorAll(".diente").forEach(diente => {
-  diente.addEventListener("click", () => {
-    const dienteId = diente.getAttribute("data-diente");
-    dienteActual = dienteId;
+// ===== Interacción con dientes =====
+function marcarDiente(dienteId) {
+  const el = document.querySelector(`.diente[data-diente="${dienteId}"]`);
+  if (el) el.classList.add('tratamiento-asignado');
+}
 
-    document.getElementById("dienteSeleccionado").value = dienteId;
-    document.getElementById("dienteNumero").value = dienteId;
-    document.getElementById("tratamientoSelect").value = "";
-    document.getElementById("costoInput").value = "";
-    document.getElementById("otroTratamientoInput").value = "";
-    document.getElementById("otroTratamientoDiv").style.display = "none";
-
-    tratamientoModal.show();
+function enableTeethClicks(enable) {
+  document.querySelectorAll(".diente").forEach(original => {
+    const clone = original.cloneNode(true);
+    original.replaceWith(clone);
   });
-});
+  if (enable) {
+    document.querySelectorAll(".diente").forEach(diente => {
+      diente.style.cursor = 'pointer';
+      diente.addEventListener("click", () => {
+        const dienteId = diente.getAttribute("data-diente");
+        dienteActual = dienteId;
 
-document.getElementById("tratamientoSelect").addEventListener("change", function () {
-  document.getElementById("otroTratamientoDiv").style.display = this.value === "Otro" ? "block" : "none";
-});
+        document.getElementById("dienteSeleccionado").value = dienteId;
+        document.getElementById("dienteNumero").value = dienteId;
+        document.getElementById("tratamientoSelect").value = "";
+        document.getElementById("costoInput").value = "";
+        document.getElementById("otroTratamientoInput").value = "";
+        document.getElementById("otroTratamientoDiv").style.display = "none";
 
-document.getElementById("guardarTratamientoBtn").addEventListener("click", function () {
-  const dienteId = document.getElementById("dienteSeleccionado").value;
-  const tratamientoSelect = document.getElementById("tratamientoSelect");
-  const otroInput = document.getElementById("otroTratamientoInput");
-  const costoInput = document.getElementById("costoInput");
-
-  let tratamientoNombre = tratamientoSelect.value;
-  const costo = parseFloat(costoInput.value) || 0;
-
-  if (!tratamientoNombre) {
-    Swal.fire('Falta tratamiento', 'Selecciona un tratamiento.', 'warning');
-    return;
+        if (tratamientoModal) tratamientoModal.show();
+      });
+    });
+  } else {
+    document.querySelectorAll(".diente").forEach(diente => diente.style.cursor = 'default');
   }
-  if (tratamientoNombre === "Otro") {
-    tratamientoNombre = otroInput.value.trim();
+}
+
+// ===== Modal listeners =====
+const selectTrat = document.getElementById("tratamientoSelect");
+if (selectTrat) {
+  selectTrat.addEventListener("change", function () {
+    document.getElementById("otroTratamientoDiv").style.display = this.value === "Otro" ? "block" : "none";
+  });
+}
+
+const btnGuardarTrat = document.getElementById("guardarTratamientoBtn");
+if (btnGuardarTrat) {
+  btnGuardarTrat.addEventListener("click", function () {
+    const dienteId = document.getElementById("dienteSeleccionado").value;
+    const tratamientoSelect = document.getElementById("tratamientoSelect");
+    const otroInput = document.getElementById("otroTratamientoInput");
+    const costoInput = document.getElementById("costoInput");
+
+    let tratamientoNombre = tratamientoSelect.value;
+    const costo = parseFloat(costoInput.value) || 0;
+
     if (!tratamientoNombre) {
-      Swal.fire('Falta especificar', 'Especifica el nombre del tratamiento.', 'warning');
+      Swal.fire('Falta tratamiento', 'Selecciona un tratamiento.', 'warning');
       return;
     }
-  }
-  if (costo <= 0) {
-    Swal.fire('Costo inválido', 'Ingresa un costo mayor a 0.', 'warning');
-    return;
-  }
+    if (tratamientoNombre === "Otro") {
+      tratamientoNombre = otroInput.value.trim();
+      if (!tratamientoNombre) {
+        Swal.fire('Falta especificar', 'Especifica el nombre del tratamiento.', 'warning');
+        return;
+      }
+    }
+    if (costo <= 0) {
+      Swal.fire('Costo inválido', 'Ingresa un costo mayor a 0.', 'warning');
+      return;
+    }
 
-  tratamientosPorDiente[dienteId] = { nombre: tratamientoNombre, costo: costo };
+    tratamientosPorDiente[dienteId] = { nombre: tratamientoNombre, costo: costo };
+    marcarDiente(dienteId);
 
-  const dienteElement = document.querySelector(`.diente[data-diente="${dienteId}"]`);
-  if (dienteElement) dienteElement.classList.add("tratamiento-asignado");
-
-  actualizarTablaTratamientos();
-  actualizarCalculadora();
-  tratamientoModal.hide();
-});
+    actualizarTablaTratamientos();
+    actualizarCalculadora();
+    if (tratamientoModal) tratamientoModal.hide();
+  });
+}
 
 // ===== Tablas y cálculo =====
 function actualizarTablaTratamientos() {
   const tbody = document.getElementById("tratamientosTablaBody");
   tbody.innerHTML = "";
-
   Object.entries(tratamientosPorDiente).forEach(([dienteId, tratamiento]) => {
     const row = document.createElement("tr");
     row.innerHTML = `
@@ -195,42 +229,48 @@ function actualizarCalculadora() {
     costosTablaBody.appendChild(row);
   });
 
-  totalCosto = Object.values(tratamientosPorDiente).reduce((acc, t) => acc + parseFloat(t.costo || 0), 0);
+  totalCosto = Object.values(tratamientosPorDiente)
+    .reduce((acc, t) => acc + parseFloat(t.costo || 0), 0);
   tratamientosGenerales.forEach(t => (totalCosto += parseFloat(t.costo)));
 
   document.getElementById("totalCosto").textContent = `$${totalCosto.toFixed(2)}`;
 
-  const meses = Math.max(1, parseInt(document.getElementById("mesesInput").value) || 1);
+  const mesesEl = document.getElementById("mesesInput");
+  const meses = Math.max(1, parseInt(mesesEl.value) || 1);
   const mensualidad = totalCosto / meses;
   document.getElementById("mensualidad").textContent = `$${mensualidad.toFixed(2)}`;
 }
 
-document.querySelectorAll(".general-treatment-checkbox").forEach(check => {
+generalChecks.forEach(check => {
   check.addEventListener("change", () => {
     const costo = parseFloat(check.dataset.costo);
     const nombre = check.nextElementSibling.textContent.trim();
 
     if (check.checked) {
-      tratamientosGenerales.push({ nombre, costo });
+      if (!tratamientosGenerales.some(t => t.nombre === nombre)) {
+        tratamientosGenerales.push({ nombre, costo });
+      }
     } else {
-      const index = tratamientosGenerales.findIndex(t => t.nombre === nombre);
-      if (index > -1) tratamientosGenerales.splice(index, 1);
+      const idx = tratamientosGenerales.findIndex(t => t.nombre === nombre);
+      if (idx > -1) tratamientosGenerales.splice(idx, 1);
     }
-
     actualizarCalculadora();
   });
 });
 
-document.getElementById("mesesInput").addEventListener("input", function () {
-  const meses = Math.max(1, parseInt(this.value) || 1);
-  this.value = meses;
-  if (totalCosto >= 0) {
-    const mensualidad = totalCosto / meses;
-    document.getElementById("mensualidad").textContent = `$${mensualidad.toFixed(2)}`;
-  }
-});
+const mesesInputEl = document.getElementById("mesesInput");
+if (mesesInputEl) {
+  mesesInputEl.addEventListener("input", function () {
+    const meses = Math.max(1, parseInt(this.value) || 1);
+    this.value = meses;
+    if (totalCosto >= 0) {
+      const mensualidad = totalCosto / meses;
+      document.getElementById("mensualidad").textContent = `$${mensualidad.toFixed(2)}`;
+    }
+  });
+}
 
-// ===== Construcción de payloads =====
+// ===== Payloads =====
 function obtenerTratamientosPorDiente() {
   const filas = document.querySelectorAll('#tratamientosTablaBody tr');
   const tratamientos = [];
@@ -245,9 +285,8 @@ function obtenerTratamientosPorDiente() {
 }
 
 function obtenerTratamientosGenerales() {
-  const checkboxes = document.querySelectorAll('.general-treatment-checkbox');
   const generales = [];
-  checkboxes.forEach(cb => {
+  generalChecks.forEach(cb => {
     if (cb.checked) {
       generales.push({
         nombre: cb.nextElementSibling.textContent.trim(),
@@ -269,7 +308,7 @@ function calcularPresupuesto() {
   };
 }
 
-// ===== Guardar Borrador (POST /patients/:id/presupuesto) =====
+// ===== Guardar (borrador) =====
 async function guardarBorrador() {
   if (!pacienteId) {
     await Swal.fire({ icon:'warning', title:'Falta ID', text:'Incluye ?paciente_id=<id> en la URL.' });
@@ -286,9 +325,9 @@ async function guardarBorrador() {
       numeroPaciente: numeroInput.value,
       fechaRegistro: fechaInput.value
     },
-    odontograma: obtenerTratamientosPorDiente(),          // [{diente, tratamiento, costo}]
-    tratamientosGenerales: obtenerTratamientosGenerales(),// [{nombre, costo}]
-    presupuesto: calcularPresupuesto()                    // { total, mensualidad, meses }
+    odontograma: obtenerTratamientosPorDiente(),
+    tratamientosGenerales: obtenerTratamientosGenerales(),
+    presupuesto: calcularPresupuesto()
   };
 
   try {
@@ -317,20 +356,25 @@ async function guardarBorrador() {
   }
 }
 
-// ===== PDF (POST /api/pdf/presupuesto/generate) =====
-async function generarPDFPresupuesto() {
-  if (!pacienteId) {
-    await Swal.fire({ icon:'warning', title:'Falta ID', text:'Incluye ?paciente_id=<id> en la URL.' });
-    return;
-  }
+// ===== Enviar (SIEMPRE simulado, NO guarda) =====
+async function simularEnvio() {
+  await Swal.fire({
+    icon: 'success',
+    title: 'Enviado',
+    html: `
+      <p>Se simuló el envío del presupuesto al paciente.</p>
+    `
+  });
+}
 
+// ===== PDF =====
+async function generarPDFPresupuesto() {
   const odontogramaContainer = document.querySelector('.dientes-container');
   if (!odontogramaContainer) {
     await Swal.fire({ icon:'error', title:'Error', text:'No se encontró el odontograma visual.' });
     return;
   }
 
-  // Aviso previo
   const pre = await Swal.fire({
     icon:'info',
     title:'Se abrirá el PDF en otra pestaña',
@@ -339,7 +383,6 @@ async function generarPDFPresupuesto() {
   });
   if (!pre.isConfirmed) return;
 
-  // Captura visual
   const odontogramaCanvas = await html2canvas(odontogramaContainer, { backgroundColor: null, useCORS: true });
   const odontogramaImg = odontogramaCanvas.toDataURL('image/png');
 
@@ -369,12 +412,9 @@ async function generarPDFPresupuesto() {
     }
 
     const blob = await res.blob();
-
-    // 1) Abrir vista en nueva pestaña
     const viewUrl = URL.createObjectURL(blob);
     window.open(viewUrl, '_blank');
 
-    // 2) Sugerir descarga con nombre
     const filename = buildPresupuestoPdfName({
       nombre: nombreInput.value,
       fecha: fechaInput.value
@@ -392,9 +432,7 @@ async function generarPDFPresupuesto() {
       confirmButtonText: '⬇️ Descargar PDF',
       cancelButtonText: 'Cerrar'
     });
-    if (post.isConfirmed) {
-      downloadBlob(blob, filename);
-    }
+    if (post.isConfirmed) downloadBlob(blob, filename);
 
     URL.revokeObjectURL(viewUrl);
   } catch (err) {
@@ -403,16 +441,137 @@ async function generarPDFPresupuesto() {
   }
 }
 
-// ===== Submit & botones =====
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  await guardarBorrador();
-});
+// ===== Visualización desde formularioId =====
+function setSoloLecturaUI() {
+  // Oculta Guardar, deja Enviar (simulado) y PDF
+  if (btnGuardar) btnGuardar.style.display = 'none';
 
-if (btnGuardar) btnGuardar.addEventListener('click', guardarBorrador);
-if (btnPdf)     btnPdf.addEventListener('click', generarPDFPresupuesto);
+  // Bloquea edición
+  enableTeethClicks(false);
+  const mesesInput = document.getElementById('mesesInput');
+  if (mesesInput) mesesInput.readOnly = true;
+
+  // Deshabilita campos del modal
+  ['tratamientoSelect','costoInput','otroTratamientoInput','guardarTratamientoBtn']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.disabled = true; });
+
+  // Deshabilita checkboxes generales (después de marcarlos desde backend)
+  generalChecks.forEach(cb => { cb.disabled = true; });
+}
+
+function marcarGeneralesDesdeBackend(generalesArr) {
+  const nombres = new Set((generalesArr || []).map(g => String(g.nombre).trim()));
+  generalChecks.forEach(cb => {
+    const nombre = cb.nextElementSibling.textContent.trim();
+    cb.checked = nombres.has(nombre);
+  });
+
+  tratamientosGenerales.length = 0;
+  generalChecks.forEach(cb => {
+    if (cb.checked) {
+      tratamientosGenerales.push({
+        nombre: cb.nextElementSibling.textContent.trim(),
+        costo: parseFloat(cb.dataset.costo)
+      });
+    }
+  });
+}
+
+async function cargarPresupuestoDesdeServidor() {
+  try {
+    const res = await fetch(`/api/patients/forms/presupuesto/${formularioId}`, { headers: authHeaders });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (!json?.ok) throw new Error('Respuesta inválida');
+
+    // Identificación
+    nombreInput.value = json.paciente || '(Sin nombre)';
+    nombreInput.readOnly = true;
+
+    fechaInput.value = toYYYYMMDD(json.fecha || json.datos?.fecha || hoyYYYYMMDD());
+    fechaInput.readOnly = true;
+
+    numeroInput.value = String(json.paciente_id || '');
+    numeroInput.readOnly = true;
+
+    // Reset estado local
+    Object.keys(tratamientosPorDiente).forEach(k => delete tratamientosPorDiente[k]);
+    tratamientosGenerales.length = 0;
+
+    // Detalle por diente
+    (json.datos?.odontograma || []).forEach(item => {
+      const d = String(item.diente);
+      tratamientosPorDiente[d] = {
+        nombre: item.tratamiento || 'Sin tratamiento',
+        costo: Number(item.costo || 0)
+      };
+      marcarDiente(d);
+    });
+
+    // Generales marcados + bloquear edición
+    marcarGeneralesDesdeBackend(json.datos?.tratamientosGenerales || []);
+
+    // Meses/totales
+    if (json.datos?.meses) {
+      const m = document.getElementById('mesesInput');
+      if (m) m.value = Number(json.datos.meses);
+    }
+
+    actualizarTablaTratamientos();
+    actualizarCalculadora();
+
+    if (typeof json.datos?.total === 'number') {
+      document.getElementById('totalCosto').textContent = `$${Number(json.datos.total).toFixed(2)}`;
+    }
+    if (typeof json.datos?.mensualidad === 'number') {
+      document.getElementById('mensualidad').textContent = `$${Number(json.datos.mensualidad).toFixed(2)}`;
+    }
+
+    setSoloLecturaUI();
+  } catch (err) {
+    console.error('❌ Error al cargar presupuesto:', err);
+    await Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar el presupuesto.' });
+  }
+}
+
+// ===== Submit & botones =====
+// IMPORTANTE: "Enviar" siempre es simulado (NO guarda) en ambos modos.
+if (form) {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await simularEnvio();
+  });
+}
+
+if (btnEnviar) {
+  btnEnviar.addEventListener('click', async (e) => {
+    e.preventDefault();
+    await simularEnvio();
+  });
+}
+
+// Guardar solo en modo crear (paciente_id)
+if (btnGuardar) {
+  btnGuardar.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (formularioId) {
+      await Swal.fire({ icon:'info', title:'Sólo visualización', text:'Este folio es de sólo lectura.' });
+      return;
+    }
+    await guardarBorrador();
+  });
+}
+
+if (btnPdf) btnPdf.addEventListener('click', generarPDFPresupuesto);
 
 // ===== Arranque =====
 document.addEventListener('DOMContentLoaded', () => {
-  cargarPaciente();
+  if (formularioId) {
+    cargarPresupuestoDesdeServidor(); // Visualizar
+  } else {
+    cargarPaciente();
+    enableTeethClicks(true);                  // ← activa los clicks en los dientes
+    document.querySelectorAll('.general-treatment-checkbox')
+      .forEach(cb => { cb.disabled = false; });// ← asegúrate que los generales son editables
+  }
 });

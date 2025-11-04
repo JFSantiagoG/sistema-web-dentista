@@ -26,6 +26,7 @@ const { obtenerConsentQuiro } = require('../controllers/pacientes.controller');
 const { obtenerOrtodonciaDetalle } = require('../controllers/pacientes.controller');
 const { obtenerHistoriaDetalle } = require('../controllers/pacientes.controller');
 const { obtenerOdontogramaFinal } = require('../controllers/pacientes.controller');
+const { getPresupuestoByFormId } = require('../controllers/pacientes.controller');
 
 router.post('/', crearPaciente);
 router.get('/search', verificarToken, buscar);
@@ -52,5 +53,7 @@ router.get('/forms/consent-quiro/:formId', verificarToken, obtenerConsentQuiro);
 router.get('/forms/ortodoncia/:formularioId', verificarToken, obtenerOrtodonciaDetalle);
 router.get('/forms/historia/:formularioId', verificarToken, obtenerHistoriaDetalle);
 router.get('/forms/odontograma/:formularioId', verificarToken, obtenerOdontogramaFinal);
+router.get('/forms/presupuesto/:formularioId', verificarToken, getPresupuestoByFormId);
+
 
 module.exports = router;
