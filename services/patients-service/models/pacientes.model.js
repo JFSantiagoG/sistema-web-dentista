@@ -1000,6 +1000,69 @@ async function getHistoriaByFormId(formularioId) {
   return rows[0] || null;
 }
 
+async function getOdontogramaFinalByFormularioId(formularioId) {
+  const conn = await db.getConnection();
+  try {
+    const [rows] = await conn.query(
+      `SELECT fof.*, f.estado, f.paciente_id,
+              p.nombre, p.apellido
+       FROM formulario_odontograma_final fof
+       JOIN formulario f ON f.id = fof.formulario_id
+       LEFT JOIN pacientes p ON p.id = f.paciente_id
+       WHERE fof.formulario_id = ? LIMIT 1`,
+      [formularioId]
+    );
+    if (!rows.length) return null;
+    const main = rows[0];
+
+    const [det] = await conn.query(
+      `SELECT diente, tratamiento
+         FROM formulario_odontograma_final_detalle
+        WHERE formulario_id = ?
+        ORDER BY diente ASC, tratamiento ASC`,
+      [formularioId]
+    );
+
+    const [enc] = await conn.query(
+      `SELECT condicion, valoracion
+         FROM formulario_odontograma_final_encia
+        WHERE formulario_id = ?
+        ORDER BY id ASC`,
+      [formularioId]
+    );
+
+    // --- mapas ---
+    const tratamientosPorDiente = {};
+    for (const r of det) {
+      const k = String(r.diente);
+      if (!tratamientosPorDiente[k]) tratamientosPorDiente[k] = [];
+      tratamientosPorDiente[k].push(r.tratamiento);
+    }
+
+    const estadoEncia = {};
+    for (const e of enc) estadoEncia[e.condicion] = e.valoracion || '';
+
+    // --- nombre paciente desde BD (fallback si no viene en fof.nombre_paciente) ---
+    const nombrePacienteBD = [main.nombre, main.apellido].filter(Boolean).join(' ').trim();
+
+    return {
+      formulario_id: formularioId,
+      estado: main.estado,
+      paciente_id: main.paciente_id,
+      paciente: main.nombre_paciente || nombrePacienteBD || '',
+      fecha_termino: main.fecha_termino,
+      datos: {
+        tratamientos_por_diente: tratamientosPorDiente,
+        estado_encia: estadoEncia,
+        odontograma_json: main.odontograma_json,
+        tratamientos_json: main.tratamientos_json,
+      }
+    };
+  } finally {
+    conn.release();
+  }
+}
+
 
 
 module.exports = { 
@@ -1012,5 +1075,6 @@ module.exports = {
   getJustificanteByFormId,
   getConsentQuiroById,
   getOrtodonciaByFormId,
-  getHistoriaByFormId
+  getHistoriaByFormId,
+  getOdontogramaFinalByFormularioId
 };

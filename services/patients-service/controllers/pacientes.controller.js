@@ -1,6 +1,8 @@
 // services/patients-service/controllers/pacientes.controller.js
 const db = require('../db/connection');
-const { buscarPacientes, getFormsSummary, getPatientStudies,insertPatientFile,getJustificanteByFormId, getConsentQuiroById, getHistoriaByFormId } = require('../models/pacientes.model');
+const { buscarPacientes, getFormsSummary, getPatientStudies,insertPatientFile,getJustificanteByFormId, getConsentQuiroById, getHistoriaByFormId,
+  getOdontogramaFinalByFormularioId
+ } = require('../models/pacientes.model');
 
 const crypto = require('crypto');
 const multer = require('multer');
@@ -2070,6 +2072,22 @@ async function obtenerHistoriaDetalle(req, res) {
   }
 }
 
+async function obtenerOdontogramaFinal(req, res) {
+  try {
+    const formularioId = Number(req.params.formularioId);
+    if (!formularioId) {
+      return res.status(400).json({ ok: false, error: 'formularioId inválido' });
+    }
+
+    const data = await getOdontogramaFinalByFormularioId(formularioId);
+    if (!data) return res.status(404).json({ ok: false, error: 'No encontrado' });
+
+    return res.json({ ok: true, ...data });
+  } catch (err) {
+    console.error('obtenerOdontogramaFinal error:', err);
+    return res.status(500).json({ ok: false, error: 'Error al obtener odontograma final' });
+  }
+}
 
 module.exports = {
   crearPaciente,
@@ -2095,5 +2113,6 @@ module.exports = {
   obtenerConsentOdont,
   obtenerConsentQuiro,
   obtenerOrtodonciaDetalle, 
-  obtenerHistoriaDetalle
+  obtenerHistoriaDetalle,
+  obtenerOdontogramaFinal
 };

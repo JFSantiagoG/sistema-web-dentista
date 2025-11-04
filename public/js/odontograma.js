@@ -5,7 +5,6 @@ function yyyymmdd(d = new Date()) {
   const dd = String(d.getDate()).padStart(2, '0');
   return `${yyyy}${mm}${dd}`;
 }
-// "ana maría lópez pérez" -> "Ana_Maria_Lopez_Perez"
 function nombreTitulo(str = '') {
   return (str || '')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -15,7 +14,6 @@ function nombreTitulo(str = '') {
     .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
     .join('_');
 }
-// Nombre final para el archivo PDF
 function buildOdontogramaPdfName({ paciente }) {
   const fecha = yyyymmdd(new Date());
   const nombre = nombreTitulo(paciente || 'Paciente');
@@ -33,24 +31,33 @@ function downloadBlob(blob, filename) {
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('odontogramaForm');
 
-  // 👉 En tu HTML los inputs vienen con "name", no con "id"
-  const nombreEl = form.querySelector('[name="nombrePaciente"]');
-  const fechaEl  = form.querySelector('[name="fechaTermino"]');
+  // Inputs
+  const nombreEl = form.querySelector('#nombrePaciente');
+  const fechaEl  = form.querySelector('#fechaTermino');
 
-  // 👉 Botones: usa clases, porque no hay IDs
-  const btnGuardar = document.querySelector('.step-form .btn.btn-outline-secondary.btn-lg'); // "Guardar Borrador"
-  const btnPdf     = document.querySelector('.step-form .btn.btn-info.btn-lg');             // "Descargar PDF"
+  // Botones
+  const btnGuardar = document.getElementById('btnGuardarOdonto');
+  const btnPdf     = document.getElementById('btnDescargarPDF');
 
-  // paciente_id de la URL + auth
+  // Query params y auth
   const qs = new URLSearchParams(location.search);
-  const pacienteId = qs.get('paciente_id') || qs.get('id');
+  const pacienteIdQS   = qs.get('paciente_id');
+  const formularioIdQS = qs.get('formulario_id');
+
+  // Modo
+  const ES_MODO_VISUALIZAR = Boolean(formularioIdQS);
+  const ES_MODO_CREAR      = Boolean(pacienteIdQS) && !formularioIdQS;
+
+  // Auth
   const token = localStorage.getItem('token');
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
-  // Estado (folio) y canal de notificación
+  // Estado (folio)
   const SS_KEY   = (pid) => `odonto:formId:${pid}`;
   const SAVE_KEY = (pid) => `odonto:saved:${pid}`;
-  let formularioId = pacienteId ? Number(sessionStorage.getItem(SS_KEY(pacienteId))) || null : null;
+  let formularioId = ES_MODO_VISUALIZAR
+    ? Number(formularioIdQS)
+    : (pacienteIdQS ? Number(sessionStorage.getItem(SS_KEY(pacienteIdQS))) || null : null);
 
   const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('odontograma') : null;
   function notificarGuardado(pid, folio) {
@@ -61,41 +68,50 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /*************** Interacción visual con los dientes ***************/
-  document.querySelectorAll('.diente').forEach(diente => {
-    diente.addEventListener('click', () => {
-      diente.classList.toggle('tratamiento-asignado');
-      diente.classList.remove('pendiente');
+  function activarInteraccionDientes(activo) {
+    document.querySelectorAll('.diente').forEach(diente => {
+      diente.style.cursor = activo ? 'pointer' : 'default';
+      diente.onclick = null;
+      if (activo) diente.addEventListener('click', onClickDiente);
     });
-  });
 
-  // Sincronizar tabla con dientes
-  document.querySelectorAll('.tratamientos-tabla input[type="checkbox"]').forEach(checkbox => {
-    checkbox.addEventListener('change', function () {
-      const dienteId = this.getAttribute('data-diente');
-      const dienteElement = document.querySelector(`.diente[data-diente="${dienteId}"]`);
-      if (dienteElement) {
-        dienteElement.classList.toggle('tratamiento-asignado', this.checked);
+    document.querySelectorAll('.tratamientos-tabla input[type="checkbox"]').forEach(checkbox => {
+      checkbox.onchange = null;
+      checkbox.disabled = !activo;
+      if (activo) {
+        checkbox.addEventListener('change', function () {
+          const dienteId = this.getAttribute('data-diente');
+          const dienteElement = document.querySelector(`.diente[data-diente="${dienteId}"]`);
+          if (dienteElement) {
+            dienteElement.classList.toggle('tratamiento-asignado', this.checked);
+            dienteElement.classList.remove('pendiente');
+          }
+        });
       }
     });
-  });
+  }
+  function onClickDiente(e) {
+    const diente = e.currentTarget;
+    diente.classList.toggle('tratamiento-asignado');
+    diente.classList.remove('pendiente');
+  }
 
-  /*************** Cargar nombre del paciente (solo nombre completo) ***************/
+  /*************** Cargar nombre del paciente (modo crear) ***************/
   async function cargarPaciente() {
-    if (!pacienteId) {
+    if (!ES_MODO_CREAR) return;
+    if (!pacienteIdQS) {
       await Swal.fire({ icon:'warning', title:'ID faltante', text:'Incluye ?paciente_id=<id> en la URL.' });
       return;
     }
     try {
-      const res = await fetch(`/api/patients/${pacienteId}`, { headers: authHeaders });
+      const res = await fetch(`/api/patients/${pacienteIdQS}`, { headers: authHeaders });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const p = await res.json();
 
-      const nombreCompleto = [p?.nombre, p?.apellido, p?.apellido_paterno, p?.apellido_materno]
-        .filter(Boolean).join(' ').trim();
-
+      const nombreCompleto = [p?.nombre, p?.apellido].filter(Boolean).join(' ').trim();
       if (nombreEl) {
         nombreEl.value = nombreCompleto || '';
-        nombreEl.readOnly = true; // ⛔ la fecha la pone el doctor, el nombre viene auto
+        nombreEl.readOnly = true;
       }
     } catch (e) {
       console.error('Error al cargar paciente:', e);
@@ -103,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /*************** Recolectar datos del formulario ***************/
+  /*************** Recolectar datos ***************/
   function recolectarTratamientosPorDiente() {
     const tpd = {};
     document.querySelectorAll('.tratamientos-tabla tbody tr').forEach(fila => {
@@ -118,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     return tpd;
   }
-
   function recolectarEstadoEncia() {
     const estado = {};
     document.querySelectorAll('.encia-table tbody tr').forEach(fila => {
@@ -128,41 +143,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     return estado;
   }
-
   async function capturarOdontogramaVisual() {
     const odontogramaContainer = document.querySelector('.dientes-container');
     if (!odontogramaContainer) return null;
     const odontogramaCanvas = await html2canvas(odontogramaContainer, { backgroundColor: null, useCORS: true });
     return odontogramaCanvas.toDataURL('image/png');
-    }
-
+  }
   function payloadComun() {
     const nombrePaciente = nombreEl?.value.trim();
-    const fechaTermino   = fechaEl?.value.trim(); // la pone el doctor/admin
-
+    const fechaTermino   = fechaEl?.value.trim();
     return {
       paciente: { nombre: nombrePaciente, fechaTermino },
       tratamientosPorDiente: recolectarTratamientosPorDiente(),
       estadoEncia: recolectarEstadoEncia()
-      // odontogramaVisual se agrega solo al generar PDF
     };
   }
 
-  /*************** Guardar en BD (genera folio) ***************/
+  /*************** Guardar en BD (sólo crear) ***************/
   async function guardarOdontogramaEnBD() {
-    if (!pacienteId) {
+    if (!ES_MODO_CREAR) return null;
+    if (!pacienteIdQS) {
       await Swal.fire({ icon:'warning', title:'ID faltante', text:'Incluye ?paciente_id=<id> en la URL.' });
       return null;
     }
     const nombrePaciente = nombreEl?.value.trim();
     const fechaTermino   = fechaEl?.value.trim();
-
     if (!nombrePaciente || !fechaTermino) {
       await Swal.fire({ icon:'warning', title:'Campos faltantes', text:'Completa el nombre y la fecha de término.' });
       return null;
     }
 
-    // si ya había un folio, preguntar si crear otro
     if (formularioId) {
       const r = await Swal.fire({
         icon:'question',
@@ -175,7 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!r.isConfirmed) return null;
     }
 
-    // armamos payload de guardado (sin imagen)
     const base = payloadComun();
     const body = {
       nombre_paciente: base.paciente.nombre,
@@ -185,9 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     try {
-      // ✅ Ruta corregida para coincidir con tu router:
-      // router.post('/:id/odontograma', verificarToken, crearOdontogramaFinal);
-      const res = await fetch(`/api/patients/${pacienteId}/odontograma`, {
+      const res = await fetch(`/api/patients/${pacienteIdQS}/odontograma`, {
         method:'POST',
         headers:{ 'Content-Type':'application/json', ...authHeaders },
         body: JSON.stringify(body)
@@ -197,8 +204,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       formularioId = Number(json.formulario_id) || null;
       if (formularioId) {
-        sessionStorage.setItem(SS_KEY(pacienteId), String(formularioId));
-        notificarGuardado(pacienteId, formularioId);
+        sessionStorage.setItem(SS_KEY(pacienteIdQS), String(formularioId));
+        notificarGuardado(pacienteIdQS, formularioId);
       }
 
       await Swal.fire({ icon:'success', title:'Guardado', text:`Folio: ${formularioId ?? '—'}` });
@@ -210,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /*************** PDF: abre en nueva pestaña y luego sugiere descarga ***************/
+  /*************** PDF ***************/
   async function generarPDF() {
     if (!formularioId) {
       await Swal.fire({ icon:'info', title:'Primero guarda', text:'Necesitas un folio para generar el PDF.' });
@@ -232,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
       tratamientosPorDiente: base.tratamientosPorDiente,
       estadoEncia: base.estadoEncia,
       odontogramaVisual: odontogramaImg,
-      formularioId // por si lo usas en el encabezado del PDF
+      formularioId
     };
 
     try {
@@ -244,12 +251,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const blob = await res.blob();
-
-      // abrir vista en nueva pestaña
       const viewUrl = URL.createObjectURL(blob);
       window.open(viewUrl, '_blank');
 
-      // sugerir descarga
       const filename = buildOdontogramaPdfName({ paciente: base.paciente.nombre });
       const post = await Swal.fire({
         icon:'success',
@@ -272,15 +276,89 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /*************** Eventos ***************/
-  if (btnGuardar) {
-    btnGuardar.addEventListener('click', guardarOdontogramaEnBD);
+  /*************** Cargar datos en modo VISUALIZAR ***************/
+  async function cargarFormularioSiAplica() {
+    if (!ES_MODO_VISUALIZAR) return;
+
+    try {
+      const res = await fetch(`/api/patients/forms/odontograma/${formularioIdQS}`, { headers: authHeaders });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      if (nombreEl) {
+        nombreEl.value = (data?.paciente || '').trim();
+        nombreEl.readOnly = true;
+      }
+      if (fechaEl) {
+        const ft = (data?.fecha_termino || '').slice(0,10);
+        fechaEl.value = ft || '';
+        fechaEl.readOnly = true;
+      }
+
+      // Encía
+      const enciaMap = data?.datos?.estado_encia || {};
+      document.querySelectorAll('.encia-table tbody tr').forEach(fila => {
+        const condicion = fila.querySelector('td')?.textContent.trim();
+        const input     = fila.querySelector('input');
+        if (condicion && input) input.value = enciaMap[condicion] ?? '';
+      });
+
+      // Tratamientos por diente
+      const tpd = data?.datos?.tratamientos_por_diente || {};
+      document.querySelectorAll('.tratamientos-tabla input[type="checkbox"]').forEach(chk => chk.checked = false);
+      document.querySelectorAll('.diente').forEach(d => d.classList.remove('tratamiento-asignado'));
+
+      for (const dienteId of Object.keys(tpd)) {
+        const tratamientos = tpd[dienteId] || [];
+        if (tratamientos.length) {
+          const dienteElement = document.querySelector(`.diente[data-diente="${dienteId}"]`);
+          if (dienteElement) dienteElement.classList.add('tratamiento-asignado');
+        }
+        tratamientos.forEach(trat => {
+          document.querySelectorAll('.tratamientos-tabla tbody tr').forEach(fila => {
+            const nombreTrat = fila.querySelector('td')?.textContent.trim();
+            if (nombreTrat === trat) {
+              const chk = fila.querySelector(`input[type="checkbox"][data-diente="${dienteId}"]`);
+              if (chk) chk.checked = true;
+            }
+          });
+        });
+      }
+
+      // VISUALIZAR: deshabilitar campos, ocultar Guardar, mantener Enviar visible y FUNCIONAL
+      form.querySelectorAll('input, select, textarea').forEach(el => el.disabled = true);
+
+      if (btnGuardar) btnGuardar.style.display = 'none';
+
+      const btnSubmit = form.querySelector('button[type="submit"]');
+      if (btnSubmit) {
+        btnSubmit.style.display = 'inline-block';   // visible
+        btnSubmit.disabled = false;                 // funcional
+      }
+
+      if (btnPdf) {
+        btnPdf.disabled = false;
+        btnPdf.style.display = 'inline-block';
+      }
+
+      activarInteraccionDientes(false);
+    } catch (err) {
+      console.error('cargarFormularioSiAplica error:', err);
+      await Swal.fire({ icon:'error', title:'Error', text:'No se pudo cargar el odontograma para visualizar.' });
+    }
   }
 
-  // Botón azul: primero guarda (si no hay folio) y luego genera/abre PDF
+  /*************** Eventos ***************/
+  if (btnGuardar) {
+    btnGuardar.addEventListener('click', async () => {
+      if (!ES_MODO_CREAR) return;
+      await guardarOdontogramaEnBD();
+    });
+  }
+
   if (btnPdf) {
     btnPdf.addEventListener('click', async () => {
-      if (!formularioId) {
+      if (!formularioId && ES_MODO_CREAR) {
         const folio = await guardarOdontogramaEnBD();
         if (!folio) return;
       }
@@ -288,10 +366,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Submit verde: “enviar formulario” (opcional)
+  // Enviar: ahora funciona en ambos modos
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    // Guardar si hace falta
+
+    if (ES_MODO_VISUALIZAR) {
+      // En visualización NO guarda ni modifica, solo "envía" (simulado)
+      await Swal.fire({
+        icon:'success',
+        title:'📤 Enviado',
+        text:'El odontograma ha sido enviado al paciente (simulado).'
+      });
+      return;
+    }
+
+    // Crear: si no hay folio, guarda y luego “envía”
     if (!formularioId) {
       const folio = await guardarOdontogramaEnBD();
       if (!folio) return;
@@ -299,6 +388,15 @@ document.addEventListener('DOMContentLoaded', () => {
     await Swal.fire({ icon:'success', title:'📤 Enviado', text:'(Simulado) Formulario enviado.' });
   });
 
-  // Arranque
-  cargarPaciente();
+  /*************** Arranque ***************/
+  if (ES_MODO_VISUALIZAR) {
+    activarInteraccionDientes(false);
+    cargarFormularioSiAplica();
+  } else if (ES_MODO_CREAR) {
+    activarInteraccionDientes(true);
+    cargarPaciente();
+  } else {
+    Swal.fire({ icon:'warning', title:'Parámetros faltantes', text:'Usa ?formulario_id= para visualizar o ?paciente_id= para crear.' });
+    activarInteraccionDientes(false);
+  }
 });
