@@ -9,7 +9,9 @@ const { buscarPacientes,
   getHistoriaByFormId,
   getOdontogramaFinalByFormularioId,
   getPresupuestoByFormIdModel,
-  getDiagInfantilByFormularioId
+  getDiagInfantilByFormularioId,
+  getEvolucionDetalleByFormId,   
+  getEvolucionCabeceraByFormId
  } = require('../models/pacientes.model');
 
 const crypto = require('crypto');
@@ -2133,6 +2135,79 @@ async function getDiagInfantilByFormId(req, res) {
   }
 }
 
+async function getEvolucionByFormId(req, res) {
+  try {
+    const formularioId = Number(req.params.formularioId);
+    if (!formularioId) {
+      return res.status(400).json({ ok: false, error: 'formularioId inválido' });
+    }
+
+    const conn = await db.getConnection();
+    try {
+      // ----- Cabecera -----
+      const [cabRows] = await conn.query(
+        `
+        SELECT fe.formulario_id, fe.paciente_id, fe.numero_paciente, fe.fecha_registro,
+               fe.evoluciones_json,
+               p.nombre, p.apellido
+        FROM formulario_evolucion fe
+        JOIN pacientes p ON p.id = fe.paciente_id
+        WHERE fe.formulario_id = ?
+        LIMIT 1
+        `,
+        [formularioId]
+      );
+
+      if (!cabRows.length) {
+        return res.status(404).json({ ok: false, error: 'No encontrado' });
+      }
+
+      const cab = cabRows[0];
+      const nombrePaciente = [cab.nombre, cab.apellido].filter(Boolean).join(' ').trim();
+
+      // ----- Detalle de evoluciones -----
+      const [detRows] = await conn.query(
+        `
+        SELECT
+          id,
+          fecha,
+          tratamiento,
+          costo,
+          ac,
+          proxima_cita_tx AS proxima
+        FROM formulario_evolucion_detalle
+        WHERE formulario_id = ?
+        ORDER BY fecha ASC, id ASC
+        `,
+        [formularioId]
+      );
+
+      return res.json({
+        ok: true,
+        formulario_id: cab.formulario_id,
+        paciente_id: cab.paciente_id,
+        numero_paciente: cab.numero_paciente,
+        paciente: nombrePaciente,
+        fecha_registro: cab.fecha_registro,
+        evoluciones: detRows.map(r => ({
+          id: r.id,
+          fecha: r.fecha,
+          tratamiento: r.tratamiento,
+          costo: r.costo,
+          ac: r.ac,
+          proxima: r.proxima || ''
+        }))
+      });
+
+    } finally {
+      conn.release();
+    }
+  } catch (err) {
+    console.error('getEvolucionByFormId error:', err);
+    return res.status(500).json({ ok: false, error: 'Error al obtener evolución' });
+  }
+}
+
 
 module.exports = {
   crearPaciente,
@@ -2161,5 +2236,6 @@ module.exports = {
   obtenerHistoriaDetalle,
   obtenerOdontogramaFinal,
   getPresupuestoByFormId,
-  getDiagInfantilByFormId
+  getDiagInfantilByFormId,
+  getEvolucionByFormId
 };

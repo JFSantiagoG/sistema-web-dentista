@@ -1188,6 +1188,64 @@ async function getDiagInfantilByFormularioId(formularioId) {
   }
 }
 
+async function getEvolucionCabeceraByFormId(formularioId) {
+  const conn = await db.getConnection();
+  try {
+    // Ajusta nombres si tu cabecera tiene otro nombre de tabla/campos
+    const [rows] = await conn.query(
+      `SELECT fe.*, f.estado, f.paciente_id,
+              p.nombre, p.apellido
+       FROM formulario_evolucion fe
+       JOIN formulario f ON f.id = fe.formulario_id
+       LEFT JOIN pacientes p ON p.id = f.paciente_id
+       WHERE fe.formulario_id = ?
+       LIMIT 1`,
+      [formularioId]
+    );
+    if (!rows.length) return null;
+
+    // Normalizo el posible nombre del paciente si lo guardaste en cabecera
+    const row = rows[0];
+    if (!row.nombre_paciente) {
+      const nom = [row.nombre, row.apellido].filter(Boolean).join(' ').trim();
+      row.nombre_paciente = nom || null;
+    }
+    return row;
+  } finally {
+    conn.release();
+  }
+}
+
+// ===============
+// DETALLE
+// ===============
+async function getEvolucionDetalleByFormId(conn, formularioId) {
+  const [rows] = await conn.query(
+    `
+      SELECT
+        id,
+        fecha,
+        tratamiento,
+        costo,
+        ac,
+        proxima_cita_tx
+      FROM formulario_evolucion_detalle
+      WHERE formulario_id = ?
+      ORDER BY fecha ASC, id ASC
+    `,
+    [formularioId]
+  );
+  // Normaliza el nombre para el frontend
+  return rows.map(r => ({
+    id: r.id,
+    fecha: r.fecha,
+    tratamiento: r.tratamiento,
+    costo: r.costo,
+    ac: r.ac,
+    proxima: r.proxima_cita_tx ?? null
+  }));
+}
+
 module.exports = { 
   buscarPacientes, 
   getFormsSummary, 
@@ -1201,5 +1259,7 @@ module.exports = {
   getHistoriaByFormId,
   getOdontogramaFinalByFormularioId,
   getPresupuestoByFormIdModel,
-  getDiagInfantilByFormularioId
+  getDiagInfantilByFormularioId,
+  getEvolucionCabeceraByFormId,
+  getEvolucionDetalleByFormId
 };

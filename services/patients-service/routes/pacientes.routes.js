@@ -28,6 +28,7 @@ const { obtenerHistoriaDetalle } = require('../controllers/pacientes.controller'
 const { obtenerOdontogramaFinal } = require('../controllers/pacientes.controller');
 const { getPresupuestoByFormId } = require('../controllers/pacientes.controller');
 const { getDiagInfantilByFormId } = require('../controllers/pacientes.controller');
+const { getEvolucionByFormId } = require('../controllers/pacientes.controller');
 
 router.post('/', crearPaciente);
 router.get('/search', verificarToken, buscar);
@@ -56,7 +57,7 @@ router.get('/forms/historia/:formularioId', verificarToken, obtenerHistoriaDetal
 router.get('/forms/odontograma/:formularioId', verificarToken, obtenerOdontogramaFinal);
 router.get('/forms/presupuesto/:formularioId', verificarToken, getPresupuestoByFormId);
 router.get('/forms/diag-infantil/:formularioId', verificarToken, getDiagInfantilByFormId);
-
+router.get('/forms/evolucion/:formularioId', verificarToken, getEvolucionByFormId);
 
 
 module.exports = router;

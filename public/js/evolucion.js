@@ -1,42 +1,58 @@
 // public/js/evolucion.js
+// ✅ Modo crear:   /forms/evolucion.html?paciente_id=12
+// ✅ Modo ver:     /forms/evolucion.html?formulario_id=116
+// Reglas:
+// - Enviar SIEMPRE es simulación (no guarda) en ambos modos
+// - En visualizar se bloquea edición y se ocultan “Agregar” y “Guardar”
+// - PDF funciona en ambos modos; firma solo se usa para el PDF
+
 document.addEventListener('DOMContentLoaded', () => {
-  // --- Auth
+  // --- Auth básico
   const token = localStorage.getItem('token');
-  const roles = JSON.parse(localStorage.getItem('roles') || '[]');
+  let roles = [];
+  try { roles = JSON.parse(localStorage.getItem('roles') || '[]'); } catch {}
   if (!token || roles.length === 0) {
     location.href = '/login.html';
     return;
   }
   const authHeaders = { Authorization: `Bearer ${token}`, Accept: 'application/json' };
 
-  // --- Refs
-  const pacienteSelect = document.getElementById('pacienteSelect');
-  const numeroPacienteInput = document.getElementById('numeroPacienteInput');
-  const fechaRegistroInput  = document.getElementById('fechaRegistroInput');
-  const fechaInicio = document.getElementById('fechaInicio');
-  const fechaFin    = document.getElementById('fechaFin');
-  const tbody   = document.getElementById('evolucionTableBody');
-  const btnAdd  = document.getElementById('btnAddRow');
-  const btnGuardar = document.getElementById('btnGuardar');
-  const btnEnviar  = document.getElementById('btnEnviar');
-  const btnPDF     = document.getElementById('btnPDF');
+  // --- Refs DOM
+  const pacienteSelect       = document.getElementById('pacienteSelect');
+  const numeroPacienteInput  = document.getElementById('numeroPacienteInput');
+  const fechaRegistroInput   = document.getElementById('fechaRegistroInput');
 
-  // Firma (solo PDF)
-  const canvas = document.getElementById('signature-pad');
-  const clearBtn = document.getElementById('clearSignature-pad');
+  const fechaInicio          = document.getElementById('fechaInicio');
+  const fechaFin             = document.getElementById('fechaFin');
+  const btnFiltrar           = document.getElementById('btnFiltrar');
+  const btnLimpiarFiltros    = document.getElementById('btnLimpiarFiltros');
 
+  const tbody                = document.getElementById('evolucionTableBody');
+  const btnAdd               = document.getElementById('btnAddRow');
+  const btnGuardar           = document.getElementById('btnGuardar');
+  const btnEnviar            = document.getElementById('btnEnviar');
+  const btnPDF               = document.getElementById('btnPDF');
+
+  // Firma (solo se manda al PDF)
+  const canvas               = document.getElementById('signature-pad');
+  const clearBtn             = document.getElementById('clearSignature-pad');
   if (canvas) {
+    // “Activación” para considerar la firma
     canvas.addEventListener('click', () => { canvas.dataset.sigEnabled = '1'; }, { once: true });
     clearBtn?.addEventListener('click', () => { delete canvas.dataset.sigEnabled; });
   }
 
-  // --- Estado
-  let contadorFilas = 0;
+  // --- Estado y modo
   const qs = new URLSearchParams(location.search);
-  const pacienteId = qs.get('paciente_id') || qs.get('id') || '';
+  const pacienteId        = qs.get('paciente_id') || qs.get('id') || '';
+  const formularioIdParam = qs.get('formulario_id'); // visualizar
+  const MODO_VISUALIZAR   = !!formularioIdParam;
+
+  let contadorFilas = 0;
   const SS_KEY = (pid) => `evolucion:formId:${pid}`;
   let formularioId = pacienteId ? Number(sessionStorage.getItem(SS_KEY(pacienteId))) || null : null;
 
+  // Canal de notificaciones local
   const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('evoluciones') : null;
   function notificarGuardado(pid, folio) {
     try {
@@ -45,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch {}
   }
 
-  // --- SweetAlert helpers (usamos SweetAlert2 del CDN)
+  // --- SweetAlert helpers
   const info = (title, text='')  => Swal.fire({ icon: 'info',    title, text });
   const ok   = (title, text='')  => Swal.fire({ icon: 'success', title, text });
   const err  = (title, text='')  => Swal.fire({ icon: 'error',   title, text });
@@ -63,11 +79,23 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Utilidades
   const todayISO = () => {
     const now = new Date();
-    const z = new Date(now.getTime() - now.getTimezoneOffset()*60000);
-    return z.toISOString().slice(0,10);
+    const z = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    return z.toISOString().slice(0, 10); // YYYY-MM-DD
   };
+  function formatDateForInput(dateStr) {
+    if (!dateStr) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr; // ya válido
+    const d = new Date(dateStr);
+    if (isNaN(d)) return "";
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+  }
+
   const buildNombre = (p) =>
-    [p?.nombre, p?.apellido, p?.apellido_paterno, p?.apellido_materno].filter(Boolean).join(' ').trim();
+    [p?.nombre, p?.apellido, p?.apellido_paterno, p?.apellido_materno]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
 
   function stripAccents(str=''){ return str.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
   function firstAndLast(full=''){
@@ -90,14 +118,20 @@ document.addEventListener('DOMContentLoaded', () => {
     URL.revokeObjectURL(url);
   }
 
-  // ====== UI: una sola fila al entrar ======
-  function crearFila(){
+  // ====== UI helpers ======
+  function crearFila(values = {}) {
     contadorFilas++;
     const filaId = `fila-${contadorFilas}`;
+    const vFecha = formatDateForInput(values.fecha || '');
+    const vTrat  = values.tratamiento || '';
+    const vCosto = (values.costo != null && values.costo !== '') ? Number(values.costo) : '';
+    const vAC    = values.ac || '';
+    const vProx  = values.proxima || values.proxima_cita_tx || '';
+
     const tr = document.createElement('tr');
     tr.id = filaId;
     tr.innerHTML = `
-      <td><input type="date" name="fecha" class="form-control form-control-sm required-field" required></td>
+      <td><input type="date" name="fecha" class="form-control form-control-sm required-field" required value="${vFecha}"></td>
       <td>
         <select name="tratamiento" class="form-select form-select-sm tratamiento-select">
           <option value="">Seleccionar tratamiento...</option>
@@ -114,9 +148,9 @@ document.addEventListener('DOMContentLoaded', () => {
         <input type="text" name="otro" class="form-control form-control-sm mt-1 otro-tratamiento"
                placeholder="Especificar tratamiento..." style="display:none;">
       </td>
-      <td><input type="number" name="costo" class="form-control form-control-sm" placeholder="0.00" min="0" step="0.01"></td>
-      <td><input type="text" name="ac" class="form-control form-control-sm" placeholder="Antecedentes/Comentarios"></td>
-      <td><textarea name="proxima" class="form-control form-control-sm" rows="2" placeholder="Próxima cita y tratamiento..."></textarea></td>
+      <td><input type="number" name="costo" class="form-control form-control-sm" placeholder="0.00" min="0" step="0.01" value="${vCosto !== '' ? vCosto : ''}"></td>
+      <td><input type="text" name="ac" class="form-control form-control-sm" placeholder="Antecedentes/Comentarios" value="${vAC}"></td>
+      <td><textarea name="proxima" class="form-control form-control-sm" rows="2" placeholder="Próxima cita y tratamiento...">${vProx}</textarea></td>
       <td class="text-center">
         <button type="button" class="btn btn-remove-row" data-del="${filaId}" title="Eliminar entrada">🗑️</button>
       </td>
@@ -129,6 +163,18 @@ document.addEventListener('DOMContentLoaded', () => {
       otro.style.display = select.value === 'Otro' ? 'block' : 'none';
       if (select.value !== 'Otro') otro.value = '';
     });
+
+    // Set opción si viene un valor (y no es una de las predefinidas)
+    if (vTrat) {
+      const options = [...select.options].map(o => o.value);
+      if (options.includes(vTrat)) {
+        select.value = vTrat;
+      } else {
+        select.value = 'Otro';
+        otro.style.display = 'block';
+        otro.value = vTrat;
+      }
+    }
   }
 
   function eliminarFila(id){ document.getElementById(id)?.remove(); }
@@ -140,12 +186,11 @@ document.addEventListener('DOMContentLoaded', () => {
     ask('Eliminar', '¿Deseas eliminar esta evolución?', 'Sí, eliminar')
       .then(ok => { if (ok) eliminarFila(id); });
   });
-  btnAdd?.addEventListener('click', crearFila);
 
-  // ====== Cargar paciente ======
-  async function cargarPaciente(){
+  // ====== Cargar MODO CREAR (desde paciente_id)
+  async function cargarPaciente() {
     fechaRegistroInput.value = todayISO();
-    if (pacienteId){
+    if (pacienteId) {
       numeroPacienteInput.value = String(pacienteId);
       try {
         const res = await fetch(`/api/patients/${encodeURIComponent(pacienteId)}`, { headers: authHeaders });
@@ -164,19 +209,66 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   }
-  cargarPaciente();
 
-  // ====== Helpers ======
+  // ====== Cargar MODO VISUALIZAR (desde formulario_id)
+  async function cargarEvolucionVisualizar(formId) {
+    try {
+      const res = await fetch(`/api/patients/forms/evolucion/${encodeURIComponent(formId)}`, { headers: authHeaders });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+
+      // Cabecera
+      numeroPacienteInput.value = json.paciente_id || '';
+      fechaRegistroInput.value  = formatDateForInput(json.fecha_registro) || todayISO();
+      pacienteSelect.innerHTML  = '';
+      const opt = document.createElement('option');
+      opt.value = String(json.paciente_id || '');
+      opt.textContent = json.paciente || '(Sin nombre)';
+      opt.selected = true;
+      pacienteSelect.appendChild(opt);
+      pacienteSelect.disabled = true;
+
+      // Filas
+      tbody.innerHTML = '';
+      (json.evoluciones || []).forEach(ev => {
+        // normalizamos fecha por si viene "2025-11-02T06:00:00.000Z"
+        const normalizado = { ...ev, fecha: formatDateForInput(ev.fecha) };
+        crearFila(normalizado);
+      });
+
+      // Bloquear edición
+      [...tbody.querySelectorAll('input, select, textarea, button.btn-remove-row')].forEach(el => {
+        if (el.matches('button.btn-remove-row')) {
+          el.style.visibility = 'hidden';
+          el.disabled = true;
+        } else {
+          el.setAttribute('disabled', 'true');
+        }
+      });
+
+      // Ocultar Agregar/Guardar
+      btnAdd?.classList.add('d-none');
+      btnGuardar?.classList.add('d-none');
+
+      // Mantener referencia del folio (para mostrar en la simulación de envío)
+      formularioId = json.formulario_id || null;
+    } catch (e) {
+      console.error('Error cargar evolución visualizar:', e);
+      await err('Error', 'No se pudo cargar la evolución.');
+    }
+  }
+
+  // ====== Construcción de payload
   function buildEvolucionesArray(){
     const rows = [...tbody.querySelectorAll('tr')];
     return rows.map(tr=>{
-      const fecha = tr.querySelector('[name="fecha"]').value;
+      const fecha = tr.querySelector('[name="fecha"]')?.value || '';
       const sel   = tr.querySelector('[name="tratamiento"]');
-      const otro  = tr.querySelector('[name="otro"]').value.trim();
-      const costo = tr.querySelector('[name="costo"]').value;
-      const ac    = tr.querySelector('[name="ac"]').value;
-      const prox  = tr.querySelector('[name="proxima"]').value;
-      let tratamiento = sel.value;
+      const otro  = tr.querySelector('[name="otro"]')?.value.trim() || '';
+      const costo = tr.querySelector('[name="costo"]')?.value || '';
+      const ac    = tr.querySelector('[name="ac"]')?.value || '';
+      const prox  = tr.querySelector('[name="proxima"]')?.value || '';
+      let tratamiento = sel?.value || '';
       if (tratamiento === 'Otro' && otro) tratamiento = otro;
       return { fecha, tratamiento, costo: costo ? Number(costo) : 0, ac, proxima: prox };
     });
@@ -188,8 +280,9 @@ document.addEventListener('DOMContentLoaded', () => {
     return true;
   }
 
-  // ====== Guardar (sin firma)
+  // ====== Guardar (solo en modo crear)
   async function guardarEnBD(){
+    if (MODO_VISUALIZAR) return; // no guarda en visualizar
     if (!pacienteId) return warn('Falta ID', 'Agrega ?paciente_id en la URL.');
     if (!pacienteSelect.value) return warn('Paciente', 'Selecciona un paciente.');
     if (!validarMinimo()) return warn('Campos', 'Completa al menos la fecha.');
@@ -206,10 +299,8 @@ document.addEventListener('DOMContentLoaded', () => {
       evoluciones: buildEvolucionesArray()
     };
 
-    console.log('📩 Enviando a BD /evoluciones:', JSON.stringify(payload));
-
     try {
-      const res = await fetch(`/api/patients/${pacienteId}/evoluciones`, {
+      const res = await fetch(`/api/patients/${encodeURIComponent(pacienteId)}/evoluciones`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(payload)
@@ -232,24 +323,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ====== Enviar (simulado)
+  // ====== Enviar (SIMULADO SIEMPRE, no guarda)
   async function enviarFormulario(){
-    if (!formularioId){
-      const folio = await guardarEnBD();
-      if (!folio) return;
-    }
-    await ok('Formulario enviado', `Folio ${formularioId}`);
+    const folio = formularioId || '(sin folio)';
+    await ok('✅ Enviado (simulación)', `Se ha enviado la simulación del formulario. Folio: ${folio}`);
   }
 
   // ====== PDF (con firma solo PDF)
   btnPDF?.addEventListener('click', async () => {
     if (!pacienteSelect.value) return warn('Paciente', 'Selecciona/carga un paciente válido.');
-    if (!validarMinimo()) return warn('Campos', 'Completa al menos la fecha.');
+    if (!validarMinimo() && !MODO_VISUALIZAR) return warn('Campos', 'Completa al menos la fecha.');
 
-    const selected = pacienteSelect.options[pacienteSelect.selectedIndex];
-    const nombrePaciente = selected.text;
-    const idPaciente = selected.value;
-    const evoluciones = buildEvolucionesArray();
+    const selected        = pacienteSelect.options[pacienteSelect.selectedIndex];
+    const nombrePaciente  = selected?.text || '';
+    const idPaciente      = selected?.value || '';
+    const evoluciones     = buildEvolucionesArray();
 
     let firmaPaciente = null;
     if (canvas?.dataset?.sigEnabled === '1') {
@@ -306,12 +394,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // ====== Eventos
+  btnAdd?.addEventListener('click', () => crearFila());
   btnGuardar?.addEventListener('click', guardarEnBD);
   btnEnviar?.addEventListener('click', enviarFormulario);
 
   // ====== Init
-  (function init() {
+  (async function init() {
     fechaRegistroInput.value = todayISO();
-    crearFila(); // ✅ solo una fila
+
+    if (MODO_VISUALIZAR) {
+      await cargarEvolucionVisualizar(formularioIdParam);
+    } else {
+      await cargarPaciente();
+      crearFila(); // una fila por defecto en modo crear
+    }
+
+    // Filtros (front-only)
+    btnFiltrar?.addEventListener('click', () => {
+      const fi = fechaInicio.value;
+      const ff = fechaFin.value;
+      if (!fi && !ff) return;
+      [...tbody.querySelectorAll('tr')].forEach(tr => {
+        const f = tr.querySelector('[name="fecha"]')?.value || '';
+        let show = true;
+        if (fi && f < fi) show = false;
+        if (ff && f > ff) show = false;
+        tr.style.display = show ? '' : 'none';
+      });
+    });
+    btnLimpiarFiltros?.addEventListener('click', () => {
+      fechaInicio.value = ''; fechaFin.value = '';
+      [...tbody.querySelectorAll('tr')].forEach(tr => tr.style.display = '');
+    });
   })();
 });
