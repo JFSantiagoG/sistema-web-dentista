@@ -1246,6 +1246,72 @@ async function getEvolucionDetalleByFormId(conn, formularioId) {
   }));
 }
 
+async function appendEvolucionesDetalle(formularioId, evoluciones, userId = null) {
+  if (!Array.isArray(evoluciones) || evoluciones.length === 0) return;
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const rows = evoluciones.map(ev => ([
+      Number(formularioId),
+      (ev.fecha || '').slice(0,10),                                  // YYYY-MM-DD
+      ev.tratamiento || null,
+      (ev.costo !== undefined && ev.costo !== null && ev.costo !== '') ? Number(ev.costo) : null,
+      ev.ac || null,
+      ev.proxima || ev.proxima_cita_tx || null                       // map a proxima_cita_tx
+    ]));
+
+    await conn.query(
+      `INSERT INTO formulario_evolucion_detalle
+       (formulario_id, fecha, tratamiento, costo, ac, proxima_cita_tx)
+       VALUES ?`,
+      [rows]
+    );
+
+    await conn.query(
+      `UPDATE formulario
+         SET fecha_actualizacion = NOW(),
+             actualizado_por = ?
+       WHERE id = ?`,
+      [userId, Number(formularioId)]
+    );
+
+    // Opcional: tocar cabecera específica
+    // await conn.query(`UPDATE formulario_evolucion SET actualizado_en = NOW() WHERE formulario_id = ?`, [Number(formularioId)]);
+
+    await conn.commit();
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+async function getEvolucionSummaryForPatient(pacienteId, conn) {
+  const sql = `
+    SELECT
+      f.id                       AS formulario_id,
+      f.paciente_id,
+      fe.fecha_registro,
+      MIN(d.fecha)              AS primera_fecha,
+      MAX(d.fecha)              AS ultima_fecha,
+      COUNT(d.id)               AS entradas
+    FROM formulario f
+    JOIN formulario_tipo ft        ON ft.id = f.tipo_id AND (ft.clave = 'evolucion' OR ft.nombre LIKE '%evoluci%')
+    JOIN formulario_evolucion fe   ON fe.formulario_id = f.id
+    LEFT JOIN formulario_evolucion_detalle d ON d.formulario_id = f.id
+    WHERE f.paciente_id = ?
+      AND f.eliminado_logico = 0
+    GROUP BY f.id, f.paciente_id, fe.fecha_registro
+    ORDER BY f.fecha_actualizacion DESC
+    LIMIT 1
+  `;
+  const [rows] = await (conn || pool).query(sql, [pacienteId]);
+  return rows[0] || null;
+}
+
+
 module.exports = { 
   buscarPacientes, 
   getFormsSummary, 
@@ -1261,5 +1327,7 @@ module.exports = {
   getPresupuestoByFormIdModel,
   getDiagInfantilByFormularioId,
   getEvolucionCabeceraByFormId,
-  getEvolucionDetalleByFormId
+  getEvolucionDetalleByFormId,
+  appendEvolucionesDetalle,
+  getEvolucionSummaryForPatient,
 };

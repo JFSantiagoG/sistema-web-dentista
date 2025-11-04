@@ -1,10 +1,10 @@
+// PDF CONSENTIMIENTO QUIRÚRGICO
 const express     = require('express');
 const PDFDocument = require('pdfkit');
 
 const router = express.Router();
 const { insertarEncabezado, insertarPie } = require('../utils/pdfHelpers');
 
-// 📄 Generar PDF Consentimiento Quirúrgico
 router.post('/generate', (req, res) => {
   const {
     paciente,
@@ -18,14 +18,13 @@ router.post('/generate', (req, res) => {
     responsabilidad,
     acuerdo,
     acuerdoAceptado,
-    firmaPaciente,   // ✅ Firmas en base64
-    firmaMedico
-  } = req.body;
+    firmaPaciente,   // base64 opcional
+    firmaMedico      // base64 opcional
+  } = req.body || {};
 
   const doc = new PDFDocument({ size: 'A4', margin: 50 });
   const chunks = [];
-
-  doc.on('data', chunk => chunks.push(chunk));
+  doc.on('data', c => chunks.push(c));
   doc.on('end', () => {
     res.setHeader('Content-Type', 'application/pdf');
     res.send(Buffer.concat(chunks));
@@ -40,9 +39,9 @@ router.post('/generate', (req, res) => {
   doc.moveDown(1.5)
     .fontSize(10)
     .fillColor('black')
-    .text(`Paciente: ${paciente.nombre}`)
-    .text(`Fecha: ${paciente.fecha}`)
-    .text(`Número de paciente: ${paciente.numeroPaciente}`)
+    .text(`Paciente: ${paciente?.nombre ?? ''}`)
+    .text(`Fecha: ${paciente?.fecha ?? ''}`)
+    .text(`Número de paciente: ${paciente?.numeroPaciente ?? ''}`)
     .moveDown(1);
 
   // === Historia Clínica ===
@@ -74,8 +73,8 @@ router.post('/generate', (req, res) => {
     .text('Pronóstico y Condiciones Posoperatorias')
     .moveDown(0.5)
     .font('Helvetica').fontSize(10).fillColor('black')
-    .text(`Pronóstico: ${pronostico}`)
-    .text(`Condiciones posoperatorias: ${condiciones}`)
+    .text(`Pronóstico: ${pronostico ?? ''}`)
+    .text(`Condiciones posoperatorias: ${condiciones ?? ''}`)
     .moveDown(0.5)
     .text(pronosticoAceptado
       ? 'El paciente acepta y comprende el pronóstico y condiciones posoperatorias.'
@@ -87,7 +86,7 @@ router.post('/generate', (req, res) => {
     .text('Tiempo de Recuperación y Cicatrices')
     .moveDown(0.5)
     .font('Helvetica').fontSize(10).fillColor('black')
-    .text(`Tiempo de recuperación aproximado: ${recuperacion} días. En procedimientos quirúrgicos puede existir la presencia de cicatrices posoperatorias.`)
+    .text(`Tiempo de recuperación aproximado: ${recuperacion ?? ''} días. En procedimientos quirúrgicos puede existir la presencia de cicatrices posoperatorias.`)
     .moveDown(0.5)
     .text(recuperacionAceptada
       ? 'El paciente acepta los riesgos de recuperación y cicatrices.'
@@ -111,7 +110,7 @@ router.post('/generate', (req, res) => {
     .text('Acuerdo Económico')
     .moveDown(0.5)
     .font('Helvetica').fontSize(10).fillColor('black')
-    .text(`Acuerdo económico establecido: ${acuerdo}`)
+    .text(`Acuerdo económico establecido: ${acuerdo ?? ''}`)
     .moveDown(0.5)
     .text(acuerdoAceptado
       ? 'El paciente acepta las condiciones económicas.'
@@ -122,21 +121,26 @@ router.post('/generate', (req, res) => {
   doc.font('Helvetica-Bold').fontSize(12).fillColor('black').text("Firmas:");
   const startY = doc.y + 15;
 
-  if (firmaPaciente) {
-    const pacienteImg = Buffer.from(firmaPaciente.split(",")[1], "base64");
-    doc.image(pacienteImg, 80, startY+20, { width: 150 });
-    doc.text("_______________________", 80, startY + 60);
-    doc.text(`${paciente.nombre}`, 120, startY + 75);
-  }
+  const renderFirma = (x, etiqueta, base64) => {
+    if (base64) {
+      try {
+        const img = Buffer.from(base64.split(",")[1], "base64");
+        doc.image(img, x, startY + 20, { width: 150 });
+      } catch (e) {
+        console.warn("⚠️ Firma inválida, se dibuja solo la línea");
+      }
+    }
+    doc.text("_______________________", x, startY + 60);
+    doc.text(etiqueta, x + 20, startY + 75);
+  };
 
-  if (firmaMedico) {
-    const medicoImg = Buffer.from(firmaMedico.split(",")[1], "base64");
-    doc.image(medicoImg, 350, startY+20, { width: 150 });
-    doc.text("_______________________", 350, startY + 60);
-    doc.text("Doctor", 400, startY + 75);
-  }
+  // Paciente izquierda
+  renderFirma(80, `${paciente?.nombre ?? ''}`, firmaPaciente);
 
-  // === Pie institucional ===
+  // Doctor derecha
+  renderFirma(350, `        Medico`, firmaMedico);
+
+  // === Footer ===
   insertarPie(doc, true);
 
   doc.end();

@@ -11,7 +11,9 @@ const { buscarPacientes,
   getPresupuestoByFormIdModel,
   getDiagInfantilByFormularioId,
   getEvolucionDetalleByFormId,   
-  getEvolucionCabeceraByFormId
+  getEvolucionCabeceraByFormId,
+  appendEvolucionesDetalle,
+  getEvolucionSummaryForPatient
  } = require('../models/pacientes.model');
 
 const crypto = require('crypto');
@@ -83,11 +85,68 @@ async function obtenerFormsSummary(req, res) {
     if (!id) return res.status(400).json({ error: 'paciente_id inválido' });
 
     const data = await getFormsSummary(id);
-    if (!data || !data.paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
+    if (!data || !data.paciente) {
+      return res.status(404).json({ error: 'Paciente no encontrado' });
+    }
 
-    res.json({
+    // helper seguro para fechas
+    const d = (v) => {
+      if (!v) return null;
+      // acepta 'YYYY-MM-DD' o Date/ISO
+      const s = String(v).slice(0, 10); // YYYY-MM-DD
+      const dt = new Date(s);
+      return isNaN(dt.getTime()) ? null : dt;
+    };
+
+    // 1) Intentar summary de modelo (si existe y responde)
+    let evolucionFilaUnica = null;
+    try {
+      if (typeof getEvolucionSummaryForPatient === 'function') {
+        const evo = await getEvolucionSummaryForPatient(id); // {formulario_id, primera_fecha, ultima_fecha, entradas, fecha_registro?}
+        if (evo && evo.formulario_id) {
+          evolucionFilaUnica = {
+            formulario_id : evo.formulario_id,
+            fecha         : evo.ultima_fecha || evo.fecha_registro || evo.primera_fecha || null,
+            descripcion   : `${evo.entradas || 0} evolución(es)`,
+            doctor        : '', // si no lo tienes en la cabecera
+            primera_fecha : evo.primera_fecha || null,
+            ultima_fecha  : evo.ultima_fecha  || null,
+            entradas      : evo.entradas      || 0
+          };
+        }
+      }
+    } catch (e) {
+      console.error('getEvolucionSummaryForPatient error:', e?.message || e);
+    }
+
+    // 2) Fallback: condensar data.evoluciones en UNA sola fila
+    if (!evolucionFilaUnica) {
+      const evoList = Array.isArray(data.evoluciones) ? data.evoluciones : [];
+      if (evoList.length) {
+        // escoger el más reciente por fecha (o por formulario_id si falta fecha)
+        const sorted = [...evoList].sort((a, b) => {
+          const da = d(a.fecha) || d(a.ultima_fecha) || d(a.fecha_registro);
+          const db = d(b.fecha) || d(b.ultima_fecha) || d(b.fecha_registro);
+          if (da && db) return db - da;
+          // fallback a formulario_id descendente
+          return (b.formulario_id || 0) - (a.formulario_id || 0);
+        });
+        const top = sorted[0] || {};
+        evolucionFilaUnica = {
+          formulario_id : top.formulario_id || top.id || null,
+          fecha         : top.fecha || top.ultima_fecha || top.fecha_registro || null,
+          descripcion   : `${evoList.length} evolución(es)`,
+          doctor        : top.doctor || '',
+          primera_fecha : null,
+          ultima_fecha  : top.fecha || null,
+          entradas      : evoList.length
+        };
+      }
+    }
+
+    return res.json({
       paciente: data.paciente,
-      evoluciones: data.evoluciones || [],
+      evoluciones: evolucionFilaUnica ? [evolucionFilaUnica] : [], // ← siempre 0 ó 1 fila
       recetas: data.recetas || [],
       presupuestos: data.presupuestos || [],
       consentimiento_odontologico: data.consentimiento_odontologico || [],
@@ -99,8 +158,8 @@ async function obtenerFormsSummary(req, res) {
       diag_infantil: data.diag_infantil || []
     });
   } catch (err) {
-    console.error('getFormsSummary error:', err);
-    res.status(500).json({ error: 'Error al consultar formularios' });
+    console.error('obtenerFormsSummary error:', err);
+    return res.status(500).json({ error: 'Error al consultar formularios' });
   }
 }
 
@@ -2208,6 +2267,35 @@ async function getEvolucionByFormId(req, res) {
   }
 }
 
+async function appendEvoluciones(req, res) {
+  try {
+    const { formularioId } = req.params;
+    const { evoluciones } = req.body || {};
+    const userId = req.user?.id || null;
+
+    if (!formularioId) return res.status(400).json({ error: 'Falta formularioId' });
+    if (!Array.isArray(evoluciones) || evoluciones.length === 0) {
+      return res.status(400).json({ error: 'No hay evoluciones para anexar' });
+    }
+
+    const header = await getEvolucionCabeceraByFormId(formularioId);
+    if (!header) return res.status(404).json({ error: 'Formulario de evolución no encontrado' });
+
+    await appendEvolucionesDetalle(formularioId, evoluciones, userId);
+
+    return res.json({
+      ok: true,
+      formulario_id: Number(formularioId),
+      appended: evoluciones.length,
+      message: 'Evolución agregada al mismo formulario (folio) correctamente.',
+    });
+  } catch (err) {
+    console.error('appendEvoluciones error:', err);
+    return res.status(500).json({ error: 'Error al anexar evoluciones' });
+  }
+}
+
+
 
 module.exports = {
   crearPaciente,
@@ -2237,5 +2325,6 @@ module.exports = {
   obtenerOdontogramaFinal,
   getPresupuestoByFormId,
   getDiagInfantilByFormId,
-  getEvolucionByFormId
+  getEvolucionByFormId,
+  appendEvoluciones
 };

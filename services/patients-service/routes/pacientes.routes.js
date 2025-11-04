@@ -30,6 +30,9 @@ const { getPresupuestoByFormId } = require('../controllers/pacientes.controller'
 const { getDiagInfantilByFormId } = require('../controllers/pacientes.controller');
 const { getEvolucionByFormId } = require('../controllers/pacientes.controller');
 
+//Para actualizar evoluciones
+const { appendEvoluciones } = require('../controllers/pacientes.controller');
+
 router.post('/', crearPaciente);
 router.get('/search', verificarToken, buscar);
 router.get('/:id', verificarToken, obtenerPorId);
@@ -58,6 +61,9 @@ router.get('/forms/odontograma/:formularioId', verificarToken, obtenerOdontogram
 router.get('/forms/presupuesto/:formularioId', verificarToken, getPresupuestoByFormId);
 router.get('/forms/diag-infantil/:formularioId', verificarToken, getDiagInfantilByFormId);
 router.get('/forms/evolucion/:formularioId', verificarToken, getEvolucionByFormId);
+
+//Rutas para realizar una actualizacion
+router.put('/evoluciones/:formularioId', verificarToken, appendEvoluciones);
 
 
 module.exports = router;

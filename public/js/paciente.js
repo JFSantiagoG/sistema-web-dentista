@@ -17,6 +17,29 @@ const actionBtns = (formId, formHtml) => `
   <button class="btn btn-sm btn-outline-success" data-form="${formId}">📤 Enviar</button>
 `;
 
+function updateEvolucionButtons(pacienteId, data) {
+  const btnCrear = document.getElementById('btn-nueva-evo');
+  if (!btnCrear) return;
+
+  const evoluciones = data?.evoluciones || data?.evolucion || [];
+  const evo = evoluciones[0] || null;
+  const evoFormId = evo?.formulario_id ?? evo?.id ?? null;
+
+  if (evoFormId) {
+    // Bloquear crear nuevo
+    btnCrear.classList.add('disabled');
+    btnCrear.removeAttribute('href');
+    btnCrear.title = 'Ya existe una evolución. Solo puedes agregar nuevas entradas.';
+  } else {
+    // Permitir crear
+    btnCrear.classList.remove('disabled');
+    btnCrear.href = `forms/evolucion.html?paciente_id=${pacienteId}`;
+    btnCrear.title = '';
+  }
+}
+
+
+
 // === Tercero: UNA sola función cargarPerfil ===
 async function cargarPerfil() {
   if (!pacienteId) {
@@ -71,13 +94,27 @@ async function cargarPerfil() {
 
     // Evoluciones
     document.getElementById('tb-evoluciones').innerHTML =
-      (data.evoluciones||[]).map(r => `
-        <tr>
-          <td>${fdate(r.fecha)}</td>
-          <td>${r.descripcion || '—'}</td>
-          <td>${r.doctor || '—'}</td>
-          <td>${actionBtns(r.formulario_id, 'evolucion.html')}</td>
-        </tr>`).join('') || `<tr><td colspan="4" class="text-center text-muted">Sin evoluciones</td></tr>`;
+      (data.evoluciones || []).map((r, idx) => {
+        const formId = r.formulario_id ?? r.id;
+        const agregarBtn = idx === 0 ? `
+          <a class="btn btn-sm btn-warning me-1"
+            href="forms/evolucion.html?formulario_id=${formId}&append=1">
+            ✏️ Agregar
+          </a>` : '';
+
+        return `
+          <tr>
+            <td>${fdate(r.fecha)}</td>
+            <td>${r.descripcion || '—'}</td>
+            <td>${r.doctor || '—'}</td>
+            <td>
+              ${agregarBtn}
+              <a class="btn btn-sm btn-outline-primary me-1" href="forms/evolucion.html?formulario_id=${formId}">👁️ Visualizar</a>
+              <button class="btn btn-sm btn-outline-success" data-form="${formId}">📤 Enviar</button>
+            </td>
+          </tr>`;
+      }).join('') || `<tr><td colspan="4" class="text-center text-muted">Sin evoluciones</td></tr>`;
+
 
     // Recetas
     document.getElementById('tb-recetas').innerHTML =
@@ -265,6 +302,8 @@ async function cargarPerfil() {
     document.getElementById('btn-nuevo-odont').href      = `forms/odontograma.html?paciente_id=${pacienteId}`;
     document.getElementById('btn-nueva-orto').href       = `forms/ortodoncia.html?paciente_id=${pacienteId}`;
     document.getElementById('btn-diag-infantil').href    = `forms/diag-infantil.html?paciente_id=${pacienteId}`;
+
+    updateEvolucionButtons(pacienteId, data);
 
   } catch (err) {
     console.error('Error cargando perfil del paciente:', err);
