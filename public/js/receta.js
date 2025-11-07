@@ -158,8 +158,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       const res = await fetch(`/api/patients/${pacienteIdQS}`, { headers: authHeaders });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const p = await res.json();
+
+      // ... código existente ...
       if (nombreEl) nombreEl.value = buildNombre(p) || '';
       if (edadEl)   edadEl.value   = (p?.edad != null) ? `${p.edad} años` : '— años';
+
+      // ✅ Guardar el número de WhatsApp en el botón
+      const telefonoNacional = (p?.telefono_principal || p?.telefono_secundario || '').replace(/\D/g, '');
+      if (telefonoNacional.length === 10) {
+        const telefonoWhatsApp = '52' + telefonoNacional;
+        btnEnviar.setAttribute('data-numero-paciente', telefonoWhatsApp);
+      } else if (btnEnviar) {
+        btnEnviar.removeAttribute('data-numero-paciente');
+      }
     } catch (e) {
       console.error('Error al cargar paciente:', e);
       Swal.fire({ icon:'error', title:'Error', text:'No se pudo cargar la información del paciente.' });
@@ -345,18 +356,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnGuardar?.addEventListener('click', guardarRecetaEnBD);
 
   btnEnviar?.addEventListener('click', async () => {
-    if (!formularioId) {
+    const numero = btnEnviar.getAttribute('data-numero-paciente');
+    
+    if (!numero || !/^\d{10,15}$/.test(numero)) {
       await Swal.fire({
-        title: 'Primero guarda la receta',
-        text: 'Para poder enviar, guarda la receta y obtén un folio.',
-        icon: 'info',
-        confirmButtonText: 'Entendido'
+        icon: 'warning',
+        title: 'Número no disponible',
+        text: 'El paciente no tiene un número de WhatsApp válido registrado.'
       });
       return;
     }
-    // Simulación de envío (ajusta a tu endpoint cuando lo tengas)
-    await new Promise(r => setTimeout(r, 500));
-    await Swal.fire({ icon:'success', title:'Receta enviada', text:`Folio ${formularioId}` });
+
+    const mensaje = encodeURIComponent("Hola, adjunto su receta médica.");
+    const url = `https://wa.me/${numero}?text=${mensaje}`;
+    window.open(url, '_blank');
   });
 
   // --- Generar PDF (usa datos actuales; añade firma SOLO para PDF)
@@ -461,4 +474,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Nuevo (precarga paciente y deja fecha=HOY)
     await cargarPaciente();
   }
+
 });
