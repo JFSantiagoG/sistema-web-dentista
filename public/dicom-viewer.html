@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Visor DICOM - Consultorio Dental</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dicom-viewer.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Encabezado -->
+        <header class="header">
+            <div class="logo">
+                <img src="images/tooth-icon.png" alt="Logo" />
+                <h1>Consultorio Dental</h1>
+            </div>
+            <p>Sistema de gestión clínica dental</p>
+        </header>
+
+        <!-- Menú de navegación -->
+        <nav class="menu">
+            <ul>
+                <li><a href="index.html">Inicio</a></li>
+                <li><a href="agenda.html">Agenda</a></li>
+                <li><a href="pacientes.html">Pacientes</a></li>
+                <li><a href="dicom-viewer.html" class="active">Visualizador</a></li>
+            </ul>
+        </nav>
+
+        <!-- Contenido principal -->
+        <main class="content">
+            <div class="section-title">
+                <h2>Visor DICOM</h2>
+                <p>Carga y visualiza radiografías y tomografías sin necesidad de registro.</p>
+            </div>
+
+            <!-- Botones de carga -->
+            <div class="upload-controls">
+                <input type="file" id="dicom-file-input" multiple accept=".dcm,.DCM" class="file-input" />
+                <button id="load-folder" class="btn btn-primary">Cargar Carpeta</button>
+            </div>
+
+            <!-- Herramientas de visualización -->
+            <div class="toolbar">
+                <button id="zoom-in" class="btn btn-tool"><i class="fas fa-search-plus"></i> Zoom +</button>
+                <button id="zoom-out" class="btn btn-tool"><i class="fas fa-search-minus"></i> Zoom -</button>
+                <button id="reset" class="btn btn-tool"><i class="fas fa-sync-alt"></i> Resetear</button>
+                <button id="invert" class="btn btn-tool"><i class="fas fa-adjust"></i> Invertir</button>
+                <button id="rotate" class="btn btn-tool"><i class="fas fa-undo-alt"></i> Rotar</button>
+                <button id="mirror" class="btn btn-tool"><i class="fas fa-mirror"></i> Espejo</button>
+                <button id="cine" class="btn btn-tool"><i class="fas fa-film"></i> Cine</button>
+                <button id="measure" class="btn btn-tool"><i class="fas fa-ruler"></i> Medir</button>
+                <button id="draw-rect" class="btn btn-tool"><i class="fas fa-square"></i> Rectángulo</button>
+                <button id="draw-circle" class="btn btn-tool"><i class="fas fa-circle"></i> Círculo</button>
+                <button id="levels" class="btn btn-tool"><i class="fas fa-sliders-h"></i> Niveles</button>
+            </div>
+
+            <!-- Contenedor del visor -->
+            <div class="viewer-container">
+                <div class="thumbnail-list" id="thumbnail-list"></div>
+                <div class="main-viewer">
+                    <canvas id="dicom-canvas"></canvas>
+                </div>
+            </div>
+        </main>
+
+        <!-- Pie de página -->
+        <footer class="footer">
+            <p>&copy; 2025 Consultorio Dental. Todos los derechos reservados.</p>
+        </footer>
+    </div>
+
+    <!-- Librerías de Cornerstone -->
+    <script src="node_modules/cornerstone-core/dist/cornerstone.min.js"></script>
+    <script src="node_modules/cornerstone-tools/dist/cornerstoneTools.min.js"></script>
+    <script src="node_modules/dicom-parser/dist/dicomParser.min.js"></script>
+    <script src="node_modules/cornerstone-wado-image-loader/dist/cornerstoneWADOImageLoader.min.js"></script>
+
+    <!-- Script principal -->
+    <script src="js/dicom-viewer.js"></script>
+</body>
+</html>
