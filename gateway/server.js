@@ -33,6 +33,12 @@ app.use('/api/patients', createProxyMiddleware({
   pathRewrite: { '^/api/patients': '' }
 }));
 
+// 📲 WhatsApp Service
+app.use('/api/whatsapp', createProxyMiddleware({
+  target: 'http://localhost:3007',
+  changeOrigin: true,
+  pathRewrite: { '^/api/whatsapp': '' }
+}));
 
 
 // 📁 Files Service

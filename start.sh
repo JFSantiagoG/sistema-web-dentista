@@ -42,6 +42,7 @@ start_service "pdf"          "$BASE/services/pdf-service"         "node server.j
 start_service "appointments" "$BASE/services/appointments-service" "node server.js"
 start_service "patients"     "$BASE/services/patients-service"    "node server.js"
 start_service "visualizador" "$BASE/services/visualizador-service" "python3 app.py"
+start_service "whatsapp"     "$BASE/services/whatsapp-service"    "npm start"
 
 echo "✅ Todos los servicios iniciados en sesiones screen."
 echo "👉 Usa './stop.sh' desde cualquier terminal para detenerlos."

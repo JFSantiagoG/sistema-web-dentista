@@ -1,5 +1,5 @@
 #!/bin/bash
-SERVICES=("gateway" "auth" "forms" "pdf" "appointments" "patients" "visualizador")
+SERVICES=("gateway" "auth" "forms" "pdf" "appointments" "patients" "visualizador" "whatsapp")
 
 echo "⛔ Deteniendo servicios clínicos..."
 

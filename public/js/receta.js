@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const addBtn     = document.getElementById('addMedicamentoBtn');
   const btnGuardar = document.getElementById('btnGuardar');
   const btnEnviar  = document.getElementById('btnEnviar');
-  const canvas     = document.getElementById('signature-pad'); // firma (para PDF y visualizar)
+  const canvas     = document.getElementById('signature-pad'); // firma
   const btnClear   = document.getElementById('clearSignature-pad');
 
   // --- QueryString (nuevo o visualizar)
@@ -22,44 +22,45 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (hiddenId && pacienteIdQS) hiddenId.value = pacienteIdQS;
 
-  // --- Estado local: folio (formulario_id) guardado por paciente
+  // --- Estado local: folio
   const SS_KEY   = (pid) => `receta:formId:${pid}`;
   const SAVE_KEY = (pid) => `receta:saved:${pid}`;
   let formularioId = formularioIdQS
     ? Number(formularioIdQS)
     : (pacienteIdQS ? Number(sessionStorage.getItem(SS_KEY(pacienteIdQS))) || null : null);
 
-  // --- Canal para avisar al perfil (paciente.html) que refresque
+  // --- Canal para avisar al perfil
   const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('recetas') : null;
   function notificarRecetaGuardada(pid, folio) {
     try {
-      localStorage.setItem(SAVE_KEY(pid), String(Date.now())); // dispara 'storage' en otras pestañas
+      localStorage.setItem(SAVE_KEY(pid), String(Date.now()));
       if (bc) bc.postMessage({ type: 'receta-saved', pacienteId: String(pid), formularioId: folio });
     } catch {}
   }
 
-  // --- Helpers de fecha
+  // --- Helpers fecha
   const hoyISO = (() => {
     const now = new Date();
     const iso = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     return iso;
   })();
 
-  // --- auth headers (JWT)
+  // --- auth headers
   const token = localStorage.getItem('token');
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
   // --- Helpers varios
   function setInput(el, val) { if (el) el.value = val ?? ''; }
 
-  // nombre desde objeto paciente (evita [object Object])
   function nombreDesdePaciente(p) {
     return [p?.nombre, p?.apellido].filter(Boolean).join(' ').trim();
   }
 
-  // Construye nombre desde respuesta /api/patients/:id (puede traer más apellidos)
   const buildNombre = (p) =>
-    [p?.nombre, p?.apellido, p?.apellido_paterno, p?.apellido_materno].filter(Boolean).join(' ').trim();
+    [p?.nombre, p?.apellido, p?.apellido_paterno, p?.apellido_materno]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
 
   const crearFila = () => {
     const tr = document.createElement('tr');
@@ -75,7 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     return tr;
   };
 
-  // --- Firma: limpiar y leer base64 (para PDF)
+  // --- Firma
   function clearCanvas(cnv = canvas) {
     if (!cnv) return;
     const ctx = cnv.getContext('2d');
@@ -86,21 +87,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   function getFirmaBase64() {
     if (!canvas) return null;
     try {
-      // Si está en blanco, retorna null
       const blank = document.createElement('canvas');
-      blank.width = canvas.width; blank.height = canvas.height;
+      blank.width = canvas.width;
+      blank.height = canvas.height;
       if (canvas.toDataURL() === blank.toDataURL()) return null;
       return canvas.toDataURL('image/png');
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   }
 
-  // --- helpers nombre de archivo + descarga
-  function stripAccents(str='') {
+  // --- helpers nombre archivo / descarga PDF
+  function stripAccents(str = '') {
     return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
-  function firstAndLast(full='') {
+  function firstAndLast(full = '') {
     const parts = (full || '').trim().split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return { first: '', last: '' };
+    if (!parts.length) return { first: '', last: '' };
     if (parts.length === 1) return { first: parts[0], last: '' };
     return { first: parts[0], last: parts[parts.length - 1] };
   }
@@ -125,24 +128,81 @@ document.addEventListener('DOMContentLoaded', async () => {
     URL.revokeObjectURL(url);
   }
 
+  // --- telefono helpers
+  function normalizarTelefono(telefonoRaw) {
+    if (!telefonoRaw) return null;
+    const limpio = String(telefonoRaw).replace(/\D/g, '');
+    if (limpio.length === 10) {
+      return '52' + limpio; // MX nacional
+    }
+    if (limpio.length >= 11 && limpio.length <= 15) {
+      return limpio; // ya con lada
+    }
+    return null;
+  }
+
+  function extraerTelefonoDeObjeto(p) {
+    if (!p) return null;
+    return (
+      normalizarTelefono(p.telefono_principal) ||
+      normalizarTelefono(p.telefono_secundario) ||
+      normalizarTelefono(p.telefono) ||
+      normalizarTelefono(p.celular) ||
+      normalizarTelefono(p.whatsapp)
+    );
+  }
+
+  async function setNumeroWhatsApp(btn, raw) {
+    if (!btn) return;
+
+    // 1) Intentar con datos del detalle
+    let numero =
+      extraerTelefonoDeObjeto(raw?.paciente) ||
+      extraerTelefonoDeObjeto(raw) ||
+      null;
+
+    // 2) Si no hay, intentar con pacienteId del detalle o de la URL
+    if (!numero) {
+      const pid = raw?.paciente_id || pacienteIdQS || raw?.paciente?.id;
+      if (pid) {
+        try {
+          const res = await fetch(`/api/patients/${pid}`, { headers: authHeaders });
+          if (res.ok) {
+            const p = await res.json();
+            numero = extraerTelefonoDeObjeto(p);
+          }
+        } catch (e) {
+          console.warn('No se pudo obtener teléfono desde /api/patients/', e);
+        }
+      }
+    }
+
+    if (numero) {
+      btn.setAttribute('data-numero-paciente', numero);
+      // console.log('✅ Número WhatsApp configurado:', numero);
+    } else {
+      btn.removeAttribute('data-numero-paciente');
+      // console.log('⚠️ No se encontró número válido para WhatsApp');
+    }
+  }
+
   // --- Construir payload desde la UI (para guardar/pdf)
   const buildData = () => {
     const data = {
       pacienteId: pacienteIdQS || null,
       nombrePaciente: nombreEl?.value || '',
-      fecha: fechaEl?.value || '',    // SOLO fecha de emisión YYYY-MM-DD
-      edad:  edadEl?.value || '',
+      fecha: fechaEl?.value || '',
+      edad: edadEl?.value || '',
       nombreMedico: form.nombreMedico.value,
-      cedula:       form.cedula.value,
+      cedula: form.cedula.value,
       medicamentos: []
-      // firmaMedico se agrega sólo al generar PDF
     };
     tablaBody.querySelectorAll('tr').forEach(fila => {
       data.medicamentos.push({
-        nombre:       fila.querySelector('[name="medicamento[]"]')?.value || '',
-        dosis:        fila.querySelector('[name="dosis[]"]')?.value || '',
-        frecuencia:   fila.querySelector('[name="frecuencia[]"]')?.value || '',
-        duracion:     fila.querySelector('[name="duracion[]"]')?.value || '',
+        nombre: fila.querySelector('[name="medicamento[]"]')?.value || '',
+        dosis: fila.querySelector('[name="dosis[]"]')?.value || '',
+        frecuencia: fila.querySelector('[name="frecuencia[]"]')?.value || '',
+        duracion: fila.querySelector('[name="duracion[]"]')?.value || '',
         indicaciones: fila.querySelector('[name="indicaciones[]"]')?.value || ''
       });
     });
@@ -159,21 +219,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const p = await res.json();
 
-      // ... código existente ...
       if (nombreEl) nombreEl.value = buildNombre(p) || '';
-      if (edadEl)   edadEl.value   = (p?.edad != null) ? `${p.edad} años` : '— años';
+      if (edadEl) edadEl.value = (p?.edad != null) ? `${p.edad} años` : '— años';
 
-      // ✅ Guardar el número de WhatsApp en el botón
-      const telefonoNacional = (p?.telefono_principal || p?.telefono_secundario || '').replace(/\D/g, '');
-      if (telefonoNacional.length === 10) {
-        const telefonoWhatsApp = '52' + telefonoNacional;
-        btnEnviar.setAttribute('data-numero-paciente', telefonoWhatsApp);
-      } else if (btnEnviar) {
-        btnEnviar.removeAttribute('data-numero-paciente');
-      }
+      // Número WhatsApp en NUEVO
+      await setNumeroWhatsApp(btnEnviar, p);
     } catch (e) {
       console.error('Error al cargar paciente:', e);
-      Swal.fire({ icon:'error', title:'Error', text:'No se pudo cargar la información del paciente.' });
+      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la información del paciente.' });
     }
   }
 
@@ -185,7 +238,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     fechaEl.max = hoyISO;
   }
 
-  // Bloquea edición de nombre/edad (siempre son de sólo lectura en tu flujo)
+  // Nombre/edad siempre solo lectura
   [nombreEl, edadEl].forEach(el => el && (el.readOnly = true));
 
   // =========================================================
@@ -195,30 +248,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!cnv) return;
     const ctx = cnv.getContext('2d');
     ctx.clearRect(0, 0, cnv.width, cnv.height);
-    if (!firmaPath) return; // queda en blanco si no hay firma
+    if (!firmaPath) return;
     await new Promise(resolve => {
       const img = new Image();
       img.onload = () => {
         const scale = Math.min(cnv.width / img.width, cnv.height / img.height);
-        const w = img.width * scale, h = img.height * scale;
-        const x = (cnv.width - w)/2, y = (cnv.height - h)/2;
+        const w = img.width * scale;
+        const h = img.height * scale;
+        const x = (cnv.width - w) / 2;
+        const y = (cnv.height - h) / 2;
         ctx.drawImage(img, x, y, w, h);
         resolve();
       };
       img.src = firmaPath.startsWith('/') ? firmaPath : `/visualizador/uploads/${firmaPath}`;
     });
   }
-  // ✅ Normaliza un renglón de medicamento a un mismo esquema
+
   function normMed(m = {}) {
     return {
       medicamento: m.medicamento ?? m.nombre ?? m.nombre_medicamento ?? m.drug ?? '',
-      dosis:       m.dosis ?? m.dose ?? '',
-      frecuencia:  m.frecuencia ?? m.freq ?? m.frecuencia_texto ?? '',
-      duracion:    m.duracion ?? m.dias ?? m.duracion_dias ?? '',
-      indicaciones:m.indicaciones ?? m.indicacion ?? m.notas ?? ''
+      dosis: m.dosis ?? m.dose ?? '',
+      frecuencia: m.frecuencia ?? m.freq ?? m.frecuencia_texto ?? '',
+      duracion: m.duracion ?? m.dias ?? m.duracion_dias ?? '',
+      indicaciones: m.indicaciones ?? m.indicacion ?? m.notas ?? ''
     };
   }
-  // ✅ Pinta la tabla usando el esquema normalizado
+
   function renderMedicamentos(tbody, meds = []) {
     tbody.innerHTML = '';
 
@@ -243,20 +298,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-
   async function populateFromDetalle(raw) {
-    // Nombre (evita [object Object])
+    // Nombre
     const nombre =
       nombreDesdePaciente(raw.paciente) ||
       (typeof raw.nombrePaciente === 'string' ? raw.nombrePaciente : '') ||
       '—';
     setInput(nombreEl, nombre);
 
-    // Fecha sólo YYYY-MM-DD
+    // Fecha
     const fecha = (raw.fecha || '').slice(0, 10);
     setInput(fechaEl, fecha);
 
-    // Edad: usa edad_anios o paciente.edad
+    // Edad
     const edadNum = (raw.edad_anios ?? raw?.paciente?.edad ?? null);
     setInput(edadEl, (edadNum != null) ? `${edadNum} años` : '— años');
 
@@ -265,19 +319,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Firma
     await drawSignatureIfAny(canvas, raw.firma_path);
+
+    // Número WhatsApp en VISUALIZAR (detalle + fetch si hace falta)
+    await setNumeroWhatsApp(btnEnviar, raw);
   }
 
   async function cargarParaVisualizar(formId) {
     try {
       const res = await fetch(`/api/patients/forms/receta/${encodeURIComponent(formId)}`, {
-        headers: { 'Accept':'application/json', ...(token ? {Authorization:`Bearer ${token}`} : {}) }
+        headers: {
+          Accept: 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       await populateFromDetalle(json);
     } catch (e) {
       console.error('No se pudo visualizar la receta:', e);
-      Swal.fire({ icon:'error', title:'Error', text:'No se pudo cargar la receta para visualizar.' });
+      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la receta para visualizar.' });
     }
   }
 
@@ -286,15 +346,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   // =========================================================
   addBtn?.addEventListener('click', () => {
     tablaBody.appendChild(crearFila());
-    Swal.fire({ icon:'success', title:'Medicamento agregado', timer:900, showConfirmButton:false });
+    Swal.fire({
+      icon: 'success',
+      title: 'Medicamento agregado',
+      timer: 900,
+      showConfirmButton: false
+    });
   });
 
   tablaBody.addEventListener('click', (e) => {
     if (e.target.closest('.btn-delete-row')) {
       const tr = e.target.closest('tr');
-      if (tablaBody.rows.length === 1) tr.querySelectorAll('input').forEach(i => (i.value = ''));
-      else tr.remove();
-      Swal.fire({ icon:'info', title:'Fila eliminada', timer:800, showConfirmButton:false });
+      if (tablaBody.rows.length === 1) {
+        tr.querySelectorAll('input').forEach(i => (i.value = ''));
+      } else {
+        tr.remove();
+      }
+      Swal.fire({
+        icon: 'info',
+        title: 'Fila eliminada',
+        timer: 800,
+        showConfirmButton: false
+      });
     }
   });
 
@@ -304,15 +377,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     const pacienteId = pacienteIdQS;
 
     if (!pacienteId) {
-      await Swal.fire({ icon:'warning', title:'ID no encontrado', text:'La URL debe incluir ?paciente_id=<id>' });
-      return null;
-    }
-    if (!data.medicamentos.length || !data.medicamentos.some(m => m.nombre?.trim())) {
-      await Swal.fire({ icon:'warning', title:'Faltan datos', text:'Agrega al menos un medicamento.' });
+      await Swal.fire({
+        icon: 'warning',
+        title: 'ID no encontrado',
+        text: 'La URL debe incluir ?paciente_id=<id>'
+      });
       return null;
     }
 
-    // Si ya existe folio, confirma si deseas crear OTRA receta nueva
+    if (!data.medicamentos.length || !data.medicamentos.some(m => m.nombre?.trim())) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Faltan datos',
+        text: 'Agrega al menos un medicamento.'
+      });
+      return null;
+    }
+
     if (formularioId && !formularioIdQS) {
       const r = await Swal.fire({
         title: `Esta receta ya fue guardada (folio ${formularioId}).`,
@@ -331,7 +412,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const res = await fetch(`/api/patients/${pacienteId}/recetas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify(data) // SIN firma
+        body: JSON.stringify(data)
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
@@ -342,11 +423,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         notificarRecetaGuardada(pacienteId, formularioId);
       }
 
-      await Swal.fire({ icon:'success', title:'Guardado', text:`Folio: ${formularioId ?? '—'}` });
+      await Swal.fire({
+        icon: 'success',
+        title: 'Guardado',
+        text: `Folio: ${formularioId ?? '—'}`
+      });
       return formularioId;
     } catch (e) {
       console.error('Error al guardar receta:', e);
-      await Swal.fire({ icon:'error', title:'Error', text:'No se pudo guardar la receta.' });
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudo guardar la receta.'
+      });
       return null;
     } finally {
       btnGuardar && (btnGuardar.disabled = false);
@@ -355,9 +444,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   btnGuardar?.addEventListener('click', guardarRecetaEnBD);
 
+  // --- Enviar por WhatsApp
   btnEnviar?.addEventListener('click', async () => {
     const numero = btnEnviar.getAttribute('data-numero-paciente');
-    
+
     if (!numero || !/^\d{10,15}$/.test(numero)) {
       await Swal.fire({
         icon: 'warning',
@@ -367,12 +457,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    const mensaje = encodeURIComponent("Hola, adjunto su receta médica.");
+    const mensaje = encodeURIComponent('Hola, adjunto su receta médica.');
     const url = `https://wa.me/${numero}?text=${mensaje}`;
     window.open(url, '_blank');
   });
 
-  // --- Generar PDF (usa datos actuales; añade firma SOLO para PDF)
+  // --- Generar PDF
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -395,9 +485,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!pre.isConfirmed) return;
 
     const data = buildData();
-    const firma = getFirmaBase64(); // sólo para PDF (puede ser null si está en blanco)
+    const firma = getFirmaBase64();
     if (firma) data.firmaMedico = firma;
-    data.formularioId = formularioId; // folio para el PDF
+    data.formularioId = formularioId;
 
     try {
       const res = await fetch('/api/pdf/receta/generate', {
@@ -408,14 +498,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const blob = await res.blob();
-
-      // Ver en otra pestaña
       const viewUrl = URL.createObjectURL(blob);
       window.open(viewUrl, '_blank');
 
-      // Sugerir descarga
       const fullName = (nombreEl?.value || '').trim();
-      const fecha    = fechaEl?.value || hoyISO;
+      const fecha = fechaEl?.value || hoyISO;
       const filename = buildFilename({ fecha, formKey: 'receta', fullName });
 
       await Swal.fire({
@@ -436,7 +523,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       URL.revokeObjectURL(viewUrl);
     } catch (err) {
       console.error('Error al generar PDF:', err);
-      await Swal.fire({ icon:'error', title:'Error', text:'No se pudo generar el PDF.' });
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudo generar el PDF.'
+      });
     }
   });
 
@@ -444,35 +535,54 @@ document.addEventListener('DOMContentLoaded', async () => {
   //        Flujo de inicio según QS (nuevo vs visualizar)
   // =========================================================
   if (formularioIdQS) {
-    // Ocultar botones para no editar ni agregar
-    btnGuardar?.classList.add("d-none");
-    addBtn?.classList.add("d-none");
-    btnClear?.classList.add("d-none");
+    // Ocultar botones edición
+    btnGuardar?.classList.add('d-none');
+    addBtn?.classList.add('d-none');
+    btnClear?.classList.add('d-none');
 
-    // Bloquear inputs del formulario (incluye edad, nombre, cedula, medico)
-    form.querySelectorAll("input, textarea, select").forEach(el => {
-      el.setAttribute("readonly", true);
-      el.setAttribute("disabled", true);
-    });
-
-    // PERMITIR SOLO botones de Enviar y Generar PDF
-    btnEnviar?.removeAttribute("disabled");
-    form.querySelector('[type="submit"]')?.removeAttribute("disabled");
-
-    // Bloquear tabla de medicamentos después de pintar filas
+    // Cargar datos receta existente
     await cargarParaVisualizar(formularioIdQS);
 
-    // Ahora sí, deshabilitar inputs de medicamentos
-    tablaBody.querySelectorAll("input").forEach(input => {
-      input.setAttribute("readonly", true);
-      input.classList.add("bg-light");
+    // Bloquear campos pero permitir acciones
+    form.querySelectorAll('input, textarea, select, button').forEach(el => {
+      const id = el.id || '';
+      const type = el.type || '';
+      const tag = el.tagName;
+
+      const isEnviar = id === 'btnEnviar';
+      const isPdf = id === 'btnGenerarPdf';
+      const isSubmit = type === 'submit';
+      const isActionButton = isEnviar || isPdf || isSubmit;
+
+      if (isActionButton) {
+        el.removeAttribute('disabled');
+        el.removeAttribute('readonly');
+        return;
+      }
+
+      if (type === 'hidden') return;
+
+      if (tag === 'SELECT') {
+        el.setAttribute('disabled', 'true');
+        return;
+      }
+
+      if (tag === 'INPUT' || tag === 'TEXTAREA') {
+        el.setAttribute('readonly', 'true');
+        el.classList.add('bg-light');
+      }
     });
 
-    // Ocultar botones eliminar fila
-    tablaBody.querySelectorAll(".btn-delete-row").forEach(btn => btn.style.display = "none");
-  }else if (pacienteIdQS) {
-    // Nuevo (precarga paciente y deja fecha=HOY)
+    tablaBody.querySelectorAll('input').forEach(input => {
+      input.setAttribute('readonly', 'true');
+      input.classList.add('bg-light');
+    });
+
+    tablaBody.querySelectorAll('.btn-delete-row').forEach(btn => {
+      btn.style.display = 'none';
+    });
+
+  } else if (pacienteIdQS) {
     await cargarPaciente();
   }
-
 });
