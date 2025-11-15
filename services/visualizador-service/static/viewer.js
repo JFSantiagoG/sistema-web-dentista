@@ -1111,3 +1111,280 @@ function goBack() {
 }
 
 window.setFilter = setFilter;
+
+
+// ======================
+//  REJILLA + CARRUSEL
+// ======================
+(function () {
+  // 1. Leer JSON desde <script id="multi-files-data">
+  const dataTag = document.getElementById('multi-files-data');
+  if (!dataTag) return;
+
+  let files;
+  try {
+    const raw = (dataTag.textContent || '').trim();
+    files = raw ? JSON.parse(raw) : [];
+  } catch (err) {
+    console.error('❌ Error parseando multi-files-data:', err);
+    return;
+  }
+
+  if (!Array.isArray(files) || files.length === 0) return;
+
+  const pageSize = 9;
+  let page = 0;
+
+  const grid        = document.getElementById('multiGrid');
+  const prev        = document.getElementById('prevPage');
+  const next        = document.getElementById('nextPage');
+  const info        = document.getElementById('pageInfo');
+
+  const viewer      = document.getElementById('seriesViewer');
+  const btnPrevSer  = document.getElementById('btnSeriesPrev');
+  const btnPlay     = document.getElementById('btnSeriesPlay');
+  const btnStop     = document.getElementById('btnSeriesPause');
+  const btnNextSer  = document.getElementById('btnSeriesNext');
+  const speedSelect = document.getElementById('seriesSpeed');
+  const seriesInfo  = document.getElementById('seriesInfo');
+
+  let currentIndex = 0;
+  let timerId      = null;
+  let intervalMs   = 600;
+
+  // Estado inicial del visor de serie: OCULTO
+  if (viewer) viewer.style.display = 'none';
+  if (btnStop) btnStop.disabled = true;
+
+  // ================= REJILLA =================
+  function initDicomThumbs() {
+    if (typeof cornerstone === 'undefined' || typeof cornerstoneWADOImageLoader === 'undefined') return;
+
+    try {
+      cornerstoneWADOImageLoader.external.cornerstone  = cornerstone;
+      cornerstoneWADOImageLoader.external.dicomParser  = dicomParser;
+      try {
+        cornerstoneWADOImageLoader.webWorkerManager.initialize({
+          webWorkerPath: '/visualizador/static/libs/cornerstoneWADOImageLoaderWebWorker.js',
+          taskConfiguration: {
+            decodeTask: {
+              codecsPath: '/visualizador/static/libs/cornerstoneWADOImageLoaderCodecs.js'
+            }
+          }
+        });
+      } catch (_) {}
+    } catch (e) {
+      console.warn('No se pudo configurar WADOImageLoader para miniaturas:', e);
+    }
+
+    const thumbs = document.querySelectorAll('.dicom-thumb');
+    thumbs.forEach(div => {
+      if (div.dataset.loaded === '1') return;
+
+      const ruta    = div.dataset.file;
+      const imageId = 'wadouri:' + window.location.origin + ruta;
+
+      try {
+        cornerstone.enable(div);
+        cornerstone.loadImage(imageId).then(image => {
+          cornerstone.displayImage(div, image);
+          div.dataset.loaded = '1';
+        }).catch(err => console.error('Error cargando miniatura DICOM:', err));
+      } catch (e) {
+        console.error('Error inicializando mini DICOM:', e);
+      }
+    });
+  }
+
+  function renderPage() {
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const totalPages = Math.ceil(files.length / pageSize);
+    const start      = page * pageSize;
+    const slice      = files.slice(start, start + pageSize);
+
+    slice.forEach(fname => {
+      const cell = document.createElement('div');
+      cell.className = 'grid-cell';
+
+      const fileParam = '/visualizador/uploads/' + fname;
+
+      const link = document.createElement('a');
+      link.href  = '/visualizador?file=' + encodeURIComponent(fileParam);
+      link.className = 'grid-link';
+
+      if (fname.toLowerCase().endsWith('.dcm')) {
+        const thumb = document.createElement('div');
+        thumb.className  = 'dicom-thumb';
+        thumb.dataset.file = fileParam;
+
+        link.appendChild(thumb);
+        cell.appendChild(link);
+
+        const label = document.createElement('div');
+        label.className = 'dicom-label';
+        label.textContent = 'DICOM: ' + fname;
+        cell.appendChild(label);
+      } else {
+        const img = document.createElement('img');
+        img.src   = fileParam;
+        img.alt   = fname;
+
+        link.appendChild(img);
+        cell.appendChild(link);
+      }
+      grid.appendChild(cell);
+    });
+
+    initDicomThumbs();
+
+    if (info) {
+      info.textContent = `Página ${page + 1} de ${totalPages}`;
+    }
+    if (prev) prev.disabled = (page === 0);
+    if (next) next.disabled = (page >= totalPages - 1);   // ✅ corregido: antes usaba prev && ...
+  }
+
+  if (prev) {
+    prev.addEventListener('click', () => {
+      if (page > 0) {
+        page--;
+        renderPage();
+      }
+    });
+  }
+
+  if (next) {
+    next.addEventListener('click', () => {
+      const totalPages = Math.ceil(files.length / pageSize);
+      if (page < totalPages - 1) {
+        page++;
+        renderPage();
+      }
+    });
+  }
+
+  renderPage();
+
+  // ================= CARRUSEL =================
+  function renderSeriesFrame(idx) {
+    if (!viewer) return;
+    const fname = files[idx];
+    if (!fname) return;
+
+    viewer.innerHTML = '';
+    const fileUrl = '/visualizador/uploads/' + fname;
+
+    if (fname.toLowerCase().endsWith('.dcm')) {
+      const div = document.createElement('div');
+      div.style.width  = '100%';
+      div.style.height = '100%';
+      viewer.appendChild(div);
+
+      try {
+        const imageId = 'wadouri:' + window.location.origin + fileUrl;
+        cornerstone.enable(div);
+        cornerstone.loadImage(imageId).then(image => {
+          cornerstone.displayImage(div, image);
+        }).catch(err => console.error('Error cargando DICOM en serie:', err));
+      } catch (e) {
+        console.error('Error inicializando DICOM serie:', e);
+      }
+    } else {
+      const img = document.createElement('img');
+      img.src   = fileUrl;
+      img.alt   = fname;
+      viewer.appendChild(img);
+    }
+
+    if (seriesInfo) {
+      seriesInfo.textContent = `${idx + 1} / ${files.length} — ${fname}`;
+    }
+  }
+
+  function applySpeed() {
+    const v = speedSelect ? Number(speedSelect.value) : NaN;
+    // Los valores vienen del <select> (ej. 1500, 900, 550, 300)
+    intervalMs = Number.isFinite(v) && v > 0 ? v : 600;
+  }
+
+  function startSeries(fromIndex) {
+    if (!viewer) return;
+    if (typeof fromIndex === 'number') currentIndex = fromIndex;
+
+    applySpeed();
+    if (timerId) clearInterval(timerId);
+
+    document.body.classList.add('series-playing');
+    viewer.style.display = 'flex';
+
+    renderSeriesFrame(currentIndex);
+    timerId = setInterval(() => {
+      currentIndex = (currentIndex + 1) % files.length;
+      renderSeriesFrame(currentIndex);
+    }, intervalMs);
+
+    if (btnPlay) {
+      btnPlay.disabled = true;
+      btnPlay.textContent = '▶️ Play';
+    }
+    if (btnStop) btnStop.disabled = false;
+  }
+
+  function stopSeries() {
+    if (timerId) {
+      clearInterval(timerId);
+      timerId = null;
+    }
+
+    if (viewer) viewer.style.display = 'none';
+    document.body.classList.remove('series-playing');
+
+    if (btnPlay) {
+      btnPlay.disabled = false;
+      btnPlay.textContent = '▶️ Play';
+    }
+    if (btnStop) btnStop.disabled = true;
+
+    if (seriesInfo) seriesInfo.textContent = '';
+  }
+
+  if (btnPlay) {
+    btnPlay.addEventListener('click', () => startSeries(currentIndex));
+  }
+  if (btnStop) {
+    btnStop.addEventListener('click', () => stopSeries());
+  }
+  if (btnPrevSer) {
+    btnPrevSer.addEventListener('click', () => {
+      currentIndex = (currentIndex - 1 + files.length) % files.length;
+      // mostrar visor pero sin autoplay
+      if (viewer) viewer.style.display = 'flex';
+      document.body.classList.add('series-playing');
+      renderSeriesFrame(currentIndex);
+    });
+  }
+  if (btnNextSer) {
+    btnNextSer.addEventListener('click', () => {
+      currentIndex = (currentIndex + 1) % files.length;
+      // mostrar visor pero sin autoplay
+      if (viewer) viewer.style.display = 'flex';
+      document.body.classList.add('series-playing');
+      renderSeriesFrame(currentIndex);
+    });
+  }
+  if (speedSelect) {
+    speedSelect.addEventListener('change', () => {
+      const wasPlaying = !!timerId;
+      applySpeed();
+      if (wasPlaying) {
+        clearInterval(timerId);
+        timerId = setInterval(() => {
+          currentIndex = (currentIndex + 1) % files.length;
+          renderSeriesFrame(currentIndex);
+        }, intervalMs);
+      }
+    });
+  }
+})();

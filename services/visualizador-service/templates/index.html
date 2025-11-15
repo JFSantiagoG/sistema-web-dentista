@@ -4,70 +4,120 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🦷 Visualizador Dental</title>
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="/visualizador/static/styles.css">
 </head>
-<body class="bg-light">
-  <div class="container py-5">
+
+<body class="bg-dark text-light">
+  <div class="container-fluid py-4 px-md-5">
+
+    <!-- Encabezado -->
     <div class="text-center mb-4">
-      <h1 class="display-5">🦷 Visualizador de Imágenes Dentales</h1>
-      <p class="text-muted">Carga y visualiza radiografías o tomografías DICOM</p>
+      <h1 class="display-6">🦷 Visualizador de Imágenes Dentales</h1>
+      <p class="text-muted">Carga y visualiza radiografías, panorámicas, TAC, CBCT o estudios DICOM.</p>
     </div>
 
     <!-- Formulario -->
-    <form action="/visualizador/upload" method="POST" enctype="multipart/form-data" class="card shadow-sm p-4 mb-4">
-      <div class="mb-3">
-        <label for="imagenInput" class="form-label">Selecciona una imagen</label>
-        <input type="file" class="form-control" name="imagen" id="imagenInput" accept="image/*,.dcm" required />
-      </div>
-      <button type="submit" class="btn btn-primary">📤 Cargar y visualizar</button>
+    <form action="/visualizador/upload" method="POST" enctype="multipart/form-data"
+          class="card shadow-sm p-4 mb-4 bg-body">
+      <label class="fw-semibold">Selecciona imágenes o una carpeta completa</label>
+      <input type="file" class="form-control" name="imagen" id="imagenInput" multiple required />
+      <small id="fileCount" class="text-muted mt-2 d-block">No hay archivos seleccionados.</small>
+      <ul id="fileList" class="list-group list-group-flush small mt-1"></ul>
+
+      <button type="submit" class="btn btn-primary mt-3">📤 Cargar y visualizar</button>
     </form>
 
-    {% if filename %}
-    <div class="viewer-container text-center">
-      {% if filename.endswith(".dcm") %}
-        <!-- 🔹 Visor DICOM -->
-        <div id="dicomViewer" 
-             data-file="/visualizador/uploads/{{ filename }}" 
-             style="width:512px; height:512px; margin:auto; background:black;">
-        </div>
-      {% else %}
-        <!-- 🔹 Imagen normal -->
-        <img id="imagenVisualizada" src="/visualizador/uploads/{{ filename }}" class="img-fluid" alt="Imagen cargada" />
-      {% endif %}
+    <!-- ========== MODO CARPETA (MULTI FILES) ========== -->
+    {% if filenames and filenames|length > 0 %}
 
-      <!-- Controles -->
-      <div class="viewer-controls mt-3 d-flex flex-wrap gap-2 justify-content-center">
-        <button id="zoomIn" class="btn btn-sm btn-secondary">🔍+</button>
-        <button id="zoomOut" class="btn btn-sm btn-secondary">🔎−</button>
-        <button id="rotate" class="btn btn-sm btn-secondary">↻</button>
-        <button id="measure" class="btn btn-sm btn-outline-primary">📏 Medir</button>
-        <button id="pan" class="btn btn-sm btn-outline-primary">✋ Desplazar</button>
-        <button id="annotate" class="btn btn-sm btn-warning">📝 Nota</button>
-        <button id="angle" class="btn btn-sm btn-outline-info">📐 Ángulo</button> <!-- 🆕 -->
-        <button id="shapeRect" class="btn btn-sm btn-outline-success">⬛ Rectángulo</button> <!-- 🆕 -->
-        <button id="shapeCircle" class="btn btn-sm btn-outline-success">⚪ Círculo</button> <!-- 🆕 -->
-        <button id="reset" class="btn btn-sm btn-danger">⛔</button>
+      <div class="text-center mb-3">
+        <h5>📂 Carpeta con {{ filenames|length }} archivos</h5>
+        <p class="text-muted">Haz clic en una miniatura para abrirla o usa el modo serie.</p>
       </div>
-    </div>
 
-    <!-- Controles de filtros -->
-    <div class="text-center mt-4">
-      <button class="btn btn-outline-dark" onclick="setFilter('none')">🎨 Normal</button>
-      <button class="btn btn-outline-dark" onclick="setFilter('grayscale')">⚪ Blanco y negro</button>
-      <button class="btn btn-outline-dark" onclick="setFilter('sepia')">🟤 Sepia</button>
-      <button class="btn btn-outline-dark" onclick="setFilter('invert')">🌀 Invertir</button>
-      <button class="btn btn-outline-dark" onclick="setFilter('contrast')">🌈 Contraste</button>
-      <button class="btn btn-outline-dark" onclick="setFilter('brightness')">💡 Brillo</button>
-    </div>
+      <!-- Controles de serie -->
+      <div id="seriesControls" class="series-controls mx-auto mb-3">
+        <button id="btnSeriesPrev" class="btn btn-sm btn-outline-light">⏮</button>
+        <button id="btnSeriesPlay" class="btn btn-sm btn-success">▶️ Play</button>
+        <button id="btnSeriesPause" class="btn btn-sm btn-warning" disabled>⏹ Stop</button>
+        <button id="btnSeriesNext" class="btn btn-sm btn-outline-light">⏭</button>
+
+        <label class="ms-2 text-muted">Velocidad:</label>
+        <select id="seriesSpeed" class="form-select form-select-sm w-auto ms-1">
+          <option value="1500">Muy lento</option>
+          <option value="900">Lento</option>
+          <option value="550" selected>Normal</option>
+          <option value="300">Rápido</option>
+        </select>
+
+        <span id="seriesInfo" class="ms-3 small text-muted"></span>
+      </div>
+
+      <!-- Visor grande para serie (oculto hasta que se da Play) -->
+      <div id="seriesViewer" class="series-viewer-container mb-4" style="display:none;"></div>
+
+      <!-- Rejilla 3x3 -->
+      <div id="multiGrid" class="multi-grid"></div>
+
+      <!-- Paginador -->
+      <div class="d-flex justify-content-center align-items-center mt-3 gap-2">
+        <button id="prevPage" class="btn btn-sm btn-outline-secondary">⬅️ Anterior</button>
+        <span id="pageInfo" class="text-light small"></span>
+        <button id="nextPage" class="btn btn-sm btn-outline-secondary">Siguiente ➡️</button>
+      </div>
+
+      <!-- 🔹 PASAMOS `filenames` AL JS SIN ROMPER VS CODE -->
+      <script id="multi-files-data" type="application/json">
+        {{ filenames | tojson | safe }}
+      </script>
+
     {% endif %}
 
+    <!-- ========== MODO INDIVIDUAL ========== -->
+    {% if filename %}
+      <div class="viewer-container mt-4">
+
+        {% if filename.endswith(".dcm") %}
+          <div id="dicomViewer" data-file="/visualizador/uploads/{{ filename }}"></div>
+
+        {% else %}
+          <img id="imagenVisualizada" src="/visualizador/uploads/{{ filename }}" />
+        {% endif %}
+
+        <div class="viewer-controls">
+          <button id="zoomIn">🔍+</button>
+          <button id="zoomOut">🔎−</button>
+          <button id="rotate">↻</button>
+          <button id="measure">📏</button>
+          <button id="pan">✋</button>
+          <button id="annotate">📝</button>
+          <button id="angle">📐</button>
+          <button id="shapeRect">⬛</button>
+          <button id="shapeCircle">⚪</button>
+          <button id="reset">⛔</button>
+        </div>
+      </div>
+
+      <div class="text-center mt-3">
+        <button class="btn btn-outline-light btn-sm" onclick="setFilter('none')">🎨 Normal</button>
+        <button class="btn btn-outline-light btn-sm" onclick="setFilter('grayscale')">⚪ B/N</button>
+        <button class="btn btn-outline-light btn-sm" onclick="setFilter('sepia')">🟤 Sepia</button>
+        <button class="btn btn-outline-light btn-sm" onclick="setFilter('invert')">🌀 Invertir</button>
+        <button class="btn btn-outline-light btn-sm" onclick="setFilter('contrast')">🌈 Contraste</button>
+        <button class="btn btn-outline-light btn-sm" onclick="setFilter('brightness')">💡 Brillo</button>
+      </div>
+    {% endif %}
+
+    <!-- Botón volver -->
     <div class="text-center mt-4">
       <button class="btn btn-secondary" onclick="window.location.href='/menu.html'">⬅️ Volver al menú</button>
     </div>
+
   </div>
 
-  <!-- 🔹 Librerías locales -->
+  <!-- Librerías DICOM -->
   <script src="/visualizador/static/libs/cornerstone.min.js"></script>
   <script src="/visualizador/static/libs/cornerstoneMath.min.js"></script>
   <script src="/visualizador/static/libs/dicomParser.min.js"></script>
@@ -75,8 +125,7 @@
   <script src="/visualizador/static/libs/hammer.min.js"></script>
   <script src="/visualizador/static/libs/cornerstoneTools.min.js"></script>
 
-  <!-- 🔹 Tu visor -->
+  <!-- JS principal -->
   <script src="/visualizador/static/viewer.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

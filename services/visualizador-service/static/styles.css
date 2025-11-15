@@ -1,19 +1,25 @@
+/* =========================
+   VISOR ÚNICO (imagen o DICOM)
+   ========================== */
+
 .viewer-container {
   position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  background: #f8f9fa;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  height: 80vh; /* Área grande para visualizar */
+  background: #000;
+  border: 1px solid #333;
+  border-radius: 10px;
+  height: 70vh;
 }
 
+/* Imagen raster (JPG/PNG) */
 #imagenVisualizada {
   max-width: 100%;
   max-height: 100%;
   cursor: grab;
+  background: #000;
   transition: transform 0.2s ease;
 }
 
@@ -21,7 +27,15 @@
   cursor: grabbing;
 }
 
-/* Controles flotantes */
+/* Visor DICOM principal (modo visor único) */
+#dicomViewer {
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  position: relative;
+}
+
+/* Controles flotando sobre el visor único */
 .viewer-controls {
   position: absolute;
   bottom: 15px;
@@ -30,9 +44,9 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 8px 12px;
-  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 6px 12px;
+  border-radius: 999px;
   z-index: 10;
 }
 
@@ -41,40 +55,170 @@
   border: none;
   background: transparent;
   font-size: 16px;
-  padding: 6px 8px;
+  padding: 4px 6px;
   cursor: pointer;
 }
 
 .viewer-controls button:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 6px;
 }
-#dicomViewer {
-  width: 512px;
-  height: 512px;
-  background-color: black;
-  position: relative;
-}
-.viewer-toolbar {
+
+/* =========================
+   VISOR DE SERIE (CARRUSEL)
+   ========================== */
+
+.series-controls {
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.85);
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  max-width: 900px;
+}
+
+.series-controls .btn {
+  min-width: 70px;
+  font-size: 0.85rem;
+  padding: 4px 10px;
+}
+
+.series-controls label {
+  margin: 0 4px 0 10px;
+  font-size: 0.8rem;
+}
+
+.series-controls select {
+  background: #222;
+  color: #fff;
+  border-radius: 999px;
+  border: 1px solid #444;
+  padding: 3px 8px;
+  font-size: 0.8rem;
+}
+
+#seriesInfo {
+  min-width: 120px;
+}
+
+/* Contenedor grande donde se reproduce la serie
+   (oculto POR DEFECTO; se muestra con body.series-open) */
+.series-viewer-container {
+  background: #000;
+  border-radius: 14px;
+  border: 1px solid #333;
+  min-height: 360px;
+  height: 70vh;          /* usa buena parte de la pantalla */
+  max-height: 80vh;
+  display: none;         /* 👈 Importante: oculto al inicio */
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+/* Cuando la serie está abierta (se presionó Play / Prev / Next) */
+body.series-open .series-viewer-container {
+  display: flex;
+}
+
+/* Canvas/imagen del “video” */
+.series-viewer-container img,
+.series-viewer-container canvas,
+.series-viewer-container > div {
+  max-width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* =========================
+   REJILLA 3×3
+   ========================== */
+
+.multi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  padding: 8px;
-  background: #1e1e1e;
-  color: white;
-  font-size: 18px;
+  margin-top: 1rem;
 }
 
-.viewer-toolbar button {
-  background: none;
-  border: none;
-  color: white;
-  cursor: pointer;
-  font-size: 18px;
-  padding: 6px;
+.grid-cell {
+  background: #000;
+  border-radius: 8px;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #333;
 }
 
-.viewer-toolbar button:hover {
-  color: yellow;
+.grid-cell a.grid-link {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.grid-cell img,
+.grid-cell .dicom-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.dicom-thumb {
+  background: radial-gradient(circle at center, #333 0, #000 60%);
+}
+
+.dicom-label {
+  width: 100%;
+  text-align: center;
+  font-size: 0.8rem;
+  padding: 4px 6px;
+  color: #ddd;
+  background: #111;
+}
+
+/* Paginador debajo de la rejilla */
+#pageInfo {
+  min-width: 120px;
+  text-align: center;
+}
+
+/* =========================
+   MODO "FULL SERIE" DURANTE PLAY
+   ========================== */
+
+body.series-playing .series-viewer-container {
+  min-height: 75vh;
+  max-height: 85vh;
+}
+
+/* En play ocultamos rejilla y paginador */
+body.series-playing .multi-grid,
+body.series-playing #prevPage,
+body.series-playing #nextPage,
+body.series-playing #pageInfo {
+  display: none !important;
+}
+
+/* =========================
+   RESPONSIVE
+   ========================== */
+
+@media (max-width: 768px) {
+  .multi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .series-controls {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
 }

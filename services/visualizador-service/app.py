@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_from_directory, abort, url_for
+from flask import Flask, render_template, request, send_from_directory, abort
 import os
 from werkzeug.utils import secure_filename
 
@@ -18,9 +18,7 @@ def _normalize_storage_path(storage_path: str) -> str:
     """
     if not storage_path:
         return None
-    # Si viene con prefijos tipo /visualizador/uploads/..., quédate con el basename
     base = os.path.basename(storage_path)
-    # Evitar path traversal
     base = secure_filename(base)
     if not base:
         return None
@@ -31,30 +29,62 @@ def index():
     # Soporta abrir directo: /visualizador?file=/visualizador/uploads/loquesea.dcm
     file_arg = request.args.get('file')
     filename = None
+
     if file_arg:
         filename = _normalize_storage_path(file_arg)
         if not filename:
             abort(400, description="Parámetro 'file' inválido.")
 
-        # Asegura que el archivo exista en /uploads
         fullpath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         if not os.path.isfile(fullpath):
             abort(404, description="Archivo no encontrado en uploads.")
 
-    # Si filename es None, se renderiza la página sin imagen (esperando upload)
-    return render_template('index.html', filename=filename)
+    # filename = una sola imagen (modo visor único)
+    # filenames = lista de varias imágenes (modo rejilla 3x3)
+    return render_template('index.html', filename=filename, filenames=None)
 
 @app.route('/upload', methods=['POST'])
 def upload():
-    file = request.files.get('imagen')
-    if not file:
+    # Permite uno o varios archivos (carpeta)
+    files = request.files.getlist('imagen')
+    if not files:
         return "No se recibió archivo", 400
-    filename = secure_filename(file.filename)
-    if not filename:
-        return "Nombre de archivo inválido", 400
-    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-    # Después de subir, reusa la misma vista con filename listo
-    return render_template('index.html', filename=filename)
+
+    saved = []
+    for file in files:
+        if not file or not file.filename:
+            continue
+
+        # Nombre base seguro
+        filename = secure_filename(file.filename)
+        if not filename:
+            continue
+
+        # -----------------------------
+        # 🔹 Si NO tiene extensión → .dcm
+        # -----------------------------
+        if "." not in filename:
+            filename = filename + ".dcm"
+
+        # -----------------------------
+        # 🔹 Normalizar .dicom → .dcm
+        # -----------------------------
+        if filename.lower().endswith(".dicom"):
+            filename = filename[:-6] + ".dcm"  # quitar ".dicom" y poner ".dcm"
+
+        # Guardar archivo ya normalizado
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        saved.append(filename)
+
+    if not saved:
+        return "Nombre(s) de archivo inválido(s)", 400
+
+    # 1 solo archivo → visor normal
+    if len(saved) == 1:
+        return render_template('index.html', filename=saved[0], filenames=None)
+
+    # Varios archivos → modo rejilla
+    return render_template('index.html', filename=None, filenames=saved)
 
 @app.route('/uploads/<filename>')
 def serve_image(filename):
@@ -66,4 +96,4 @@ def serve_image(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == '__main__':
-     app.run(host="0.0.0.0", port=3010, debug=False, use_reloader=False)
+    app.run(host="0.0.0.0", port=3010, debug=False, use_reloader=False)
