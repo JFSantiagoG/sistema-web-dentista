@@ -1,3 +1,43 @@
+// ===============================
+//  HELPERS SWEETALERT2
+// ===============================
+function haveSwal() {
+  return typeof Swal !== 'undefined';
+}
+
+// Confirm genérico para borrar algo
+async function swalConfirmDelete(texto, { title } = {}) {
+  if (!haveSwal()) return confirm(texto); // fallback
+
+  const res = await Swal.fire({
+    icon: 'warning',
+    title: title || '¿Estás seguro?',
+    text: texto,
+    showCancelButton: true,
+    confirmButtonText: 'Sí, borrar',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#6c757d'
+  });
+  return res.isConfirmed;
+}
+
+// Toast de elemento eliminado
+function swalDeletedToast(titulo) {
+  if (!haveSwal()) {
+    console.log(titulo);
+    return;
+  }
+  Swal.fire({
+    icon: 'info',
+    title: titulo,
+    timer: 900,
+    showConfirmButton: false,
+    toast: true,
+    position: 'top-end'
+  });
+}
+
 // -------------------------------------------
 // SELECTORES BASE
 // -------------------------------------------
@@ -8,10 +48,13 @@ const dicomViewer = document.getElementById("dicomViewer");
 // ESTADO COMÚN (JPG/PNG)
 // -------------------------------------------
 let zoomLevel = 1, rotation = 0, currentFilter = "none";
+let rasterFilterMode = "none";
+let brightnessFactor = 1;
+let contrastFactor   = 1;
 let offsetX = 0, offsetY = 0;
 let isDragging = false, startX, startY;
 
-let activeTool = "none"; // "none" | "measure" | "pan" | "annotate" | "rect" | "circle"
+let activeTool = "none"; // "none" | "measure" | "pan" | "annotate" | "rect" | "circle" | "angle"
 
 // JPG/PNG overlay
 let rasterWrapper = null;
@@ -63,7 +106,6 @@ let dicomAnnotations = [];  // [{posImg:{x,y}, text:string}]
 let dicomAnglePoints = [];  // array temporal de hasta 3 puntos
 let dicomAngles = [];       // [{center, p1, p2, value}]
 let dicomAnglePreview = null;
-
 
 // -------------------------------------------
 // INICIALIZAR DICOM
@@ -206,34 +248,7 @@ function redrawDicomOverlay() {
     dicomCtx.fillText(`${a.value.toFixed(1)}°`, c.x + 10, c.y - 10);
   });
 
-
   // Preview de ángulo
-  if (activeTool === "angle" && dicomAnglePoints.length > 0 && dicomAnglePreview) {
-    dicomCtx.strokeStyle = "limegreen";
-    dicomCtx.lineWidth = 2;
-
-    if (dicomAnglePoints.length === 1) {
-      // Línea p1 → cursor
-      const p1 = cornerstone.pixelToCanvas(dicomViewer, dicomAnglePoints[0]);
-      const pTemp = cornerstone.pixelToCanvas(dicomViewer, dicomAnglePreview);
-
-      dicomCtx.beginPath();
-      dicomCtx.moveTo(p1.x, p1.y);
-      dicomCtx.lineTo(pTemp.x, pTemp.y);
-      dicomCtx.stroke();
-    } 
-    else if (dicomAnglePoints.length === 2) {
-      // Fijo p1–c, dinámico c–cursor
-      const p1 = cornerstone.pixelToCanvas(dicomViewer, dicomAnglePoints[0]);
-      const c  = cornerstone.pixelToCanvas(dicomViewer, dicomAnglePoints[1]);
-      const pTemp = cornerstone.pixelToCanvas(dicomViewer, dicomAnglePreview);
-
-      dicomCtx.beginPath(); dicomCtx.moveTo(c.x, c.y); dicomCtx.lineTo(p1.x, p1.y); dicomCtx.stroke();
-      dicomCtx.beginPath(); dicomCtx.moveTo(c.x, c.y); dicomCtx.lineTo(pTemp.x, pTemp.y); dicomCtx.stroke();
-    }
-  }
-
-  // Preview dinámico de ángulo
   if (activeTool === "angle" && dicomAnglePoints.length > 0 && dicomAnglePreview) {
     dicomCtx.strokeStyle = "limegreen";
     dicomCtx.lineWidth = 2;
@@ -243,8 +258,7 @@ function redrawDicomOverlay() {
       const p1 = cornerstone.pixelToCanvas(dicomViewer, dicomAnglePoints[0]);
       const pTemp = cornerstone.pixelToCanvas(dicomViewer, dicomAnglePreview);
       dicomCtx.beginPath(); dicomCtx.moveTo(p1.x, p1.y); dicomCtx.lineTo(pTemp.x, pTemp.y); dicomCtx.stroke();
-    } 
-    else if (dicomAnglePoints.length === 2) {
+    } else if (dicomAnglePoints.length === 2) {
       // p1–c fijo + c–cursor dinámico
       const p1 = cornerstone.pixelToCanvas(dicomViewer, dicomAnglePoints[0]);
       const c  = cornerstone.pixelToCanvas(dicomViewer, dicomAnglePoints[1]);
@@ -288,6 +302,7 @@ function redrawDicomOverlay() {
   }
 }
 
+// Helpers DICOM
 function getImagePointFromMouseEvent(evt) {
   return cornerstone.pageToPixel(dicomViewer, evt.pageX, evt.pageY);
 }
@@ -313,7 +328,7 @@ function wireDicomMouseEvents() {
   // -----------------------------
   // MOUSE DOWN
   // -----------------------------
-  target.addEventListener("mousedown", (e) => {
+  target.addEventListener("mousedown", async (e) => {
     if (!isDicom || e.button !== 0) return;
 
     // Pan
@@ -388,16 +403,54 @@ function wireDicomMouseEvents() {
     // Notas
     if (activeTool === "annotate") {
       const imgPt = getImagePointFromMouseEvent(e);
-      const text = prompt("📝 Escribe tu nota:");
+
+      let text = null;
+
+      if (haveSwal()) {
+        const { value } = await Swal.fire({
+          title: 'Agregar nota',
+          input: 'textarea',
+          inputLabel: 'Escribe tu nota',
+          inputPlaceholder: 'Escribe aquí tu nota…',
+          inputAttributes: {
+            'aria-label': 'Escribe tu nota'
+          },
+          showCancelButton: true,
+          confirmButtonText: 'Guardar',
+          cancelButtonText: 'Cancelar'
+        });
+        text = value;
+      } else {
+        text = prompt('📝 Escribe tu nota:');
+      }
+
+      text = (text || '').trim();
       if (text) {
         dicomAnnotations.push({ posImg: imgPt, text });
         redrawDicomOverlay();
+
+        // Toast bonito con la nota
+        if (haveSwal()) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Nota agregada',
+            text: text,
+            timer: 1400,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end'
+          });
+        } else {
+          console.log('Nota DICOM agregada:', text);
+        }
       }
+
+      return;
     }
   });
 
   // -----------------------------
-  // MOUSE MOVE (solo uno)
+  // MOUSE MOVE
   // -----------------------------
   target.addEventListener("mousemove", (e) => {
     if (!isDicom) return;
@@ -429,7 +482,7 @@ function wireDicomMouseEvents() {
 
     // Preview ángulo
     if (activeTool === "angle" && dicomAnglePoints.length > 0) {
-      dicomAnglePreview = getImagePointFromMouseEvent(e); // usar global
+      dicomAnglePreview = getImagePointFromMouseEvent(e);
       redrawDicomOverlay();
       return;
     }
@@ -446,9 +499,9 @@ function wireDicomMouseEvents() {
   });
 
   // -----------------------------
-  // CLIC DERECHO (borrado)
+  // CLIC DERECHO (borrado) – CON SWEETALERT
   // -----------------------------
-  target.addEventListener("contextmenu", (e) => {
+  target.addEventListener("contextmenu", async (e) => {
     e.preventDefault();
     if (!isDicom) return;
 
@@ -457,52 +510,67 @@ function wireDicomMouseEvents() {
     const vp = cornerstone.getViewport(dicomViewer);
     const tolDicom = tolPxCanvas / (vp.scale || 1);
 
-    // Notas
+    // 1) Notas
     for (let i = 0; i < dicomAnnotations.length; i++) {
       const a = dicomAnnotations[i];
-      if (
-        Math.hypot(ptImg.x - a.posImg.x, ptImg.y - a.posImg.y) <= tolDicom
-      ) {
-        if (confirm(`¿Borrar la nota "${a.text}"?`)) {
+      if (Math.hypot(ptImg.x - a.posImg.x, ptImg.y - a.posImg.y) <= tolDicom) {
+        const ok = await swalConfirmDelete(`¿Borrar la nota "${a.text}"?`, {
+          title: 'Eliminar nota'
+        });
+        if (ok) {
           dicomAnnotations.splice(i, 1);
           redrawDicomOverlay();
+          swalDeletedToast('Nota eliminada');
         }
         return;
       }
     }
 
-    // Mediciones
+    // 2) Mediciones
     for (let i = 0; i < dicomMeasurements.length; i++) {
       const m = dicomMeasurements[i];
       if (isPointNearSegmentImg(ptImg, m.startImg, m.endImg, tolDicom)) {
-        if (confirm("¿Borrar esta medición?")) {
+        const ok = await swalConfirmDelete('¿Borrar esta medición?', {
+          title: 'Eliminar medición'
+        });
+        if (ok) {
           dicomMeasurements.splice(i, 1);
           redrawDicomOverlay();
+          swalDeletedToast('Medición eliminada');
         }
         return;
       }
     }
 
-    // Figuras
+    // 3) Figuras
     for (let i = 0; i < dicomShapes.length; i++) {
       const s = dicomShapes[i];
       if (hitTestShapeImg(ptImg, s, tolDicom)) {
-        if (confirm(`¿Borrar esta ${s.type}?`)) {
+        const ok = await swalConfirmDelete(`¿Borrar esta ${s.type}?`, {
+          title: 'Eliminar figura'
+        });
+        if (ok) {
           dicomShapes.splice(i, 1);
           redrawDicomOverlay();
+          swalDeletedToast('Figura eliminada');
         }
         return;
       }
     }
 
-    // Ángulos (borrado tocando el vértice)
+    // 4) Ángulos (borrado tocando el vértice)
     for (let i = 0; i < dicomAngles.length; i++) {
       const a = dicomAngles[i];
       const c = a.center;
       if (Math.hypot(ptImg.x - c.x, ptImg.y - c.y) <= tolDicom) {
-        if (confirm(`¿Borrar este ángulo (${a.value.toFixed(1)}°)?`)) {
+        const ok = await swalConfirmDelete(
+          `¿Borrar este ángulo (${a.value.toFixed(1)}°)?`,
+          { title: 'Eliminar ángulo' }
+        );
+        if (ok) {
           dicomAngles.splice(i, 1);
           redrawDicomOverlay();
+          swalDeletedToast('Ángulo eliminado');
         }
         return;
       }
@@ -515,8 +583,6 @@ function wireDicomMouseEvents() {
   const ro = new ResizeObserver(resizeDicomOverlay);
   ro.observe(dicomViewer);
 }
-
-
 // -------------------------------------------
 // JPG/PNG OVERLAY + PAN + MEDICIONES + FIGURAS + NOTAS
 // -------------------------------------------
@@ -545,6 +611,7 @@ function ensureRasterWrapper() {
     wireRasterMouseEvents();
   }
 }
+
 function syncOverlaySize() {
   if (!imagen || !measureOverlay) return;
   measureOverlay.width  = imagen.clientWidth;
@@ -552,6 +619,7 @@ function syncOverlaySize() {
   const ctx = measureOverlay.getContext("2d");
   redrawRasterOverlay(ctx);
 }
+
 function actualizarTransformaciones() {
   if (rasterWrapper && !isDicom) {
     rasterWrapper.style.transform =
@@ -560,50 +628,64 @@ function actualizarTransformaciones() {
   }
 }
 
-// --- Helpers Raster: pantalla <-> imagen <-> canvas (usando DOMMatrix)
+function applyRasterCssFilter() {
+  // componentes base: brillo y contraste siempre aplicados
+  const parts = [];
+
+  // modo de color
+  if (rasterFilterMode === "grayscale") {
+    parts.push("grayscale(100%)");
+  } else if (rasterFilterMode === "sepia") {
+    parts.push("sepia(100%)");
+  } else if (rasterFilterMode === "invert") {
+    parts.push("invert(100%)");
+  }
+
+  // brillo y contraste ajustables
+  parts.push(`brightness(${brightnessFactor})`);
+  parts.push(`contrast(${contrastFactor})`);
+
+  currentFilter = parts.join(" ");
+  actualizarTransformaciones();
+}
+
+// --- Helpers Raster: pantalla <-> imagen
 function rasterEventToImagePoint(e) {
   if (!rasterWrapper || !measureOverlay) return { x: 0, y: 0 };
 
-  // Bounding box del wrapper en pantalla
   const rect = rasterWrapper.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top  + rect.height / 2;
 
-  // Vector click → centro
   let dx = e.clientX - cx;
   let dy = e.clientY - cy;
 
-  // 1) Deshacer translate (pan)
+  // deshacer translate (pan)
   dx -= offsetX;
   dy -= offsetY;
 
-  // 2) Deshacer rotación (ahora sí con signo contrario)
+  // deshacer rotación
   const rad = (-rotation * Math.PI) / 180;
   const cos = Math.cos(rad), sin = Math.sin(rad);
   const rx = dx * cos - dy * sin;
   const ry = dx * sin + dy * cos;
 
-  // 3) Deshacer zoom (scale)
+  // deshacer zoom
   const ux = rx / zoomLevel;
   const uy = ry / zoomLevel;
 
-  // 4) Convertir a coords de canvas “pre-transform”
+  // coords de canvas pre-transform
   const xCanvas = ux + measureOverlay.width  / 2;
   const yCanvas = uy + measureOverlay.height / 2;
 
-  // 5) Pasar a coords de IMAGEN original
+  // pasar a coords de IMAGEN original
   const xImg = xCanvas / measureOverlay.width  * imagen.naturalWidth;
   const yImg = yCanvas / measureOverlay.height * imagen.naturalHeight;
 
   return { x: xImg, y: yImg };
 }
 
-
-
-
-
 function rasterImageToCanvas(ptImg) {
-  // imagen -> canvas (pre-transform)
   const preX = ptImg.x / imagen.naturalWidth  * measureOverlay.width;
   const preY = ptImg.y / imagen.naturalHeight * measureOverlay.height;
   return { x: preX, y: preY };
@@ -632,12 +714,11 @@ function redrawRasterOverlay(ctx) {
   rasterShapes.forEach(s => {
     const sp = rasterImageToCanvas(s.startImg);
     const ep = rasterImageToCanvas(s.endImg);
-    ctx.strokeStyle = "magenta";
     if (s.type === "rect") {
       ctx.strokeStyle = "magenta";
       ctx.strokeRect(sp.x, sp.y, ep.x - sp.x, ep.y - sp.y);
     } else if (s.type === "circle") {
-       ctx.strokeStyle = "blue";
+      ctx.strokeStyle = "blue";
       const r = Math.hypot(ep.x - sp.x, ep.y - sp.y);
       ctx.beginPath(); ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2); ctx.stroke();
     }
@@ -645,7 +726,7 @@ function redrawRasterOverlay(ctx) {
 
   // Ángulos
   angles.forEach(a => {
-    const c = rasterImageToCanvas(a.center);
+    const c  = rasterImageToCanvas(a.center);
     const p1 = rasterImageToCanvas(a.p1);
     const p2 = rasterImageToCanvas(a.p2);
 
@@ -681,20 +762,22 @@ function wireRasterMouseEvents() {
     startY = e.clientY - offsetY;
     setCursor(rasterWrapper, "grabbing");
   });
+
   window.addEventListener("mousemove", (e) => {
     if (activeTool !== "pan" || !isDragging) return;
     offsetX = e.clientX - startX;
     offsetY = e.clientY - startY;
     actualizarTransformaciones();
   });
+
   window.addEventListener("mouseup", () => {
     if (activeTool !== "pan") return;
     isDragging = false;
     setCursor(rasterWrapper, "grab");
   });
 
-  // CLICK IZQ (medición / figura / nota)
-  measureOverlay?.addEventListener("click", (e) => {
+  // CLICK IZQ (medición / figura / nota / ángulo)
+  measureOverlay?.addEventListener("click", async (e) => {
     const ctx = measureOverlay.getContext("2d");
 
     // Medición
@@ -707,7 +790,6 @@ function wireRasterMouseEvents() {
         ctx.fillStyle = "limegreen";
         ctx.beginPath(); ctx.arc(s.x, s.y, 5, 0, Math.PI * 2); ctx.fill();
       } else {
-        // Distancia en mm (aprox 96dpi)
         const s = rasterImageToCanvas(measureStartImg);
         const p = rasterImageToCanvas(ptImg);
         const distPx = Math.hypot(p.x - s.x, p.y - s.y);
@@ -736,53 +818,73 @@ function wireRasterMouseEvents() {
     }
 
     // Ángulo (3 clics: primer extremo, vértice, segundo extremo)
-  if (activeTool === "angle") {
-    const ptImg = rasterEventToImagePoint(e);
-    anglePoints.push(ptImg);
-
-    const ctx = measureOverlay.getContext("2d");
-
-    if (anglePoints.length === 1) {
-      // primer extremo
-      redrawRasterOverlay(ctx);
-      const p = rasterImageToCanvas(ptImg);
-      ctx.fillStyle = "limegreen";
-      ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI * 2); ctx.fill();
-    } 
-    else if (anglePoints.length === 2) {
-      // vértice
-      redrawRasterOverlay(ctx);
-      const p = rasterImageToCanvas(ptImg);
-      ctx.fillStyle = "orange";
-      ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.fill();
-    } 
-    else if (anglePoints.length === 3) {
-      const [p1, center, p2] = anglePoints;
-
-      // Calcular ángulo en el vértice (center)
-      const v1 = { x: p1.x - center.x, y: p1.y - center.y };
-      const v2 = { x: p2.x - center.x, y: p2.y - center.y };
-      const dot = v1.x * v2.x + v1.y * v2.y;
-      const mag1 = Math.hypot(v1.x, v1.y);
-      const mag2 = Math.hypot(v2.x, v2.y);
-      let ang = Math.acos(dot / (mag1 * mag2)) * (180 / Math.PI);
-
-      angles.push({ center, p1, p2, value: ang });
-      anglePoints = [];
-      redrawRasterOverlay(ctx);
-    }
-    return;
-  }
-    // Notas
-    if (activeTool === "annotate") {
+    if (activeTool === "angle") {
       const ptImg = rasterEventToImagePoint(e);
-      const text = prompt("📝 Escribe tu nota:");
-      if (text) {
-        rasterAnnotations.push({ posImg: ptImg, text });
+      anglePoints.push(ptImg);
+
+      if (anglePoints.length === 3) {
+        const [p1, center, p2] = anglePoints;
+        const ang = calcAngle(p1, center, p2);
+        angles.push({ center, p1, p2, value: ang });
+        anglePoints = [];
         redrawRasterOverlay(ctx);
+      } else {
+        // sólo pintar puntos temporales
+        redrawRasterOverlay(ctx);
+        const pCanvas = rasterImageToCanvas(ptImg);
+        ctx.fillStyle = anglePoints.length === 1 ? "limegreen" : "orange";
+        ctx.beginPath(); ctx.arc(pCanvas.x, pCanvas.y, 5, 0, Math.PI * 2); ctx.fill();
       }
       return;
     }
+
+    // Notas
+    if (activeTool === "annotate") {
+      const ptImg = rasterEventToImagePoint(e);
+      let text = null;
+
+      if (haveSwal()) {
+        const { value } = await Swal.fire({
+          title: 'Agregar nota',
+          input: 'textarea',
+          inputLabel: 'Escribe tu nota',
+          inputPlaceholder: 'Escribe aquí tu nota…',
+          inputAttributes: {
+            'aria-label': 'Escribe tu nota'
+          },
+          showCancelButton: true,
+          confirmButtonText: 'Guardar',
+          cancelButtonText: 'Cancelar'
+        });
+        text = value;
+      } else {
+        text = prompt('📝 Escribe tu nota:');
+      }
+
+      text = (text || '').trim();
+      if (text) {
+        rasterAnnotations.push({ posImg: ptImg, text });
+        redrawRasterOverlay(ctx);
+
+        // Toast bonito con la nota
+        if (haveSwal()) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Nota agregada',
+            text: text,
+            timer: 1400,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end'
+          });
+        } else {
+          console.log('Nota raster agregada:', text);
+        }
+      }
+      return;
+    }
+
+
   });
 
   // MOUSEMOVE (previews)
@@ -823,14 +925,11 @@ function wireRasterMouseEvents() {
       redrawRasterOverlay(ctx);
 
       if (anglePoints.length === 1) {
-        // Mostrar línea desde p1 hasta cursor
         const p1 = rasterImageToCanvas(anglePoints[0]);
         const pTemp = rasterImageToCanvas(tempPt);
         ctx.strokeStyle = "limegreen";
         ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(pTemp.x, pTemp.y); ctx.stroke();
-      } 
-      else if (anglePoints.length === 2) {
-        // Mostrar dos líneas desde vértice hacia p1 y cursor
+      } else if (anglePoints.length === 2) {
         const p1 = rasterImageToCanvas(anglePoints[0]);
         const c  = rasterImageToCanvas(anglePoints[1]);
         const pTemp = rasterImageToCanvas(tempPt);
@@ -843,60 +942,79 @@ function wireRasterMouseEvents() {
     }
   });
 
-
-  // Clic derecho (borrado)
-  measureOverlay?.addEventListener("contextmenu", (e) => {
+  // CLIC DERECHO RASTER (borrado con SweetAlert)
+  measureOverlay?.addEventListener("contextmenu", async (e) => {
     e.preventDefault();
     const ctx = measureOverlay.getContext("2d");
     const ptImg = rasterEventToImagePoint(e);
 
-    // tolerancia en imagen (aprox convertida desde 10px canvas)
     const tolPx = 10;
     const tolImg = Math.max(
       tolPx / measureOverlay.width  * imagen.naturalWidth,
       tolPx / measureOverlay.height * imagen.naturalHeight
     );
 
-    // Notas
-    for (let i=0;i<rasterAnnotations.length;i++){
+    // 1) Notas
+    for (let i = 0; i < rasterAnnotations.length; i++) {
       const a = rasterAnnotations[i];
       if (Math.hypot(ptImg.x - a.posImg.x, ptImg.y - a.posImg.y) <= tolImg) {
-        if (confirm(`¿Borrar la nota "${a.text}"?`)) {
-          rasterAnnotations.splice(i,1); redrawRasterOverlay(ctx);
-        }
-        return;
-      }
-    }
-    // Mediciones
-    for (let i=0;i<measurements.length;i++){
-      const m = measurements[i];
-      if (isPointNearSegmentImg(ptImg, m.startImg, m.endImg, tolImg)) {
-        if (confirm("¿Borrar esta medición?")) {
-          measurements.splice(i,1); redrawRasterOverlay(ctx);
-        }
-        return;
-      }
-    }
-    // Figuras
-    for (let i=0;i<rasterShapes.length;i++){
-      const s = rasterShapes[i];
-      if (hitTestShapeImg(ptImg, s, tolImg)) {
-        if (confirm(`¿Borrar esta ${s.type}?`)) {
-          rasterShapes.splice(i,1); redrawRasterOverlay(ctx);
+        const ok = await swalConfirmDelete(`¿Borrar la nota "${a.text}"?`, {
+          title: 'Eliminar nota'
+        });
+        if (ok) {
+          rasterAnnotations.splice(i, 1);
+          redrawRasterOverlay(ctx);
+          swalDeletedToast('Nota eliminada');
         }
         return;
       }
     }
 
-    // 4) Ángulos
+    // 2) Mediciones
+    for (let i = 0; i < measurements.length; i++) {
+      const m = measurements[i];
+      if (isPointNearSegmentImg(ptImg, m.startImg, m.endImg, tolImg)) {
+        const ok = await swalConfirmDelete('¿Borrar esta medición?', {
+          title: 'Eliminar medición'
+        });
+        if (ok) {
+          measurements.splice(i, 1);
+          redrawRasterOverlay(ctx);
+          swalDeletedToast('Medición eliminada');
+        }
+        return;
+      }
+    }
+
+    // 3) Figuras
+    for (let i = 0; i < rasterShapes.length; i++) {
+      const s = rasterShapes[i];
+      if (hitTestShapeImg(ptImg, s, tolImg)) {
+        const ok = await swalConfirmDelete(`¿Borrar esta ${s.type}?`, {
+          title: 'Eliminar figura'
+        });
+        if (ok) {
+          rasterShapes.splice(i, 1);
+          redrawRasterOverlay(ctx);
+          swalDeletedToast('Figura eliminada');
+        }
+        return;
+      }
+    }
+
+    // 4) Ángulos (tocando el vértice)
     for (let i = 0; i < angles.length; i++) {
       const a = angles[i];
-      // vértice en coords de imagen
       const c = a.center;
       if (Math.hypot(ptImg.x - c.x, ptImg.y - c.y) <= tolImg) {
-        if (confirm(`¿Borrar este ángulo (${a.value.toFixed(1)}°)?`)) {
+        const ok = await swalConfirmDelete(
+          `¿Borrar este ángulo (${a.value.toFixed(1)}°)?`,
+          { title: 'Eliminar ángulo' }
+        );
+        if (ok) {
           angles.splice(i, 1);
           redrawRasterOverlay(ctx);
+          swalDeletedToast('Ángulo eliminado');
         }
         return;
       }
@@ -905,163 +1023,7 @@ function wireRasterMouseEvents() {
 }
 
 // -------------------------------------------
-/** HIT-TEST helpers (en coords de imagen: sirven para Raster y DICOM) */
-// -------------------------------------------
-function isPointNearSegmentImg(p, a, b, tol) {
-  const A = p.x - a.x, B = p.y - a.y;
-  const C = b.x - a.x, D = b.y - a.y;
-  const lenSq = C*C + D*D;
-  let t = 0;
-  if (lenSq > 0) t = Math.max(0, Math.min(1, (A*C + B*D) / lenSq));
-  const xx = a.x + t * C, yy = a.y + t * D;
-  const dx = p.x - xx, dy = p.y - yy;
-  return (dx*dx + dy*dy) <= tol*tol;
-}
-
-function hitTestShapeImg(p, s, tol) {
-  if (s.type === "rect") {
-    const x1 = s.startImg.x, y1 = s.startImg.y;
-    const x2 = s.endImg.x,   y2 = s.endImg.y;
-    const pA = { x: x1, y: y1 }, pB = { x: x2, y: y1 },
-          pC = { x: x2, y: y2 }, pD = { x: x1, y: y2 };
-    return (
-      isPointNearSegmentImg(p, pA, pB, tol) ||
-      isPointNearSegmentImg(p, pB, pC, tol) ||
-      isPointNearSegmentImg(p, pC, pD, tol) ||
-      isPointNearSegmentImg(p, pD, pA, tol)
-    );
-  } else if (s.type === "circle") {
-    const r = Math.hypot(s.endImg.x - s.startImg.x, s.endImg.y - s.startImg.y);
-    const d = Math.hypot(p.x - s.startImg.x, p.y - s.startImg.y);
-    return Math.abs(d - r) <= tol;
-  }
-  return false;
-}
-
-// -------------------------------------------
-// BOTONES UI
-// -------------------------------------------
-const btnZoomIn  = document.getElementById("zoomIn");
-const btnZoomOut = document.getElementById("zoomOut");
-const btnRotate  = document.getElementById("rotate");
-const btnReset   = document.getElementById("reset");
-const btnMeasure = document.getElementById("measure");
-const btnPan     = document.getElementById("pan");
-const btnAnnotate= document.getElementById("annotate"); // notas
-const btnRect    = document.getElementById("shapeRect");
-const btnCircle  = document.getElementById("shapeCircle");
-
-
-function setActiveTool(tool) {
-  activeTool = tool;
-
-  if (isDicom) {
-    if (tool === "measure" || tool === "annotate" || tool === "rect" || tool === "circle" || tool === "angle") {
-      setCursor(dicomViewer, "crosshair");
-    } else if (tool === "pan") {
-      setCursor(dicomViewer, "grab");
-    } else {
-      setCursor(dicomViewer, "default");
-    }
-  } else if (rasterWrapper) {
-    const el = measureOverlay || rasterWrapper;
-    if (tool === "measure" || tool === "annotate" || tool === "rect" || tool === "circle" || tool === "angle") {
-      setCursor(el, "crosshair");
-    } else if (tool === "pan") {
-      setCursor(rasterWrapper, "grab");
-    } else {
-      setCursor(el, "default");
-    }
-  }
-}
-
-
-const btnAngle = document.getElementById("angle");
-btnAngle?.addEventListener("click", () => { ensureRasterWrapper(); setActiveTool("angle"); });
-btnZoomIn?.addEventListener("click", () => {
-  if (isDicom) {
-    const vp = cornerstone.getViewport(dicomViewer);
-    vp.scale = Math.min(10, vp.scale * 1.1);
-    cornerstone.setViewport(dicomViewer, vp);
-  } else { zoomLevel += 0.1; actualizarTransformaciones(); }
-});
-btnZoomOut?.addEventListener("click", () => {
-  if (isDicom) {
-    const vp = cornerstone.getViewport(dicomViewer);
-    vp.scale = Math.max(0.1, vp.scale * 0.9);
-    cornerstone.setViewport(dicomViewer, vp);
-  } else { zoomLevel = Math.max(0.1, zoomLevel - 0.1); actualizarTransformaciones(); }
-});
-btnRotate?.addEventListener("click", () => {
-  if (isDicom) {
-    const vp = cornerstone.getViewport(dicomViewer);
-    vp.rotation = ((vp.rotation||0) + 90) % 360;
-    cornerstone.setViewport(dicomViewer, vp);
-  } else {
-    rotation = (rotation + 90) % 360;
-    actualizarTransformaciones();
-  }
-});
-btnReset?.addEventListener("click", () => {
-  setActiveTool("none");
-  if (isDicom && dicomBaseViewport) {
-    cornerstone.setViewport(dicomViewer, deepClone(dicomBaseViewport));
-    dicomMeasurements = []; dicomMeasureStartImg=null; dicomPreviewImg=null;
-    dicomShapes = []; dicomShapeStartImg=null; dicomShapePreviewImg=null;
-    dicomAnnotations = [];
-    redrawDicomOverlay();
-  } else {
-    zoomLevel=1; rotation=0; offsetX=0; offsetY=0; currentFilter="none";
-    measurements=[]; rasterAnnotations=[]; rasterShapes=[];
-    measureStartImg=null; drawingMeasure=false; shapeStartImg=null;
-    actualizarTransformaciones();
-    if (measureOverlay) {
-      const ctx = measureOverlay.getContext("2d");
-      ctx.clearRect(0,0,measureOverlay.width,measureOverlay.height);
-    }
-  }
-});
-btnMeasure?.addEventListener("click", () => { ensureRasterWrapper(); setActiveTool("measure"); });
-btnPan?.addEventListener("click", () => { ensureRasterWrapper(); setActiveTool("pan"); });
-btnAnnotate?.addEventListener("click", () => { ensureRasterWrapper(); setActiveTool("annotate"); });
-btnRect?.addEventListener("click", () => { ensureRasterWrapper(); setActiveTool("rect"); });
-btnCircle?.addEventListener("click", () => { ensureRasterWrapper(); setActiveTool("circle"); });
-
-// -------------------------------------------
-// FILTROS
-// -------------------------------------------
-function setFilter(filtro) {
-  if (isDicom) {
-    const currentVp = cornerstone.getViewport(dicomViewer);
-    let vp = {
-      ...deepClone(dicomBaseViewport),
-      scale: currentVp.scale,
-      translation: { ...currentVp.translation },
-      rotation: currentVp.rotation,
-      invert: currentVp.invert || false,
-      voi: deepClone(currentVp.voi || {})
-    };
-    switch (filtro) {
-      case "invert": vp.invert = !currentVp.invert; break;
-      case "contrast": vp.voi.windowWidth = Math.max(1, (vp.voi.windowWidth || 400) * 0.5); break;
-      case "brightness": vp.voi.windowCenter = (vp.voi.windowCenter || 40) + 50; break;
-      default: break;
-    }
-    cornerstone.setViewport(dicomViewer, vp);
-  } else {
-    switch (filtro) {
-      case "grayscale": currentFilter="grayscale(100%)"; break;
-      case "sepia": currentFilter="sepia(100%)"; break;
-      case "invert": currentFilter="invert(100%)"; break;
-      case "contrast": currentFilter="contrast(200%)"; break;
-      case "brightness": currentFilter="brightness(150%)"; break;
-      default: currentFilter="none"; break;
-    }
-    actualizarTransformaciones();
-  }
-}
-// -------------------------------------------
-// HIT-TEST helpers (en coords de imagen: sirven para Raster y DICOM)
+// HIT-TEST helpers (coords de imagen)
 // -------------------------------------------
 function isPointNearSegmentImg(p, a, b, tol) {
   const A = p.x - a.x, B = p.y - a.y;
@@ -1106,18 +1068,195 @@ function calcAngle(p1, c, p2) {
   return (Math.acos(dot / (m1 * m2)) * 180) / Math.PI;
 }
 
+// -------------------------------------------
+// BOTONES UI / HERRAMIENTAS
+// -------------------------------------------
+const btnZoomIn  = document.getElementById("zoomIn");
+const btnZoomOut = document.getElementById("zoomOut");
+const btnRotate  = document.getElementById("rotate");
+const btnReset   = document.getElementById("reset");
+const btnMeasure = document.getElementById("measure");
+const btnPan     = document.getElementById("pan");
+const btnAnnotate= document.getElementById("annotate");
+const btnRect    = document.getElementById("shapeRect");
+const btnCircle  = document.getElementById("shapeCircle");
+const btnAngle   = document.getElementById("angle");
+
+function setActiveTool(tool) {
+  activeTool = tool;
+
+  if (isDicom) {
+    if (tool === "measure" || tool === "annotate" || tool === "rect" || tool === "circle" || tool === "angle") {
+      setCursor(dicomViewer, "crosshair");
+    } else if (tool === "pan") {
+      setCursor(dicomViewer, "grab");
+    } else {
+      setCursor(dicomViewer, "default");
+    }
+  } else if (rasterWrapper) {
+    const el = measureOverlay || rasterWrapper;
+    if (tool === "measure" || tool === "annotate" || tool === "rect" || tool === "circle" || tool === "angle") {
+      setCursor(el, "crosshair");
+    } else if (tool === "pan") {
+      setCursor(rasterWrapper, "grab");
+    } else {
+      setCursor(el, "default");
+    }
+  }
+}
+
+btnAngle?.addEventListener("click", () => { ensureRasterWrapper(); setActiveTool("angle"); });
+btnZoomIn?.addEventListener("click", () => {
+  if (isDicom) {
+    const vp = cornerstone.getViewport(dicomViewer);
+    vp.scale = Math.min(10, vp.scale * 1.1);
+    cornerstone.setViewport(dicomViewer, vp);
+  } else {
+    zoomLevel += 0.1;
+    actualizarTransformaciones();
+  }
+});
+btnZoomOut?.addEventListener("click", () => {
+  if (isDicom) {
+    const vp = cornerstone.getViewport(dicomViewer);
+    vp.scale = Math.max(0.1, vp.scale * 0.9);
+    cornerstone.setViewport(dicomViewer, vp);
+  } else {
+    zoomLevel = Math.max(0.1, zoomLevel - 0.1);
+    actualizarTransformaciones();
+  }
+});
+btnRotate?.addEventListener("click", () => {
+  if (isDicom) {
+    const vp = cornerstone.getViewport(dicomViewer);
+    vp.rotation = ((vp.rotation||0) + 90) % 360;
+    cornerstone.setViewport(dicomViewer, vp);
+  } else {
+    rotation = (rotation + 90) % 360;
+    actualizarTransformaciones();
+  }
+});
+btnReset?.addEventListener("click", () => {
+  setActiveTool("none");
+  if (isDicom && dicomBaseViewport) {
+    cornerstone.setViewport(dicomViewer, deepClone(dicomBaseViewport));
+    dicomMeasurements = []; dicomMeasureStartImg=null; dicomPreviewImg=null;
+    dicomShapes = []; dicomShapeStartImg=null; dicomShapePreviewImg=null;
+    dicomAnnotations = [];
+    dicomAngles = []; dicomAnglePoints = []; dicomAnglePreview = null;
+    redrawDicomOverlay();
+  } else {
+    zoomLevel=1; rotation=0; offsetX=0; offsetY=0; currentFilter="none";
+    measurements=[]; rasterAnnotations=[]; rasterShapes=[];
+    angles = []; anglePoints = [];
+    measureStartImg=null; drawingMeasure=false; shapeStartImg=null;
+    rasterFilterMode = "none";
+    brightnessFactor = 1;
+    contrastFactor   = 1;
+    applyRasterCssFilter();
+    if (measureOverlay) {
+      const ctx = measureOverlay.getContext("2d");
+      ctx.clearRect(0,0,measureOverlay.width,measureOverlay.height);
+    }
+  }
+});
+btnMeasure?.addEventListener("click", () => { ensureRasterWrapper(); setActiveTool("measure"); });
+btnPan?.addEventListener("click", () => { ensureRasterWrapper(); setActiveTool("pan"); });
+btnAnnotate?.addEventListener("click", () => { ensureRasterWrapper(); setActiveTool("annotate"); });
+btnRect?.addEventListener("click", () => { ensureRasterWrapper(); setActiveTool("rect"); });
+btnCircle?.addEventListener("click", () => { ensureRasterWrapper(); setActiveTool("circle"); });
+
+// -------------------------------------------
+// FILTROS (botones)
+// -------------------------------------------
+function setFilter(filtro) {
+  // Mostrar/ocultar sliders según filtro (definido al final)
+  if (filtro === "brightness" || filtro === "contrast") {
+    toggleFilterControls(filtro);
+  } else {
+    toggleFilterControls(null); // oculta sliders al cambiar de filtro
+  }
+
+  if (isDicom) {
+    // ------- DICOM: viewport (windowCenter / windowWidth / invert) -------
+    const currentVp = cornerstone.getViewport(dicomViewer);
+    let vp = {
+      ...deepClone(dicomBaseViewport),
+      scale: currentVp.scale,
+      translation: { ...currentVp.translation },
+      rotation: currentVp.rotation,
+      invert: currentVp.invert || false,
+      voi: deepClone(currentVp.voi || {})
+    };
+
+    switch (filtro) {
+      case "invert":
+        vp.invert = !currentVp.invert;
+        break;
+      case "contrast":
+        // preset ligero, luego el slider ajusta fino
+        vp.voi.windowWidth = Math.max(1, (vp.voi.windowWidth || 400) * 0.7);
+        break;
+      case "brightness":
+        vp.voi.windowCenter = (vp.voi.windowCenter || 40) + 30;
+        break;
+      case "none":
+      case "grayscale":
+      case "sepia":
+      default:
+        // volvemos a base sin cambios especiales
+        vp = {
+          ...deepClone(dicomBaseViewport),
+          scale: currentVp.scale,
+          translation: { ...currentVp.translation },
+          rotation: currentVp.rotation,
+          invert: false,
+          voi: deepClone(dicomBaseViewport.voi || {})
+        };
+        break;
+    }
+    cornerstone.setViewport(dicomViewer, vp);
+  } else {
+    // ------- JPG/PNG: CSS filters + sliders -------
+    switch (filtro) {
+      case "none":
+        rasterFilterMode = "none";
+        brightnessFactor = 1;
+        contrastFactor   = 1;
+        if (brightnessSlider) brightnessSlider.value = 100;
+        if (contrastSlider)   contrastSlider.value   = 100;
+        break;
+      case "grayscale":
+        rasterFilterMode = "grayscale";
+        break;
+      case "sepia":
+        rasterFilterMode = "sepia";
+        break;
+      case "invert":
+        rasterFilterMode = "invert";
+        break;
+      case "contrast":
+        if (contrastSlider) contrastSlider.value = 150;
+        contrastFactor = 1.5;
+        break;
+      case "brightness":
+        if (brightnessSlider) brightnessSlider.value = 150;
+        brightnessFactor = 1.5;
+        break;
+    }
+    applyRasterCssFilter();
+  }
+}
+
 function goBack() {
   window.history.back();
 }
 
 window.setFilter = setFilter;
-
-
 // ======================
 //  REJILLA + CARRUSEL
 // ======================
 (function () {
-  // 1. Leer JSON desde <script id="multi-files-data">
   const dataTag = document.getElementById('multi-files-data');
   if (!dataTag) return;
 
@@ -1243,7 +1382,7 @@ window.setFilter = setFilter;
       info.textContent = `Página ${page + 1} de ${totalPages}`;
     }
     if (prev) prev.disabled = (page === 0);
-    if (next) next.disabled = (page >= totalPages - 1);   // ✅ corregido: antes usaba prev && ...
+    if (next) next.disabled = (page >= totalPages - 1);
   }
 
   if (prev) {
@@ -1305,7 +1444,6 @@ window.setFilter = setFilter;
 
   function applySpeed() {
     const v = speedSelect ? Number(speedSelect.value) : NaN;
-    // Los valores vienen del <select> (ej. 1500, 900, 550, 300)
     intervalMs = Number.isFinite(v) && v > 0 ? v : 600;
   }
 
@@ -1359,7 +1497,6 @@ window.setFilter = setFilter;
   if (btnPrevSer) {
     btnPrevSer.addEventListener('click', () => {
       currentIndex = (currentIndex - 1 + files.length) % files.length;
-      // mostrar visor pero sin autoplay
       if (viewer) viewer.style.display = 'flex';
       document.body.classList.add('series-playing');
       renderSeriesFrame(currentIndex);
@@ -1368,7 +1505,6 @@ window.setFilter = setFilter;
   if (btnNextSer) {
     btnNextSer.addEventListener('click', () => {
       currentIndex = (currentIndex + 1) % files.length;
-      // mostrar visor pero sin autoplay
       if (viewer) viewer.style.display = 'flex';
       document.body.classList.add('series-playing');
       renderSeriesFrame(currentIndex);
@@ -1388,3 +1524,123 @@ window.setFilter = setFilter;
     });
   }
 })();
+
+// ======================
+// INPUT MULTIPLE (subida)
+// ======================
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('imagenInput');
+  const countEl = document.getElementById('fileCount');
+  const listEl  = document.getElementById('fileList');
+
+  if (!input || !countEl || !listEl) return;
+
+  function formatSize(bytes) {
+    if (bytes == null) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+  }
+
+  input.addEventListener('change', () => {
+    const files = Array.from(input.files || []);
+    listEl.innerHTML = '';
+
+    if (files.length === 0) {
+      countEl.textContent = 'No hay archivos seleccionados.';
+      return;
+    }
+
+    countEl.textContent = files.length === 1
+      ? '1 archivo seleccionado.'
+      : `${files.length} archivos seleccionados.`;
+
+    files.forEach((f, idx) => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = `${idx + 1}. ${f.name}`;
+
+      const sizeSpan = document.createElement('span');
+      sizeSpan.className = 'text-muted small';
+      sizeSpan.textContent = formatSize(f.size);
+
+      li.appendChild(nameSpan);
+      li.appendChild(sizeSpan);
+      listEl.appendChild(li);
+    });
+  });
+});
+
+// ======================
+// SLIDERS BRILLO / CONTRASTE
+// ======================
+const brightnessSlider = document.getElementById("brightnessSlider");
+const contrastSlider   = document.getElementById("contrastSlider");
+const filterBox        = document.getElementById("filterBox");
+const brightnessGroup  = document.getElementById("brightnessGroup");
+const contrastGroup    = document.getElementById("contrastGroup");
+
+// Oculta todo de inicio
+function hideAllFilterControls() {
+  if (!filterBox) return;
+  filterBox.classList.add("d-none");
+  if (brightnessGroup) brightnessGroup.classList.add("d-none");
+  if (contrastGroup)   contrastGroup.classList.add("d-none");
+}
+hideAllFilterControls();
+
+// Muestra según el filtro
+function toggleFilterControls(filter) {
+  hideAllFilterControls();
+
+  if (!filter || !filterBox) return;
+
+  filterBox.classList.remove("d-none");
+
+  if (filter === "brightness" && brightnessGroup) {
+    brightnessGroup.classList.remove("d-none");
+  }
+
+  if (filter === "contrast" && contrastGroup) {
+    contrastGroup.classList.remove("d-none");
+  }
+}
+
+// Eventos sliders
+if (brightnessSlider) {
+  brightnessSlider.addEventListener("input", () => {
+    const val = Number(brightnessSlider.value) || 100;
+
+    if (isDicom) {
+      // DICOM: mover windowCenter proporcional al slider
+      const vp = cornerstone.getViewport(dicomViewer);
+      const baseCenter = (dicomBaseViewport?.voi?.windowCenter) ?? vp.voi.windowCenter ?? 40;
+      const delta = (val - 100) * 0.8; // desplazamiento aprox -80..+80
+      vp.voi.windowCenter = baseCenter + delta;
+      cornerstone.setViewport(dicomViewer, vp);
+    } else {
+      brightnessFactor = val / 100;
+      applyRasterCssFilter();
+    }
+  });
+}
+
+if (contrastSlider) {
+  contrastSlider.addEventListener("input", () => {
+    const val = Number(contrastSlider.value) || 100;
+
+    if (isDicom) {
+      // DICOM: modificar windowWidth (contraste)
+      const vp = cornerstone.getViewport(dicomViewer);
+      const baseWidth = (dicomBaseViewport?.voi?.windowWidth) ?? vp.voi.windowWidth ?? 400;
+      const factor = val / 100; // 0.5..1.5
+      vp.voi.windowWidth = Math.max(1, baseWidth / factor);
+      cornerstone.setViewport(dicomViewer, vp);
+    } else {
+      contrastFactor = val / 100;
+      applyRasterCssFilter();
+    }
+  });
+}

@@ -4,47 +4,68 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🦷 Visualizador Dental</title>
-
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link rel="stylesheet" href="/visualizador/static/styles.css">
 </head>
 
-<body class="bg-dark text-light">
+<body>
   <div class="container-fluid py-4 px-md-5">
 
     <!-- Encabezado -->
     <div class="text-center mb-4">
       <h1 class="display-6">🦷 Visualizador de Imágenes Dentales</h1>
-      <p class="text-muted">Carga y visualiza radiografías, panorámicas, TAC, CBCT o estudios DICOM.</p>
+      <p class="text-muted">
+        Carga y visualiza radiografías, panorámicas, TAC, CBCT o estudios DICOM.
+      </p>
     </div>
 
-    <!-- Formulario -->
-    <form action="/visualizador/upload" method="POST" enctype="multipart/form-data"
-          class="card shadow-sm p-4 mb-4 bg-body">
-      <label class="fw-semibold">Selecciona imágenes o una carpeta completa</label>
-      <input type="file" class="form-control" name="imagen" id="imagenInput" multiple required />
-      <small id="fileCount" class="text-muted mt-2 d-block">No hay archivos seleccionados.</small>
-      <ul id="fileList" class="list-group list-group-flush small mt-1"></ul>
+    <!-- Formulario de carga -->
+    <form action="/visualizador/upload"
+          method="POST"
+          enctype="multipart/form-data"
+          class="card shadow-sm p-4 mb-4 bg-white">
+      <div class="mb-3">
+        <label for="imagenInput" class="form-label fw-semibold">
+          Selecciona imágenes o una carpeta completa
+        </label>
+        <input
+          type="file"
+          class="form-control"
+          id="imagenInput"
+          name="imagen"
+          multiple
+          required
+        />
+        <small id="fileCount" class="text-muted d-block mt-2">
+          No hay archivos seleccionados.
+        </small>
+        <ul id="fileList" class="list-group list-group-flush mt-1 small"></ul>
+      </div>
 
-      <button type="submit" class="btn btn-primary mt-3">📤 Cargar y visualizar</button>
+      <button type="submit" class="btn btn-primary w-100">
+        📤 Cargar y visualizar
+      </button>
     </form>
 
     <!-- ========== MODO CARPETA (MULTI FILES) ========== -->
     {% if filenames and filenames|length > 0 %}
 
       <div class="text-center mb-3">
-        <h5>📂 Carpeta con {{ filenames|length }} archivos</h5>
-        <p class="text-muted">Haz clic en una miniatura para abrirla o usa el modo serie.</p>
+        <h5 class="mb-1">📂 Carpeta con {{ filenames|length }} archivos</h5>
+        <p class="text-muted mb-0">
+          Haz clic en una miniatura para abrirla o usa el modo serie para reproducirlas.
+        </p>
       </div>
 
       <!-- Controles de serie -->
       <div id="seriesControls" class="series-controls mx-auto mb-3">
-        <button id="btnSeriesPrev" class="btn btn-sm btn-outline-light">⏮</button>
+        <button id="btnSeriesPrev" class="btn btn-sm btn-outline-secondary" title="Anterior">⏮</button>
         <button id="btnSeriesPlay" class="btn btn-sm btn-success">▶️ Play</button>
         <button id="btnSeriesPause" class="btn btn-sm btn-warning" disabled>⏹ Stop</button>
-        <button id="btnSeriesNext" class="btn btn-sm btn-outline-light">⏭</button>
+        <button id="btnSeriesNext" class="btn btn-sm btn-outline-secondary" title="Siguiente">⏭</button>
 
-        <label class="ms-2 text-muted">Velocidad:</label>
+        <label for="seriesSpeed" class="ms-2 mb-0 text-muted">Velocidad:</label>
         <select id="seriesSpeed" class="form-select form-select-sm w-auto ms-1">
           <option value="1500">Muy lento</option>
           <option value="900">Lento</option>
@@ -55,8 +76,8 @@
         <span id="seriesInfo" class="ms-3 small text-muted"></span>
       </div>
 
-      <!-- Visor grande para serie (oculto hasta que se da Play) -->
-      <div id="seriesViewer" class="series-viewer-container mb-4" style="display:none;"></div>
+      <!-- Visor de serie (oculto al inicio, se muestra con JS) -->
+      <div id="seriesViewer" class="series-viewer-container mb-4"></div>
 
       <!-- Rejilla 3x3 -->
       <div id="multiGrid" class="multi-grid"></div>
@@ -64,57 +85,104 @@
       <!-- Paginador -->
       <div class="d-flex justify-content-center align-items-center mt-3 gap-2">
         <button id="prevPage" class="btn btn-sm btn-outline-secondary">⬅️ Anterior</button>
-        <span id="pageInfo" class="text-light small"></span>
+        <span id="pageInfo" class="text-muted small"></span>
         <button id="nextPage" class="btn btn-sm btn-outline-secondary">Siguiente ➡️</button>
       </div>
 
-      <!-- 🔹 PASAMOS `filenames` AL JS SIN ROMPER VS CODE -->
+      <!-- Pasamos filenames al JS -->
       <script id="multi-files-data" type="application/json">
         {{ filenames | tojson | safe }}
       </script>
-
     {% endif %}
 
     <!-- ========== MODO INDIVIDUAL ========== -->
     {% if filename %}
+      <!-- Visor negro -->
       <div class="viewer-container mt-4">
-
         {% if filename.endswith(".dcm") %}
           <div id="dicomViewer" data-file="/visualizador/uploads/{{ filename }}"></div>
-
         {% else %}
-          <img id="imagenVisualizada" src="/visualizador/uploads/{{ filename }}" />
+          <img id="imagenVisualizada"
+               src="/visualizador/uploads/{{ filename }}"
+               alt="Imagen cargada" />
         {% endif %}
-
-        <div class="viewer-controls">
-          <button id="zoomIn">🔍+</button>
-          <button id="zoomOut">🔎−</button>
-          <button id="rotate">↻</button>
-          <button id="measure">📏</button>
-          <button id="pan">✋</button>
-          <button id="annotate">📝</button>
-          <button id="angle">📐</button>
-          <button id="shapeRect">⬛</button>
-          <button id="shapeCircle">⚪</button>
-          <button id="reset">⛔</button>
-        </div>
       </div>
 
+      <!-- ✅ CONTROLES ABAJO DEL VISOR (YA NO ENCIMA) -->
+      <div class="viewer-controls mt-2">
+        <button id="zoomIn" title="Zoom +">➕</button>
+        <button id="zoomOut" title="Zoom -">➖</button>
+        <button id="rotate" title="Rotar">⟳</button>
+        <button id="measure" title="Medir">📏</button>
+        <button id="pan" title="Mover">✋</button>
+        <button id="annotate" title="Anotar">📝</button>
+        <button id="angle" title="Ángulo">📐</button>
+        <button id="shapeRect" title="Rectángulo">⬛</button>
+        <button id="shapeCircle" title="Círculo">⚪</button>
+        <button id="reset" title="Reiniciar">⛔</button>
+      </div>
+
+      <!-- Filtros -->
       <div class="text-center mt-3">
-        <button class="btn btn-outline-light btn-sm" onclick="setFilter('none')">🎨 Normal</button>
-        <button class="btn btn-outline-light btn-sm" onclick="setFilter('grayscale')">⚪ B/N</button>
-        <button class="btn btn-outline-light btn-sm" onclick="setFilter('sepia')">🟤 Sepia</button>
-        <button class="btn btn-outline-light btn-sm" onclick="setFilter('invert')">🌀 Invertir</button>
-        <button class="btn btn-outline-light btn-sm" onclick="setFilter('contrast')">🌈 Contraste</button>
-        <button class="btn btn-outline-light btn-sm" onclick="setFilter('brightness')">💡 Brillo</button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="toggleFilterControls(null); setFilter('normal')">
+          🎨 Normal
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="toggleFilterControls(null); setFilter('grayscale')">
+          ⚪ Blanco y negro
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="toggleFilterControls(null); setFilter('sepia')">
+          🟤 Sepia
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="toggleFilterControls(null); setFilter('invert')">
+          🌀 Invertir
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="toggleFilterControls('brightness'); setFilter('brightness')">
+          💡 Brillo
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="toggleFilterControls('contrast'); setFilter('contrast')">
+          🌈 Contraste
+        </button>
       </div>
+     <!-- Contenedor dinámico (oculto por defecto) -->
+      <div id="filterBox" class="filter-box d-none">
+
+        <!-- BRILLO -->
+        <div id="brightnessGroup" class="filter-group d-none">
+          <label>Brillo</label>
+          <input
+            type="range"
+            id="brightnessSlider"
+            min="0"
+            max="200"
+            value="100"
+            class="form-range"
+          />
+        </div>
+
+        <!-- CONTRASTE -->
+        <div id="contrastGroup" class="filter-group d-none">
+          <label>Contraste</label>
+          <input
+            type="range"
+            id="contrastSlider"
+            min="0"
+            max="200"
+            value="100"
+            class="form-range"
+          />
+        </div>
+
+      </div>
+
+
     {% endif %}
 
     <!-- Botón volver -->
     <div class="text-center mt-4">
-      <button class="btn btn-secondary" onclick="window.location.href='/menu.html'">⬅️ Volver al menú</button>
+      <button class="btn btn-secondary" onclick="window.location.href='/menu.html'">
+        ⬅️ Volver al menú
+      </button>
     </div>
-
   </div>
 
   <!-- Librerías DICOM -->
