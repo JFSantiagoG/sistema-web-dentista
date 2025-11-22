@@ -38,9 +38,8 @@
             <thead class="table-light">
               <tr>
                 <th>Fecha</th>
-                <th>Tipo</th>
-                <th>Archivo</th>
-                <th>Tamaño</th>
+                <th>Tipo / #Archivos</th>
+                <th>Notas</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -284,8 +283,17 @@
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label">Archivo (imagen o DICOM)</label>
-            <input class="form-control" type="file" name="file" id="inputArchivoEstudio" accept="image/*,.dcm" required>
-            <div class="form-text">Formatos permitidos: imágenes (JPG, PNG, WEBP, etc.) o DICOM (.dcm).</div>
+            <input
+              class="form-control"
+              type="file"
+              name="files"
+              id="inputArchivoEstudio"
+              multiple
+              required
+            >
+            <div class="form-text">
+              Puedes seleccionar uno o varios archivos (imágenes, DICOM, PDF, etc.).
+            </div>
           </div>
 
           <div class="mb-3">

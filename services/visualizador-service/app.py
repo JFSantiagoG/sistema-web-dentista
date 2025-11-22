@@ -8,6 +8,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+
 def _normalize_storage_path(storage_path: str) -> str:
     """
     Acepta valores como:
@@ -24,13 +25,40 @@ def _normalize_storage_path(storage_path: str) -> str:
         return None
     return base
 
+
 @app.route('/')
 def index():
-    # Soporta abrir directo: /visualizador?file=/visualizador/uploads/loquesea.dcm
-    file_arg = request.args.get('file')
-    filename = None
+    """
+    Soporta:
+      - /?file=/visualizador/uploads/uno.dcm      → visor único
+      - /?files=/visualizador/uploads/a.dcm,/visualizador/uploads/b.dcm → rejilla + carrusel
+    """
+    file_arg  = request.args.get('file')
+    files_arg = request.args.get('files')
 
-    if file_arg:
+    filename  = None   # un solo archivo
+    filenames = None   # lista de varios archivos
+
+    # --------- MODO MULTI (rejilla/carrusel) ---------
+    if files_arg:
+        raw_parts = [p.strip() for p in files_arg.split(',') if p.strip()]
+        normalized = []
+
+        for part in raw_parts:
+            base = _normalize_storage_path(part)
+            if not base:
+                continue
+            fullpath = os.path.join(app.config['UPLOAD_FOLDER'], base)
+            if os.path.isfile(fullpath):
+                normalized.append(base)
+
+        if not normalized:
+            abort(404, description="Ningún archivo válido encontrado en 'files'.")
+
+        filenames = normalized
+
+    # --------- MODO ÚNICO (visor normal) ---------
+    elif file_arg:
         filename = _normalize_storage_path(file_arg)
         if not filename:
             abort(400, description="Parámetro 'file' inválido.")
@@ -41,7 +69,8 @@ def index():
 
     # filename = una sola imagen (modo visor único)
     # filenames = lista de varias imágenes (modo rejilla 3x3)
-    return render_template('index.html', filename=filename, filenames=None)
+    return render_template('index.html', filename=filename, filenames=filenames)
+
 
 @app.route('/upload', methods=['POST'])
 def upload():
@@ -60,17 +89,13 @@ def upload():
         if not filename:
             continue
 
-        # -----------------------------
-        # 🔹 Si NO tiene extensión → .dcm
-        # -----------------------------
+        # Si NO tiene extensión → .dcm
         if "." not in filename:
             filename = filename + ".dcm"
 
-        # -----------------------------
-        # 🔹 Normalizar .dicom → .dcm
-        # -----------------------------
+        # Normalizar .dicom → .dcm
         if filename.lower().endswith(".dicom"):
-            filename = filename[:-6] + ".dcm"  # quitar ".dicom" y poner ".dcm"
+            filename = filename[:-6] + ".dcm"
 
         # Guardar archivo ya normalizado
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
@@ -86,6 +111,7 @@ def upload():
     # Varios archivos → modo rejilla
     return render_template('index.html', filename=None, filenames=saved)
 
+
 @app.route('/uploads/<filename>')
 def serve_image(filename):
     filename = secure_filename(filename)
@@ -94,6 +120,7 @@ def serve_image(filename):
     if filename.lower().endswith(".dcm"):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename, mimetype='application/dicom')
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=3010, debug=False, use_reloader=False)

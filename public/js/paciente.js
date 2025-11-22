@@ -10,7 +10,26 @@ const pacienteId = new URLSearchParams(location.search).get('id');
 const fdate = d => d ? new Date(d).toLocaleDateString() : '—';
 const money = v => (v == null ? '—' : `$${Number(v).toFixed(2)}`);
 const yesno = v => (Number(v) ? 'Sí' : 'No');
-const fymdSafe = v => v ? String(v).split('T')[0] : '—';
+const fymdSafe = v => {
+  if (!v) return '—';
+  const s = String(v);
+  return s.length >= 10 ? s.slice(0, 10) : s;
+};
+
+// Intenta deducir el tipo por la extensión del archivo
+function guessTipoFromPath(path) {
+  if (!path) return 'otro';
+  const p = String(path).toLowerCase();
+
+  if (p.endsWith('.dcm')) return 'rx'; // DICOM
+  if (p.endsWith('.jpg') || p.endsWith('.jpeg') ||
+      p.endsWith('.png') || p.endsWith('.webp') ||
+      p.endsWith('.gif')) return 'foto';
+  if (p.endsWith('.bmp') || p.includes('pano')) return 'panoramica';
+
+  return 'otro';
+}
+
 
 const actionBtns = (formId, formHtml) => `
   <a class="btn btn-sm btn-outline-primary me-1" href="forms/${formHtml}?formulario_id=${formId}">👁️ Visualizar</a>
@@ -320,6 +339,7 @@ const tipoLabel = {
   foto: 'Fotografía',
   otro: 'Otro'
 };
+
 const tipoBadge = (t) => {
   const mapClass = {
     rx: 'badge bg-primary',
@@ -333,25 +353,73 @@ const tipoBadge = (t) => {
   const txt = tipoLabel[t] || tipoLabel.otro;
   return `<span class="${cls}">${txt}</span>`;
 };
-const fmtSize = (b) => (b == null ? '—' :
-  (b < 1024 ? `${b} B` :
-  (b < 1024*1024 ? `${(b/1024).toFixed(1)} KB` : `${(b/1024/1024).toFixed(2)} MB`)));
 
-// ⚙️ Cargar estudios: ahora con fecha YYYY-MM-DD y columna "Notas"
+// Agrupa filas de patient_files por group_id (o id si no hay group_id)
+function agruparEstudiosPorGrupo(rows) {
+  const gruposMap = new Map();
+
+  for (const s of rows) {
+    // Usamos group_id si viene, si no, agrupamos por id (cada archivo será su propio grupo)
+    const key = s.group_id || s.group || String(s.id || s.storage_path || Math.random());
+    if (!gruposMap.has(key)) {
+      gruposMap.set(key, { key, files: [] });
+    }
+    gruposMap.get(key).files.push(s);
+  }
+
+  const grupos = Array.from(gruposMap.values()).map(g => {
+    // Ordenar por fecha para sacar primera/última
+    g.files.sort((a, b) => {
+      const ra = a.fecha_subida || a.fecha || a.creado_en || 0;
+      const rb = b.fecha_subida || b.fecha || b.creado_en || 0;
+      const da = ra ? new Date(ra) : new Date(0);
+      const db = rb ? new Date(rb) : new Date(0);
+      return da - db;
+    });
+
+    const cantidad = g.files.length;
+    const primeraRaw = g.files[0]?.fecha_subida || g.files[0]?.fecha || g.files[0]?.creado_en || null;
+    const ultimaRaw  = g.files[cantidad - 1]?.fecha_subida || g.files[cantidad - 1]?.fecha || g.files[cantidad - 1]?.creado_en || null;
+
+    // nota resumen (última nota no vacía)
+    const notaResumen =
+      [...g.files].reverse().find(f => f.notas && String(f.notas).trim())?.notas || '';
+
+    return {
+      key: g.key,
+      files: g.files,
+      cantidad,
+      fechaPrimera: primeraRaw,
+      fechaUltima: ultimaRaw,
+      notaResumen
+    };
+  });
+
+  // ordenar grupos por fechaUltima desc (más recientes arriba)
+  grupos.sort((a, b) => {
+    const da = a.fechaUltima || a.fechaPrimera;
+    const db = b.fechaUltima || b.fechaPrimera;
+    const d1 = da ? new Date(da) : new Date(0);
+    const d2 = db ? new Date(db) : new Date(0);
+    return d2 - d1;
+  });
+
+  return grupos;
+}
+
+// ⚙️ Cargar estudios: usa lo que devuelve el backend (/studies)
 async function cargarEstudios() {
   if (!pacienteId) return;
 
   const tbody = document.getElementById('tb-studies');
   if (!tbody) return;
 
-  // Asegurar cabecera con columna "Notas"
+  // Cabecera: Fecha | Tipo/#Archivos | Notas | Acciones
   const headRow = tbody.closest('table')?.querySelector('thead tr');
   if (headRow) {
     headRow.innerHTML = `
       <th>Fecha</th>
-      <th>Tipo</th>
-      <th>Archivo</th>
-      <th>Tamaño</th>
+      <th>Tipo / #Archivos</th>
       <th>Notas</th>
       <th>Acciones</th>
     `;
@@ -360,67 +428,136 @@ async function cargarEstudios() {
   try {
     const url = `/api/patients/${encodeURIComponent(pacienteId)}/studies`;
     const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json'
+      }
     });
 
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(`HTTP ${res.status} en ${url}: ${text.slice(0,200)}...`);
+      throw new Error(`HTTP ${res.status} en ${url}: ${text.slice(0, 200)}...`);
     }
+
     const ct = res.headers.get('content-type') || '';
     if (!ct.includes('application/json')) {
       const text = await res.text();
-      throw new Error(`Respuesta no-JSON (${ct}): ${text.slice(0,200)}...`);
+      throw new Error(`Respuesta no-JSON (${ct}): ${text.slice(0, 200)}...`);
     }
 
-    const rows = await res.json();
+    const rows = await res.json(); // ahora el backend ya regresa grupos
+
     if (!Array.isArray(rows) || rows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Sin estudios cargados</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Sin estudios cargados</td></tr>`;
       return;
     }
 
-    const normalizePath = (p) => {
-      if (!p) return '';
-      if (p.startsWith('/visualizador/uploads/')) return p;
-      if (p.startsWith('/uploads/')) return `/visualizador${p}`;
-      return `/visualizador/uploads/${p}`;
-    };
+    // 🔧 Normalizamos dos posibles formas:
+    // 1) Nueva: [{ group_key, cantidad, fecha_primera, fecha_ultima, nota_resumen, files: [...] }]
+    // 2) Vieja: filas crudas de patient_files → usamos agruparEstudiosPorGrupo
+    let grupos;
+    if (rows[0] && rows[0].files) {
+      // ✅ Forma nueva (agrupado desde backend)
+      grupos = rows.map(g => ({
+        files: g.files || [],
+        cantidad: g.cantidad ?? (g.files?.length ?? 0),
+        fechaPrimera: g.fecha_primera || g.fechaPrimera || null,
+        fechaUltima: g.fecha_ultima || g.fechaUltima || null,
+        notaResumen: g.nota_resumen || g.notaResumen || ''
+      }));
+    } else {
+      // 🔙 Compatibilidad con forma antigua (filas crudas)
+      grupos = agruparEstudiosPorGrupo(rows);
+    }
 
-    const buildVerUrl = (storagePath) =>
-      `/visualizador?file=${encodeURIComponent(normalizePath(storagePath))}`;
-    const buildDescargaUrl = (storagePath) => normalizePath(storagePath);
+    tbody.innerHTML = grupos.map(g => {
+      const files = g.files || [];
+      const n = g.cantidad || files.length || 0;
 
-    tbody.innerHTML = rows.map(s => {
-      // ✅ sólo fecha (YYYY-MM-DD) usando helper
-      const fecha = fymdSafe(s.fecha_subida);
-      const nombre = s.nombre_archivo || s.storage_path || '—';
-      const verUrl = buildVerUrl(s.storage_path);
-      const downUrl = buildDescargaUrl(s.storage_path);
+      // Fecha: usamos la última disponible (YYYY-MM-DD)
+      const fecha = fymdSafe(g.fechaUltima || g.fechaPrimera);
 
-      // ✅ Columna "Notas" con tooltip si es largo
-      const notasFull = (s.notas ?? '').toString();
-      const notasShort = notasFull.length > 80 ? notasFull.slice(0, 80) + '…' : (notasFull || '—');
+      // Tipo / #Archivos
+      let tipoHtml = '';
+      if (n === 1) {
+        const f0 = files[0] || {};
+        const rawTipo = f0.tipo || guessTipoFromPath(f0.storage_path || f0.nombre_archivo);
+        tipoHtml = `${tipoBadge(rawTipo)} <span class="text-muted ms-1">(1 archivo)</span>`;
+      } else {
+        const tiposSet = new Set(
+          files.map(f => f.tipo || guessTipoFromPath(f.storage_path || f.nombre_archivo || ''))
+        );
+        if (tiposSet.size === 1) {
+          const firstTipo = [...tiposSet][0];
+          tipoHtml = `
+            ${tipoBadge(firstTipo)}
+            <span class="badge bg-dark ms-2">${n} archivos</span>
+          `;
+        } else {
+          tipoHtml = `
+            <span class="badge bg-secondary">Múltiples tipos</span>
+            <span class="badge bg-dark ms-2">${n} archivos</span>
+          `;
+        }
+      }
+
+      // Notas (resumen)
+      const fullNote = (g.notaResumen || '').toString();
+      const shortNote = fullNote
+        ? (fullNote.length > 80 ? fullNote.slice(0, 80) + '…' : fullNote)
+        : '—';
+      const notaCell = `<span title="${fullNote.replace(/"/g, '&quot;')}">${shortNote}</span>`;
+
+      // Rutas de archivos para el visualizador
+      const filePaths = files
+        .map(f => f.storage_path || f.nombre_archivo || '')
+        .filter(Boolean)
+        .map(p => {
+          const s = String(p);
+          // normalizamos para que siempre sea algo tipo /visualizador/uploads/xxxx
+          if (s.startsWith('/visualizador/uploads/')) return s;
+          if (s.startsWith('/uploads/')) return '/visualizador' + s;
+          if (s.startsWith('/')) return s;
+          return '/visualizador/uploads/' + s;
+        });
+
+      let btnVer;
+      if (!filePaths.length) {
+        btnVer = `<button type="button" class="btn btn-sm btn-outline-secondary" disabled>Sin archivos</button>`;
+      } else if (filePaths.length === 1) {
+        const fileParam = encodeURIComponent(filePaths[0]);
+        btnVer = `<button type="button" class="btn btn-sm btn-outline-primary"
+                    onclick="window.location.href='/visualizador?file=${fileParam}'">
+                    👁️ Ver
+                  </button>`;
+      } else {
+        const filesParam = encodeURIComponent(filePaths.join(','));
+        btnVer = `<button type="button" class="btn btn-sm btn-outline-primary"
+                    onclick="window.location.href='/visualizador?files=${filesParam}'">
+                    👁️ Ver
+                  </button>`;
+      }
 
       return `
         <tr>
           <td>${fecha}</td>
-          <td>${tipoBadge(s.tipo)}</td>
-          <td title="${s.storage_path || ''}">${nombre}</td>
-          <td>${fmtSize(s.size_bytes)}</td>
-          <td title="${notasFull.replace(/"/g,'&quot;')}">${notasShort}</td>
-          <td>
-            <a class="btn btn-sm btn-outline-primary me-1" href="${verUrl}" target="_blank" rel="noopener">👁️ Ver</a>
-            <a class="btn btn-sm btn-outline-secondary" href="${downUrl}" download>⬇️ Descargar</a>
-          </td>
+          <td>${tipoHtml}</td>
+          <td>${notaCell}</td>
+          <td>${btnVer}</td>
         </tr>
       `;
     }).join('');
 
   } catch (err) {
     console.error('Error cargando estudios:', err);
-    tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">❌ Error al cargar estudios</td></tr>`;
+    tbody.innerHTML =
+      `<tr><td colspan="4" class="text-danger text-center">❌ Error al cargar estudios</td></tr>`;
   }
 }
+
+
+
+
 
 // Llamadas iniciales
 document.addEventListener('DOMContentLoaded', () => {
@@ -428,43 +565,47 @@ document.addEventListener('DOMContentLoaded', () => {
   cargarEstudios();
 });
 
-// ========= Subida de estudios (frontend con modal y progreso) =========
+// ========= Subida de estudios (frontend con modal y progreso, varios archivos) =========
 (() => {
-  const MAX_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB
-  const ALLOWED_EXT = ['.png','.jpg','.jpeg','.webp','.bmp','.tif','.tiff','.gif','.dcm'];
+  const MAX_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB por archivo
 
   let uploadModal, uploadForm, fileInput, tipoSelect, notasInput, bar, status, info, submitBtn;
 
-  function extLower(name) {
-    const i = name.lastIndexOf('.');
-    return i >= 0 ? name.slice(i).toLowerCase() : '';
-  }
   function fmtBytes(b) {
     if (b == null) return '—';
     if (b < 1024) return `${b} B`;
-    if (b < 1024*1024) return `${(b/1024).toFixed(1)} KB`;
-    return `${(b/1024/1024).toFixed(2)} MB`;
+    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+    return `${(b / 1024 / 1024).toFixed(2)} MB`;
   }
+
   function resetProgress() {
     bar.style.width = '0%';
     bar.setAttribute('aria-valuenow', '0');
     bar.textContent = '0%';
     status.textContent = '';
   }
+
   function setProgress(pct) {
     const v = Math.max(0, Math.min(100, Math.round(pct)));
     bar.style.width = `${v}%`;
     bar.setAttribute('aria-valuenow', String(v));
     bar.textContent = `${v}%`;
   }
-  function validateFile(file) {
-    if (!file) return 'Selecciona un archivo.';
-    if (file.size > MAX_SIZE_BYTES) return `El archivo excede ${fmtBytes(MAX_SIZE_BYTES)}.`;
-    const ext = extLower(file.name || '');
-    if (!ALLOWED_EXT.includes(ext)) {
-      return `Extensión no permitida. Usa: ${ALLOWED_EXT.join(', ')}`;
+
+  // ✅ validamos TODOS los archivos (solo tamaño, sin checar extensión)
+  function validateFiles(files) {
+    if (!files || !files.length) return 'Selecciona al menos un archivo.';
+    for (const f of files) {
+      if (f.size > MAX_SIZE_BYTES) {
+        return `El archivo "${f.name}" excede ${fmtBytes(MAX_SIZE_BYTES)}.`;
+      }
     }
     return null;
+  }
+
+  // ✅ pequeño helper para group_id (mismo para todos los archivos de una subida)
+  function generarGroupId() {
+    return 'grp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -482,22 +623,23 @@ document.addEventListener('DOMContentLoaded', () => {
       btnOpen.addEventListener('click', () => {
         resetProgress();
         info.textContent = '';
-        uploadForm.reset();
+        if (uploadForm) uploadForm.reset();
         const modalEl = document.getElementById('modalUploadEstudio');
         uploadModal = bootstrap.Modal.getOrCreateInstance(modalEl);
         uploadModal.show();
       });
     }
 
+    // 📂 Resumen de selección
     if (fileInput) {
       fileInput.addEventListener('change', () => {
-        const f = fileInput.files?.[0];
-        if (!f) { info.textContent = ''; return; }
-        info.textContent = `Archivo: ${f.name} — ${fmtBytes(f.size)}`;
-        // Pre-selección básica
-        const name = f.name.toLowerCase();
-        if (name.endsWith('.dcm')) tipoSelect.value = 'otro';
-        else if (!tipoSelect.value) tipoSelect.value = 'foto';
+        const files = Array.from(fileInput.files || []);
+        if (!files.length) {
+          info.textContent = '';
+          return;
+        }
+        const totalBytes = files.reduce((acc, f) => acc + f.size, 0);
+        info.textContent = `Archivos seleccionados: ${files.length} — Total: ${fmtBytes(totalBytes)}`;
       });
     }
 
@@ -505,56 +647,90 @@ document.addEventListener('DOMContentLoaded', () => {
       uploadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const f = fileInput.files?.[0];
-        const err = validateFile(f);
+        const files = Array.from(fileInput?.files || []);
+        const err = validateFiles(files);
         if (err) {
           alert('⚠️ ' + err);
           return;
         }
 
-        const fd = new FormData();
-        fd.append('file', f);
-        if (tipoSelect.value) fd.append('tipo', tipoSelect.value);
-        if (notasInput.value) fd.append('notas', notasInput.value);
-
+        // ✅ mismo group_id para TODOS los archivos en esta subida
+        const groupId = generarGroupId();
         const url = `/api/patients/${encodeURIComponent(pacienteId)}/studies/upload`;
 
         submitBtn.disabled = true;
         status.textContent = 'Subiendo...';
+        resetProgress();
 
         try {
-          await new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', url, true);
-            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+          let subidos = 0;
 
-            xhr.upload.onprogress = (e) => {
-              if (e.lengthComputable) {
-                const pct = (e.loaded / e.total) * 100;
-                setProgress(pct);
-              }
-            };
+          
+          // 🔁 Enviamos CADA archivo en una petición separada
+          for (const originalFile of files) {
+            await new Promise((resolve, reject) => {
 
-            xhr.onreadystatechange = () => {
-              if (xhr.readyState === 4) {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                  resolve();
-                } else {
-                  reject(new Error(`HTTP ${xhr.status}: ${xhr.responseText?.slice(0,200) || ''}`));
+              let f = originalFile;
+              const name = f.name || '';
+
+              // ⬇⬇⬇ SI NO TIENE PUNTO EN EL NOMBRE → le agregamos ".dcm"
+              if (!name.includes('.')) {
+                const newName = name + '.dcm';
+                try {
+                  f = new File([f], newName, {
+                    type: f.type || 'application/dicom'
+                  });
+                } catch (err) {
+                  console.warn('No se pudo recrear File, uso el original:', err);
+                  // si por alguna razón falla, seguimos con el original
                 }
               }
-            };
 
-            xhr.onerror = () => reject(new Error('Error de red al subir.'));
-            xhr.send(fd);
-          });
+              const fd = new FormData();
+              // 👇 nombre del campo que espera Multer (NO cambiar esto)
+              fd.append('file', f);
+              // 👇 group_id y metadatos como campos normales
+              fd.append('group_id', groupId);
+              if (tipoSelect.value) fd.append('tipo', tipoSelect.value);
+              if (notasInput.value) fd.append('notas', notasInput.value);
 
-          status.textContent = '✅ Subida exitosa';
-          setProgress(100);
+              const xhr = new XMLHttpRequest();
+              xhr.open('POST', url, true);
+              xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+              xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                  const pct = (e.loaded / e.total) * 100;
+                  setProgress(pct);
+                }
+              };
+
+              xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4) {
+                  if (xhr.status >= 200 && xhr.status < 300) {
+                    resolve();
+                  } else {
+                    reject(new Error(`HTTP ${xhr.status}: ${xhr.responseText?.slice(0, 200) || ''}`));
+                  }
+                }
+              };
+
+              xhr.onerror = () => reject(new Error('Error de red al subir.'));
+              xhr.send(fd);
+            });
+
+            subidos++;
+            const pctGlobal = (subidos / files.length) * 100;
+            setProgress(pctGlobal);
+          }
+
+
+
+          status.textContent = '✅ Archivos subidos correctamente';
 
           setTimeout(() => {
             if (uploadModal) uploadModal.hide();
-            cargarEstudios();
+            cargarEstudios(); // recarga la tabla agrupada
           }, 600);
 
         } catch (err) {
@@ -568,3 +744,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 })();
+

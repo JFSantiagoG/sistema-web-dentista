@@ -603,25 +603,98 @@ async function getFormsSummary(pacienteId) {
     conn.release();
   }
 }
+
+
 async function getPatientStudies(pacienteId) {
   const [rows] = await db.query(
-    `SELECT
-       id,
-       paciente_id,
-       tipo,
-       nombre_archivo,
-       storage_path,
-       size_bytes,
-       mime_type,
-       fecha_subida,
-       notas
-     FROM patient_files
-     WHERE paciente_id = ?
-     ORDER BY fecha_subida DESC, id DESC`,
+    `
+    SELECT
+      id,
+      paciente_id,
+      group_id,
+      tipo,
+      nombre_archivo,
+      storage_path,
+      size_bytes,
+      mime_type,
+      fecha_subida,
+      notas
+    FROM patient_files
+    WHERE paciente_id = ?
+    ORDER BY fecha_subida DESC, id DESC
+    `,
     [pacienteId]
   );
-  return rows;
+
+  if (!rows.length) return [];
+
+  // Agrupar por group_id (si es NULL, cada id es su propio grupo)
+  const grupos = new Map(); // key -> { group_id, files: [...] }
+
+  for (const r of rows) {
+    const key = r.group_id || String(r.id);
+    if (!grupos.has(key)) {
+      grupos.set(key, {
+        group_id: r.group_id || null,
+        files: []
+      });
+    }
+    grupos.get(key).files.push({
+      id: r.id,
+      tipo: r.tipo,
+      nombre_archivo: r.nombre_archivo,
+      storage_path: r.storage_path,
+      size_bytes: r.size_bytes,
+      mime_type: r.mime_type,
+      fecha_subida: r.fecha_subida,
+      notas: r.notas
+    });
+  }
+
+  const result = [];
+  for (const [key, g] of grupos.entries()) {
+    const files = g.files;
+
+    // ordenar por fecha_subida asc para detectar primera/última
+    files.sort((a, b) => new Date(a.fecha_subida) - new Date(b.fecha_subida));
+
+    const cantidad = files.length;
+    const primera = files[0].fecha_subida;
+    const ultima  = files[files.length - 1].fecha_subida;
+
+    // tipo "principal" para mostrar en tabla
+    let tipoResumen;
+    if (cantidad === 1) {
+      tipoResumen = files[0].tipo || 'otro';
+    } else {
+      tipoResumen = 'múltiples'; // o lo que quieras
+    }
+
+    // nota resumen (última no null)
+    const notaResumen =
+      [...files].reverse().find(f => f.notas && f.notas.trim())?.notas || null;
+
+    result.push({
+      group_key: key,
+      group_id: g.group_id,
+      cantidad,
+      tipo_resumen: tipoResumen,
+      fecha_primera: primera,
+      fecha_ultima: ultima,
+
+      // 🔥 alias para el front: si usas "fila.fecha" aquí tendrá algo
+      fecha: ultima,
+
+      nota_resumen: notaResumen,
+      files
+    });
+  }
+
+  // Ordenar grupos por fecha_ultima desc (más recientes primero)
+  result.sort((a, b) => new Date(b.fecha_ultima) - new Date(a.fecha_ultima));
+  return result;
 }
+
 
 
   async function insertPaciente(data) {
@@ -665,34 +738,45 @@ async function getPatientStudies(pacienteId) {
   }
 
  // === INSERT patient_files ===
-async function insertPatientFile({
-  paciente_id,
-  tipo,
-  nombre_archivo, // <- SOLO el nombre hasheado
-  storage_path,   // <- ruta pública servible por el gateway/visualizador
-  size_bytes,
-  mime_type,
-  notas
-}) {
-  // Inserta el registro
+async function insertPatientFile(file) {
+  const {
+    paciente_id,
+    tipo,
+    nombre_archivo,
+    storage_path,
+    size_bytes = null,
+    mime_type = null,
+    notas = null,
+    group_id = null
+  } = file;
+
   const [result] = await db.query(
     `INSERT INTO patient_files
-      (paciente_id, tipo, nombre_archivo, storage_path, size_bytes, mime_type, notas)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [paciente_id, tipo, nombre_archivo, storage_path, size_bytes ?? null, mime_type ?? null, notas ?? null]
+      (paciente_id, group_id, tipo, nombre_archivo, storage_path, size_bytes, mime_type, notas)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      paciente_id,
+      group_id,
+      tipo || 'otro',
+      nombre_archivo,
+      storage_path,
+      size_bytes,
+      mime_type,
+      notas
+    ]
   );
 
-  // Retorna el row insertado (incluye fecha_subida autogenerada)
   const [rows] = await db.query(
-    `SELECT id, paciente_id, tipo, nombre_archivo, storage_path,
+    `SELECT id, paciente_id, group_id, tipo, nombre_archivo, storage_path,
             size_bytes, mime_type, fecha_subida, notas
-       FROM patient_files
-      WHERE id = ?`,
+     FROM patient_files
+     WHERE id = ?`,
     [result.insertId]
   );
 
   return rows[0];
 }
+
 
 async function insertJustificante(pacienteId, medicoId, data) {
   const conn = await db.getConnection();
@@ -1307,7 +1391,7 @@ async function getEvolucionSummaryForPatient(pacienteId, conn) {
     ORDER BY f.fecha_actualizacion DESC
     LIMIT 1
   `;
-  const [rows] = await (conn || pool).query(sql, [pacienteId]);
+  const [rows] = await (conn || db).query(sql, [pacienteId]);
   return rows[0] || null;
 }
 

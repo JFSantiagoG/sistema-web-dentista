@@ -1253,22 +1253,43 @@ function goBack() {
 }
 
 window.setFilter = setFilter;
+
 // ======================
 //  REJILLA + CARRUSEL
 // ======================
 (function () {
+  // 1) Intentar leer desde el <script id="multi-files-data"> (modo clásico)
+  let files = [];
   const dataTag = document.getElementById('multi-files-data');
-  if (!dataTag) return;
 
-  let files;
-  try {
-    const raw = (dataTag.textContent || '').trim();
-    files = raw ? JSON.parse(raw) : [];
-  } catch (err) {
-    console.error('❌ Error parseando multi-files-data:', err);
-    return;
+  if (dataTag) {
+    try {
+      const raw = (dataTag.textContent || '').trim();
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          files = parsed;
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error parseando multi-files-data:', err);
+    }
   }
 
+  // 2) Si no hay nada en el script, intentamos con ?files= de la URL
+  if (!files.length) {
+    const params = new URLSearchParams(window.location.search);
+    const filesParam = params.get('files');
+    if (filesParam) {
+      const decoded = decodeURIComponent(filesParam);
+      files = decoded
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+  }
+
+  // Si seguimos sin archivos, no hay rejilla ni carrusel que mostrar
   if (!Array.isArray(files) || files.length === 0) return;
 
   const pageSize = 9;
@@ -1294,6 +1315,21 @@ window.setFilter = setFilter;
   // Estado inicial del visor de serie: OCULTO
   if (viewer) viewer.style.display = 'none';
   if (btnStop) btnStop.disabled = true;
+
+  // Helper: normalizar entrada (puede venir como nombre o ruta completa)
+  function resolvePath(entry) {
+    if (!entry) return null;
+    // Si ya es una ruta absoluta (/visualizador/uploads/...), la usamos tal cual
+    if (entry.startsWith('/')) return entry;
+    // Si es solo el nombre, le anteponemos el prefijo estándar
+    return '/visualizador/uploads/' + entry;
+  }
+
+  function getDisplayName(entry) {
+    const full = resolvePath(entry) || entry;
+    const parts = String(full).split('/');
+    return parts[parts.length - 1] || full;
+  }
 
   // ================= REJILLA =================
   function initDicomThumbs() {
@@ -1343,32 +1379,33 @@ window.setFilter = setFilter;
     const start      = page * pageSize;
     const slice      = files.slice(start, start + pageSize);
 
-    slice.forEach(fname => {
+    slice.forEach(entry => {
       const cell = document.createElement('div');
       cell.className = 'grid-cell';
 
-      const fileParam = '/visualizador/uploads/' + fname;
+      const fullPath    = resolvePath(entry);
+      const displayName = getDisplayName(entry);
 
       const link = document.createElement('a');
-      link.href  = '/visualizador?file=' + encodeURIComponent(fileParam);
+      link.href  = '/visualizador?file=' + encodeURIComponent(fullPath);
       link.className = 'grid-link';
 
-      if (fname.toLowerCase().endsWith('.dcm')) {
+      if (displayName.toLowerCase().endsWith('.dcm')) {
         const thumb = document.createElement('div');
-        thumb.className  = 'dicom-thumb';
-        thumb.dataset.file = fileParam;
+        thumb.className    = 'dicom-thumb';
+        thumb.dataset.file = fullPath;
 
         link.appendChild(thumb);
         cell.appendChild(link);
 
         const label = document.createElement('div');
         label.className = 'dicom-label';
-        label.textContent = 'DICOM: ' + fname;
+        label.textContent = 'DICOM: ' + displayName;
         cell.appendChild(label);
       } else {
         const img = document.createElement('img');
-        img.src   = fileParam;
-        img.alt   = fname;
+        img.src   = fullPath;
+        img.alt   = displayName;
 
         link.appendChild(img);
         cell.appendChild(link);
@@ -1409,20 +1446,22 @@ window.setFilter = setFilter;
   // ================= CARRUSEL =================
   function renderSeriesFrame(idx) {
     if (!viewer) return;
-    const fname = files[idx];
-    if (!fname) return;
+    const entry = files[idx];
+    if (!entry) return;
 
     viewer.innerHTML = '';
-    const fileUrl = '/visualizador/uploads/' + fname;
 
-    if (fname.toLowerCase().endsWith('.dcm')) {
+    const fullPath    = resolvePath(entry);
+    const displayName = getDisplayName(entry);
+
+    if (displayName.toLowerCase().endsWith('.dcm')) {
       const div = document.createElement('div');
       div.style.width  = '100%';
       div.style.height = '100%';
       viewer.appendChild(div);
 
       try {
-        const imageId = 'wadouri:' + window.location.origin + fileUrl;
+        const imageId = 'wadouri:' + window.location.origin + fullPath;
         cornerstone.enable(div);
         cornerstone.loadImage(imageId).then(image => {
           cornerstone.displayImage(div, image);
@@ -1432,13 +1471,13 @@ window.setFilter = setFilter;
       }
     } else {
       const img = document.createElement('img');
-      img.src   = fileUrl;
-      img.alt   = fname;
+      img.src   = fullPath;
+      img.alt   = displayName;
       viewer.appendChild(img);
     }
 
     if (seriesInfo) {
-      seriesInfo.textContent = `${idx + 1} / ${files.length} — ${fname}`;
+      seriesInfo.textContent = `${idx + 1} / ${files.length} — ${displayName}`;
     }
   }
 
@@ -1524,6 +1563,7 @@ window.setFilter = setFilter;
     });
   }
 })();
+
 
 // ======================
 // INPUT MULTIPLE (subida)

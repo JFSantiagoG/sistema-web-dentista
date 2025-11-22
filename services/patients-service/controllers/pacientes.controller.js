@@ -1668,15 +1668,20 @@ const uploadStudy = [
 
       const notas = (req.body.notas || '').toString().slice(0, 500) || null;
 
+      // 👇 AQUÍ LEEMOS EL group_id QUE VIENE DEL FRONT
+      const rawGroupId = (req.body.group_id || req.body.groupId || '').toString().trim();
+      const group_id = rawGroupId || null;
+
       // Insertar en BD
       const record = await insertPatientFile({
         paciente_id: pacienteId,
         tipo,
         nombre_archivo: hashedName,            // ✅ solo el nombre hasheado
-        storage_path,                           // ✅ ruta pública ruteable via gateway
+        storage_path,                          // ✅ ruta pública ruteable via gateway
         size_bytes: req.file.size || null,
         mime_type: detectedMime || null,
-        notas
+        notas,
+        group_id                               // ✅ AHORA SÍ SE GUARDA
       });
 
       return res.status(201).json({
