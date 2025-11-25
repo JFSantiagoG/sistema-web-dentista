@@ -124,3 +124,9 @@
 .view-only .btn-step {
   display: none !important;
 }
+/* Firma de consentimiento (visualizar) */
+#firmaConsentImg {
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none; /* bloquea click/arrastrar */
+}

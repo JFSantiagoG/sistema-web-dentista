@@ -14,6 +14,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnEnviar  = document.getElementById('btnEnviar');
   const canvas     = document.getElementById('signature-pad'); // firma
   const btnClear   = document.getElementById('clearSignature-pad');
+  const firmaImg   = document.getElementById('firmaRecetaImg'); // <img> para modo visualizar
+
+  // 👇 base para archivos de firma a través del gateway
+  const FIRMA_BASE_URL = '/api/patients/uploads';
 
   // --- QueryString (nuevo o visualizar)
   const qs = new URLSearchParams(location.search);
@@ -76,26 +80,60 @@ document.addEventListener('DOMContentLoaded', async () => {
     return tr;
   };
 
-  // --- Firma
-  function clearCanvas(cnv = canvas) {
-    if (!cnv) return;
-    const ctx = cnv.getContext('2d');
-    ctx.clearRect(0, 0, cnv.width, cnv.height);
-  }
-  btnClear?.addEventListener('click', () => clearCanvas());
-
-  function getFirmaBase64() {
-    if (!canvas) return null;
+// --- Firma (para guardar / PDF)
+async function getFirmaBase64() {
+  // 1) INTENTAR PRIMERO DESDE LA IMAGEN (modo VISUALIZAR)
+  if (firmaImg && firmaImg.src && firmaImg.style.display !== 'none') {
     try {
-      const blank = document.createElement('canvas');
-      blank.width = canvas.width;
-      blank.height = canvas.height;
-      if (canvas.toDataURL() === blank.toDataURL()) return null;
-      return canvas.toDataURL('image/png');
-    } catch {
-      return null;
+      console.log('[receta] intentando firma desde <img>', firmaImg.src);
+
+      const resp = await fetch(firmaImg.src);
+      if (!resp.ok) {
+        console.warn('[getFirmaBase64] HTTP error al cargar imagen:', resp.status);
+      } else {
+        const blob = await resp.blob();
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        console.log('[receta] firma desde <img> (base64)', String(base64).slice(0, 80) + '...');
+        return base64; // data:image/png;base64,...
+      }
+    } catch (e) {
+      console.error('[getFirmaBase64] Error convirtiendo imagen:', e);
     }
   }
+
+  // 2) Luego intentar desde un signaturePad global (modo NUEVO)
+  if (typeof window.getSignaturePad === 'function') {
+    const fromPad = window.getSignaturePad();
+    if (fromPad) {
+      console.log('[receta] firma desde signaturePad(global)', String(fromPad).slice(0, 80) + '...');
+      return fromPad;
+    }
+  }
+
+  // 3) Luego intentar desde el canvas (modo NUEVO, cuando no está oculto)
+  if (canvas && !canvas.classList.contains('d-none')) {
+    try {
+      const dataUrl = canvas.toDataURL('image/png');
+      console.log('[receta] firma desde canvas', dataUrl.slice(0, 80) + '...');
+      return dataUrl;
+    } catch (e) {
+      console.warn('[getFirmaBase64] Error leyendo canvas:', e);
+    }
+  }
+
+  console.log('[receta] getFirmaBase64 -> SIN firma');
+  // 4) No hay firma
+  return null;
+}
+
+
+
 
   // --- helpers nombre archivo / descarga PDF
   function stripAccents(str = '') {
@@ -179,10 +217,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (numero) {
       btn.setAttribute('data-numero-paciente', numero);
-      // console.log('✅ Número WhatsApp configurado:', numero);
     } else {
       btn.removeAttribute('data-numero-paciente');
-      // console.log('⚠️ No se encontró número válido para WhatsApp');
     }
   }
 
@@ -244,26 +280,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // =========================================================
   //                 MODO VISUALIZAR (formulario_id)
   // =========================================================
-  async function drawSignatureIfAny(cnv, firmaPath) {
-    if (!cnv) return;
-    const ctx = cnv.getContext('2d');
-    ctx.clearRect(0, 0, cnv.width, cnv.height);
-    if (!firmaPath) return;
-    await new Promise(resolve => {
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(cnv.width / img.width, cnv.height / img.height);
-        const w = img.width * scale;
-        const h = img.height * scale;
-        const x = (cnv.width - w) / 2;
-        const y = (cnv.height - h) / 2;
-        ctx.drawImage(img, x, y, w, h);
-        resolve();
-      };
-      img.src = firmaPath.startsWith('/') ? firmaPath : `/visualizador/uploads/${firmaPath}`;
-    });
-  }
-
   function normMed(m = {}) {
     return {
       medicamento: m.medicamento ?? m.nombre ?? m.nombre_medicamento ?? m.drug ?? '',
@@ -299,6 +315,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function populateFromDetalle(raw) {
+    console.log('Detalle receta recibido:', raw);
+
     // Nombre
     const nombre =
       nombreDesdePaciente(raw.paciente) ||
@@ -317,8 +335,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Medicamentos
     renderMedicamentos(tablaBody, raw.medicamentos || []);
 
-    // Firma
-    await drawSignatureIfAny(canvas, raw.firma_path);
+    // ==============================
+    //        FIRMA GUARDADA
+    // ==============================
+    const firmaWrap = document.querySelector('.firma-wrap');
+
+    // 🔍 intentamos varios nombres posibles del campo
+    const firmaPath =
+      raw.firma_path ||
+      raw.firmaPath ||
+      raw.firma_archivo ||
+      raw.firmaArchivo ||
+      raw.firma_file ||
+      raw.firmaFile ||
+      raw.firma;
+
+    console.log('Campos de firma detectados:', {
+      firma_path: raw.firma_path,
+      firmaPath: raw.firmaPath,
+      firma_archivo: raw.firma_archivo,
+      firmaArchivo: raw.firmaArchivo,
+      firma_file: raw.firma_file,
+      firmaFile: raw.firmaFile,
+      firma: raw.firma
+    });
+
+    // En modo visualizar NO queremos que se vea el canvas
+    if (canvas) {
+      canvas.classList.add('d-none');
+    }
+    if (btnClear) {
+      btnClear.classList.add('d-none');
+    }
+
+    if (firmaImg) {
+      if (firmaPath) {
+        const url = `${FIRMA_BASE_URL}/${encodeURIComponent(firmaPath)}`;
+        console.log('Mostrando firma en <img> desde:', url);
+        firmaImg.src = url;
+        firmaImg.style.display = 'block';
+      } else {
+        console.warn('No se encontró ruta de firma en el detalle.');
+        firmaImg.style.display = 'none';
+      }
+    }
 
     // Número WhatsApp en VISUALIZAR (detalle + fetch si hace falta)
     await setNumeroWhatsApp(btnEnviar, raw);
@@ -371,7 +431,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // --- guardar receta en BD (SIN firma)
+  // --- guardar receta en BD (con firma base64)
   async function guardarRecetaEnBD() {
     const data = buildData();
     const pacienteId = pacienteIdQS;
@@ -384,6 +444,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       return null;
     }
+
+    const firma = await getFirmaBase64();
+    if (firma) {
+      data.firmaBase64 = firma;
+    }
+
 
     if (!data.medicamentos.length || !data.medicamentos.some(m => m.nombre?.trim())) {
       await Swal.fire({
@@ -485,7 +551,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!pre.isConfirmed) return;
 
     const data = buildData();
-    const firma = getFirmaBase64();
+    const firma = await getFirmaBase64();
     if (firma) data.firmaMedico = firma;
     data.formularioId = formularioId;
 
@@ -550,9 +616,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const tag = el.tagName;
 
       const isEnviar = id === 'btnEnviar';
-      const isPdf = id === 'btnGenerarPdf';
       const isSubmit = type === 'submit';
-      const isActionButton = isEnviar || isPdf || isSubmit;
+      const isActionButton = isEnviar || isSubmit;
 
       if (isActionButton) {
         el.removeAttribute('disabled');

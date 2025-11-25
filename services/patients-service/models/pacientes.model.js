@@ -1,4 +1,177 @@
 const db = require('../db/connection');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+
+
+// 🔹 Carpeta ÚNICA para TODAS las firmas de TODOS los formularios
+const FIRMAS_DIR = path.join(__dirname, '..', 'uploads', 'firmas');
+
+// Crear la carpeta si no existe
+if (!fs.existsSync(FIRMAS_DIR)) {
+  fs.mkdirSync(FIRMAS_DIR, { recursive: true });
+}
+
+/**
+ * Guarda una firma en base64 en la carpeta de firmas.
+ * @param {string} base64String  Ej: "data:image/png;base64,AAAA..."
+ * @returns {Promise<{ firmaPath: string, firmaHash: Buffer }>}
+ *    firmaPath → sólo el nombre del archivo (ej "a1b2c3d4e5f6.png")
+ *    firmaHash → Buffer de 32 bytes (SHA-256) para guardar en VARBINARY(32)
+ */
+async function guardarFirma(base64String) {
+  if (!base64String || typeof base64String !== 'string') {
+    throw new Error('Firma base64 inválida');
+  }
+
+  // Quitar prefijo "data:image/png;base64,"
+  const match = base64String.match(/^data:(image\/\w+);base64,(.+)$/);
+  const mime  = match ? match[1] : 'image/png';
+  const data  = match ? match[2] : base64String;
+
+  const buffer = Buffer.from(data, 'base64');
+
+  // Nombre hasheado (no contiene datos sensibles)
+  const hash = crypto
+    .createHash('sha256')
+    .update(buffer)
+    .digest('hex')
+    .slice(0, 32); // compacto pero suficientemente único
+
+  // Puedes forzar PNG siempre, o inferir si quieres
+  const ext = mime.includes('jpeg') ? '.jpg'
+            : mime.includes('webp') ? '.webp'
+            : '.png';
+
+  const fileName = `${hash}${ext}`;
+  const fullPath = path.join(FIRMAS_DIR, fileName);
+
+  await fs.promises.writeFile(fullPath, buffer);
+
+  // Hash para integridad (opcional)
+  const firmaHash = crypto
+    .createHash('sha256')
+    .update(buffer)
+    .digest(); // Buffer de 32 bytes
+
+  return {
+    firmaPath: fileName, // 🔴 SÓLO nombre, esto guardas en la BD
+    firmaHash            // Buffer → VARBINARY(32)
+  };
+}
+
+
+// ===============================================
+//   MODELO: Obtener detalle de receta por folio
+// ===============================================
+async function getRecetaByFormId(formularioId) {
+  const [rows] = await db.query(
+    `
+    SELECT
+      fr.formulario_id,
+      fr.paciente_id,
+      fr.fecha,
+      fr.nombre_paciente,
+      fr.edad,
+      fr.nombre_medico,
+      fr.cedula,
+      fr.firma_path,
+      fr.firma_hash,
+      fr.data AS medicamentos_json
+    FROM formulario_receta fr
+    WHERE fr.formulario_id = ?
+    LIMIT 1
+    `,
+    [formularioId]
+  );
+
+  if (!rows.length) return null;
+
+  const receta = rows[0];
+
+  // los medicamentos vienen como JSON en "data"
+  let medicamentos = [];
+  try {
+    medicamentos = JSON.parse(receta.medicamentos_json || '[]');
+  } catch {
+    medicamentos = [];
+  }
+
+  return {
+    formulario_id: receta.formulario_id,
+    paciente_id: receta.paciente_id,
+    fecha: receta.fecha,
+    nombrePaciente: receta.nombre_paciente,
+    edad_anios: receta.edad,
+    nombreMedico: receta.nombre_medico,
+    cedula: receta.cedula,
+    firma_path: receta.firma_path,
+    firma_hash: receta.firma_hash,
+    medicamentos
+  };
+}
+
+async function getConsentOdontById(formularioId) {
+  const sql = `
+    SELECT
+      co.formulario_id,
+      co.paciente_id,
+      DATE_FORMAT(co.fecha, '%Y-%m-%d') AS fecha,
+      co.numero_paciente,
+
+      -- nombre completo del paciente
+      TRIM(CONCAT(COALESCE(p.nombre,''),' ',COALESCE(p.apellido,''))) AS paciente_nombre,
+
+      co.tratamiento,
+      co.monto,
+      co.ausencia_dias,
+      co.autorizacion_check,
+      co.economico_check,
+      co.ausencia_check,
+
+      -- campos de firma
+      co.firma_path,
+      co.firma_hash,
+      co.firma_paciente_at
+    FROM formulario_consent_odont co
+    INNER JOIN formulario f 
+      ON f.id = co.formulario_id 
+     AND f.eliminado_logico = 0
+    INNER JOIN pacientes p 
+      ON p.id = co.paciente_id
+    WHERE co.formulario_id = ?
+    LIMIT 1
+  `;
+
+  const [rows] = await db.query(sql, [Number(formularioId)]);
+  if (!rows.length) return null;
+
+  const r = rows[0];
+
+  return {
+    formulario_id: r.formulario_id,
+    paciente_id: r.paciente_id,
+    paciente_nombre: r.paciente_nombre || '',
+    fecha: r.fecha, // 'YYYY-MM-DD'
+    numero_paciente: r.numero_paciente,
+
+    tratamiento: r.tratamiento,
+    monto: r.monto != null ? Number(r.monto) : null,
+    ausencia_dias: r.ausencia_dias != null ? Number(r.ausencia_dias) : null,
+
+    autorizacion_check: !!r.autorizacion_check,
+    economico_check: !!r.economico_check,
+    ausencia_check: !!r.ausencia_check,
+
+    firma_path: r.firma_path || null,
+    firma_hash: r.firma_hash || null,
+    firma_paciente_at: r.firma_paciente_at,
+    firmado: r.firma_paciente_at != null
+  };
+}
+
+
+
 
 // ====== BUSCAR PACIENTES (tu código, levemente limpio) ======
 async function buscarPacientes(q, page = 1) {
@@ -817,13 +990,17 @@ async function insertJustificante(pacienteId, medicoId, data) {
 async function getJustificanteByFormId(formularioId) {
   const [rows] = await db.query(
     `SELECT 
-        f.id AS formulario_id,
+        f.id              AS formulario_id,
         j.paciente_id,
         j.nombre_paciente,
         j.fecha_emision,
         j.procedimiento,
         j.fecha_procedimiento,
-        j.dias_reposo
+        j.dias_reposo,
+        j.numero_paciente,
+        j.firma_path,
+        j.firma_hash,
+        j.firma_profesional_at
      FROM formulario_justificante j
      INNER JOIN formulario f ON f.id = j.formulario_id
      WHERE j.formulario_id = ?
@@ -833,6 +1010,8 @@ async function getJustificanteByFormId(formularioId) {
   );
   return rows[0] || null;
 }
+
+
 
 async function getConsentQuiroById(formularioId) {
   const sql = `
@@ -1072,7 +1251,11 @@ async function getHistoriaByFormId(formularioId) {
       -- Otros
       observaciones,
       hallazgos,
+
+      -- 🔹 Firma del paciente (nuevos campos)
+      firma_path,
       firma_paciente_at,
+
       creado_en,
       actualizado_en
     FROM formulario_historia_clinica
@@ -1083,6 +1266,7 @@ async function getHistoriaByFormId(formularioId) {
   );
   return rows[0] || null;
 }
+
 
 async function getOdontogramaFinalByFormularioId(formularioId) {
   const conn = await db.getConnection();
@@ -1414,4 +1598,8 @@ module.exports = {
   getEvolucionDetalleByFormId,
   appendEvolucionesDetalle,
   getEvolucionSummaryForPatient,
+  guardarFirma,
+  FIRMAS_DIR,
+  getRecetaByFormId,
+  getConsentOdontById 
 };

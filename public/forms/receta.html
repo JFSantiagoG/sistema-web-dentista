@@ -84,16 +84,31 @@
         </div>
       </div>
       
-      <!-- Firma (solo para PDF; se oculta en Visualizar si no guardas firma en BD) -->
+      <!-- Firma -->
       <div id="bloqueFirma" class="mb-4">
         <h5 class="text-center">Firma</h5>
-        <div class="firma-wrap p-2 d-flex justify-content-center">
+
+        <!-- Contenedor único para canvas + imagen -->
+        <div class="firma-wrap p-2 d-flex justify-content-center align-items-center">
+          <!-- Firma dibujada (modo crear / editar) -->
           <canvas id="signature-pad" width="360" height="120"></canvas>
+
+          <!-- Firma guardada (modo visualizar) -->
+          <img
+            id="firmaRecetaImg"
+            alt="Firma guardada"
+            style="max-width: 360px; display:none; border:1px solid #ccc; padding:4px; background:#fff;"
+          >
         </div>
+
         <div class="mt-2 d-flex justify-content-center">
-          <button type="button" class="btn btn-sm btn-outline-danger" id="clearSignature-pad">🧹 Limpiar</button>
+          <button type="button" class="btn btn-sm btn-outline-danger" id="clearSignature-pad">
+            🧹 Limpiar
+          </button>
         </div>
       </div>
+
+
 
       <!-- BOTONES -->
       <div class="mt-4 d-flex gap-2 justify-content-center">

@@ -314,9 +314,19 @@
           <h5 class="mb-0">11. Firma del Paciente</h5>
         </div>
         <div class="card-body text-center">
-          <div class="firma-wrap">
+          <div class="firma-wrap text-center">
+            <!-- Canvas para firmar (modo NUEVO) -->
             <canvas id="signature-pad-paciente" width="360" height="120"></canvas>
-            <button type="button" class="btn btn-sm btn-outline-danger" id="clearSignature-pad-paciente">🧹 Limpiar Firma</button>
+            <button type="button" class="btn btn-sm btn-outline-danger mt-2" id="clearSignature-pad-paciente">
+              🧹 Limpiar Firma
+            </button>
+
+            <!-- Imagen para mostrar firma GUARDADA (modo VISUALIZAR) -->
+            <img
+              id="firmaPacienteImg"
+              alt="Firma del paciente"
+              style="display:none; max-width:360px; max-height:120px; border:1px solid #ccc; margin-top:0.75rem;"
+            />
           </div>
         </div>
       </div>

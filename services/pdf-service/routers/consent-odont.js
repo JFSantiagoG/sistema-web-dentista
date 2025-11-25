@@ -80,7 +80,7 @@ router.post('/generate', (req, res) => {
     .text(`Se informa que en caso de ausencia por más de ${ausencia} días, el tratamiento será suspendido.`)
     .moveDown(3);
 
-  insertarFirma(doc, firmaPaciente, { label: `Firma del Paciente: ${paciente.nombre}` });
+  insertarFirma(doc, firmaPaciente, { label: `${paciente.nombre}` });
   insertarPie(doc, false);
 
   doc.end();

@@ -3,6 +3,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Auth
   const token = localStorage.getItem('token') || '';
   const authHeaders = token ? { Authorization: `Bearer ${token}`, Accept: 'application/json' } : {};
+  const FIRMA_BASE_URL = '/api/patients/uploads';
+  const firmaWrap  = document.querySelector('.card.section-card .firma-wrap') || document.querySelector('.firma-wrap');
+  const firmaImg   = document.getElementById('firmaConsentImg');
+  const bloqueFirma = document.querySelector('.card.section-card');
 
   // --- Refs
   const form = document.getElementById('consentForm');
@@ -177,6 +181,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     return { getB64, clear };
   }
+  // ====== Helper para obtener la firma en base64 ======
+async function getFirmaBase64() {
+  // 1) Intentar desde el signature pad
+  if (sigPaciente && sigPaciente.getB64) {
+    const fromPad = sigPaciente.getB64();
+    if (fromPad) return fromPad;
+  }
+
+  // 2) Intentar desde la imagen ya cargada (visualizar)
+  if (firmaImg && firmaImg.src && firmaImg.style.display !== 'none') {
+    try {
+      const resp = await fetch(firmaImg.src);
+      if (!resp.ok) {
+        console.warn('[getFirmaBase64] HTTP error al cargar imagen:', resp.status);
+        return null;
+      }
+      const blob = await resp.blob();
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      return base64; // data:image/png;base64,...
+    } catch (e) {
+      console.error('[getFirmaBase64] Error convirtiendo imagen:', e);
+      return null;
+    }
+  }
+
+  // 3) No hay firma
+  return null;
+}
+
   const sigPaciente = initSignaturePad(canvasFirma);
   clearFirmaBtn?.addEventListener('click', sigPaciente.clear);
 
@@ -297,6 +335,10 @@ document.addEventListener('DOMContentLoaded', () => {
       ausencia
       // (sin firma en BD aún)
     };
+    const firmaPacienteB64 = sigPaciente.getB64();
+    if (firmaPacienteB64) {
+      body.firmaBase64 = firmaPacienteB64;
+    }
 
     try {
       const res = await fetch(`/api/patients/${encodeURIComponent(pacienteId)}/consent-odont`, {
@@ -341,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // firma del paciente SOLO para PDF
-    const firmaPaciente = sigPaciente.getB64(); // puede ser null
+    const firmaPaciente = await getFirmaBase64(); // puede ser null
 
     await info('Se abrirá el PDF en otra pestaña', 'Al regresar, podrás descargarlo con un nombre sugerido.');
 
@@ -448,6 +490,39 @@ document.addEventListener('DOMContentLoaded', () => {
       if (confirmTrat)  confirmTrat.value = j?.tratamiento || '';
       if (confirmMonto) confirmMonto.textContent = (j?.monto != null ? String(j.monto) : '0.00');
       if (confirmAus)   confirmAus.textContent   = (j?.ausencia_dias != null ? String(j.ausencia_dias) : '0');
+
+            // ==== FIRMA GUARDADA (si existe) ====
+      const firmaPath =
+        j.firma_path ||
+        j.firmaPath ||
+        j.firma_archivo ||
+        j.firmaArchivo ||
+        j.firma_file ||
+        j.firmaFile ||
+        j.firma; // por si el modelo usa otro nombre
+
+      console.log('[Visualizar consent-odont] firmaPath:', firmaPath);
+
+      // En visualizar NO queremos que se use el canvas ni el botón limpiar
+      if (firmaWrap) {
+        firmaWrap.style.display = 'none';
+      }
+      if (clearFirmaBtn) {
+        clearFirmaBtn.classList.add('d-none');
+      }
+
+      if (firmaImg) {
+        if (firmaPath) {
+          const url = `${FIRMA_BASE_URL}/${encodeURIComponent(firmaPath)}`;
+          console.log('Mostrando firma de consentimiento desde:', url);
+          firmaImg.src = url;
+          firmaImg.style.display = 'block';
+        } else {
+          console.warn('Consentimiento sin firma guardada');
+          firmaImg.style.display = 'none';
+        }
+      }
+      // ==== FIN FIRMA ====
 
       // Mostrar paso 2 (solo lectura)
       step1 && (step1.style.display = 'none');

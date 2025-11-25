@@ -1,3 +1,4 @@
+// public/js/firma.js
 document.addEventListener("DOMContentLoaded", () => {
   function initSignaturePad(canvasId, clearBtnId) {
     const canvas = document.getElementById(canvasId);
@@ -9,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ctx.strokeStyle = "#000";
 
     let drawing = false;
-    let enabled = false;
+    let enabled = false; // se vuelve true cuando se hace click para empezar a firmar
 
     // Mensaje inicial
     function drawMessage() {
@@ -20,6 +21,10 @@ document.addEventListener("DOMContentLoaded", () => {
       ctx.fillText("Haz click aquí para firmar", canvas.width / 2, canvas.height / 2);
     }
     drawMessage();
+
+    function clearInternal() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
 
     // Coordenadas
     function getPos(e) {
@@ -37,11 +42,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // Desbloqueo con click
+    // Desbloqueo con click: limpia el mensaje y habilita firma
     canvas.addEventListener("click", () => {
       if (!enabled) {
         enabled = true;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        clearInternal();
       }
     });
 
@@ -89,20 +94,48 @@ document.addEventListener("DOMContentLoaded", () => {
     const clearBtn = document.getElementById(clearBtnId);
     if (clearBtn) {
       clearBtn.addEventListener("click", () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawing = false;
         enabled = false;
         drawMessage();
       });
     }
 
-    return () => canvas.toDataURL("image/png");
+    // 🔴 IMPORTANTE: siempre devolvemos algo, NUNCA null
+    function getBase64() {
+      // Si nunca se activó, el canvas tiene el mensaje o está como lo tengas
+      // pero igual generamos el PNG
+      return canvas.toDataURL("image/png");
+    }
+
+    return {
+      getBase64,
+      clear: () => {
+        drawing = false;
+        enabled = false;
+        drawMessage();
+      }
+    };
   }
 
   // Detecta todos los canvases de firma que tengas en la página
   document.querySelectorAll("canvas[id^='signature-pad']").forEach(canvas => {
     const id = canvas.id;
-    const clearBtnId = "clear" + id.charAt(0).toUpperCase() + id.slice(1); // ej: signature-pad-paciente → clearSignature-pad-paciente
-    const getterName = "get" + id.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("");
-    window[getterName] = initSignaturePad(id, clearBtnId);
+    const clearBtnId =
+      "clear" + id.charAt(0).toUpperCase() + id.slice(1); // p.ej. signature-pad -> clearSignature-pad
+
+    // Nombre de función global: getSignaturePad, getSignaturePadPaciente, etc.
+    const getterName =
+      "get" +
+      id
+        .split("-")
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join("");
+
+    const pad = initSignaturePad(id, clearBtnId);
+
+    // window.getSignaturePadX() devuelve SIEMPRE base64
+    if (pad) {
+      window[getterName] = () => pad.getBase64();
+    }
   });
 });

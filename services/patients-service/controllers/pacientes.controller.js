@@ -13,7 +13,10 @@ const { buscarPacientes,
   getEvolucionDetalleByFormId,   
   getEvolucionCabeceraByFormId,
   appendEvolucionesDetalle,
-  getEvolucionSummaryForPatient
+  getEvolucionSummaryForPatient,
+  getRecetaByFormId,
+  FIRMAS_DIR,
+  guardarFirma
  } = require('../models/pacientes.model');
 
 const crypto = require('crypto');
@@ -22,6 +25,7 @@ const path = require('path');
 const axios = require('axios');
 const FormData = require('form-data');
 const mime = require('mime-types');
+const fs = require('fs');
 
 const ALLOWED_EXT = ['.png','.jpg','.jpeg','.webp','.bmp','.tif','.tiff','.gif','.dcm'];
 const IMAGE_MIME_PREFIX = 'image/';
@@ -187,141 +191,156 @@ async function obtenerStudies(req, res) {
  *     3) formulario_receta_medicamentos
  * ======================= */
 async function crearReceta(req, res) {
-  console.log('──────────────────────────────────────────────');
   console.log('📩 POST /patients/:id/recetas');
-  console.log('Auth header presente:', !!req.headers.authorization);
-  console.log('User (token decodificado):', req.user);
-  console.log('Body:', JSON.stringify(req.body));
 
-  const pacienteId = Number(req.params.id);
-  if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
-
-  const {
-    fecha,                 // 'YYYY-MM-DD'
-    medicamentos = [],     // [{nombre,dosis,frecuencia,duracion,indicaciones}]
-    nombreMedico,          // opcional
-    cedula,                // opcional
-    edad                   // ej. "45 años" (opcional)
-    // firma IGNORADA por ahora
-  } = req.body || {};
-
-  if (!fecha) return res.status(400).json({ error: 'fecha requerida' });
-  if (!Array.isArray(medicamentos) || medicamentos.length === 0) {
-    return res.status(400).json({ error: 'Debe incluir al menos un medicamento' });
+  const pacienteId = Number(req.params.id || 0);
+  if (!pacienteId) {
+    return res.status(400).json({ error: 'paciente_id inválido' });
   }
 
-  // Derivados limpios
-  const edadTexto = (typeof edad === 'string' && edad.trim()) ? edad.trim() : null;
-  const edadAnios = (edadTexto && /^\d+/.test(edadTexto)) ? parseInt(edadTexto, 10) : null;
+  const body = req.body || {};
+  const userId = req.user?.id || null;  // users.id
+
+  const {
+    nombrePaciente,  // (no se guarda en esta tabla, pero viene del front)
+    fecha,
+    edad,
+    nombreMedico,
+    cedula,
+    medicamentos = [],
+    firmaBase64,     // 👈 viene del frontend
+  } = body;
+
+  if (!Array.isArray(medicamentos) || !medicamentos.length) {
+    return res.status(400).json({ error: 'Debe incluir al menos un medicamento.' });
+  }
 
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
-    console.log('🔹 Transacción iniciada');
 
-    // 1) tipo_id receta_medica
+    // 1) tipo_id para receta
     const [tipoRows] = await conn.query(
       'SELECT id FROM formulario_tipo WHERE nombre = ? LIMIT 1',
       ['receta_medica']
     );
-    if (!tipoRows.length) throw new Error('No existe tipo "receta_medica"');
+    if (!tipoRows.length) {
+      throw new Error('No existe tipo "receta_medica"');
+    }
     const tipoId = tipoRows[0].id;
-    console.log('✔️ tipo_id:', tipoId);
 
-    // 2) INSERT formulario (sin especificar "estado" => DEFAULT 'borrador')
-    const creadoPor = req.user?.id || null;
-    const [formIns] = await conn.query(
-      `INSERT INTO formulario (paciente_id, tipo_id, creado_por, fecha_creacion)
-       VALUES (?, ?, ?, NOW())`,
-      [pacienteId, tipoId, creadoPor]
+    // 2) Insert en formulario
+    const [fRes] = await conn.query(
+      `INSERT INTO formulario (paciente_id, tipo_id, creado_por, estado, fecha_creacion)
+       VALUES (?, ?, ?, 'borrador', NOW())`,
+      [pacienteId, tipoId, userId]
     );
-    const formularioId = formIns.insertId;
-    console.log('✔️ formulario insertado id=', formularioId);
+    const formularioId = fRes.insertId;
 
-    // 2.1) Resolver medico_id (medicos.id) a partir del users.id del token (req.user.id)
-    //      Si no hay relación, dejamos NULL (la FK lo permite).
-    const userId = req.user?.id ?? null;
+    // 3) Mapear user → medico
     let medicoId = null;
     if (userId) {
-      const [medRow] = await conn.query(
+      const [mRows] = await conn.query(
         'SELECT id FROM medicos WHERE user_id = ? LIMIT 1',
         [userId]
       );
-      medicoId = medRow[0]?.id ?? null;
+      medicoId = mRows[0]?.id ?? null;
     }
-    console.log('users.id =', userId, '→ medicos.id =', medicoId);
 
-    // 3) INSERT formulario_receta (SIN firma por ahora)
+    // 4) Guardar firma en /uploads (helper del MODEL)
+    let firmaPath = null;
+    let firmaHash = null;
+
+    if (firmaBase64) {
+      try {
+        const { firmaPath: fp, firmaHash: fh } =
+          await guardarFirma(firmaBase64);  // 👈 VIENE DEL MODEL
+        firmaPath = fp;   // nombre de archivo, ej. "abcd1234ef5678.png"
+        firmaHash = fh;   // Buffer de 32 bytes → VARBINARY(32)
+        console.log('✔️ Firma guardada:', firmaPath);
+      } catch (e) {
+        console.error('⚠️ No se pudo guardar la firma, se sigue sin firma:', e);
+      }
+    } else {
+      console.log('ℹ️ Sin firmaBase64 (se guarda receta sin firma)');
+    }
+
+    // 5) Insert en formulario_receta
+    const edadNum = Number.parseInt((edad || '').replace(/\D/g, ''), 10);
+
     await conn.query(
       `INSERT INTO formulario_receta
-        (formulario_id, paciente_id, medico_id, fecha, edad_texto, edad_anios, nombre_medico, cedula, firma_path, firma_hash)
-       VALUES
-        (?,             ?,           ?,        ?,     ?,          ?,          ?,             ?,      NULL,       NULL)`,
+         (formulario_id, paciente_id, medico_id, fecha,
+          edad_texto, edad_anios, nombre_medico, cedula,
+          firma_path, firma_hash)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         formularioId,
         pacienteId,
-        medicoId,                 // puede ser NULL si no hay fila en medicos
-        fecha,
-        edadTexto,
-        edadAnios,
+        medicoId,
+        fecha || new Date().toISOString().slice(0, 10),
+        edad || null,
+        Number.isFinite(edadNum) ? edadNum : null,
         nombreMedico || null,
-        cedula || null
+        cedula || null,
+        firmaPath,      // varchar(255) -> nombre del archivo
+        firmaHash,      // VARBINARY(32) -> Buffer
       ]
     );
-    console.log('✔️ receta insertada (sin firma)');
 
-    // 4) INSERT medicamentos (bulk)
-    const values = [];
-    const params = [];
-    medicamentos.forEach((m, i) => {
-      values.push('(?, ?, ?, ?, ?, ?)');
-      params.push(
-        formularioId,
-        m?.nombre || '',
-        m?.dosis || '',
-        m?.frecuencia || '',
-        m?.duracion || '',
-        m?.indicaciones || ''
+    // 6) Insert medicamentos (usa columna "medicamento", NO nombre_medicamento)
+    if (medicamentos.length) {
+      const values = [];
+      const params = [];
+
+      for (const m of medicamentos) {
+        values.push('(?, ?, ?, ?, ?, ?)');
+        params.push(
+          formularioId,
+          m.nombre || m.medicamento || '',  // 👉 va a la columna "medicamento"
+          m.dosis || '',
+          m.frecuencia || '',
+          m.duracion || '',
+          m.indicaciones || ''
+        );
+      }
+
+      await conn.query(
+        `INSERT INTO formulario_receta_medicamentos
+           (formulario_id, medicamento, dosis, frecuencia, duracion, indicaciones)
+         VALUES ${values.join(',')}`,
+        params
       );
-      console.log(`   💊 [${i + 1}]`, m?.nombre || '(sin nombre)');
-    });
-
-    await conn.query(
-      `INSERT INTO formulario_receta_medicamentos
-         (formulario_id, medicamento, dosis, frecuencia, duracion, indicaciones)
-       VALUES ${values.join(',')}`,
-      params
-    );
-    console.log(`✔️ ${medicamentos.length} medicamentos insertados`);
+    }
 
     await conn.commit();
-    console.log('✅ Transacción confirmada');
-    console.log('──────────────────────────────────────────────');
-    return res.json({ ok: true, formulario_id: formularioId });
-
+    return res.status(201).json({ ok: true, formulario_id: formularioId });
   } catch (err) {
-    await conn.rollback();
-    console.error('❌ Error en crearReceta:', err);
-    console.log('──────────────────────────────────────────────');
+    try { await conn.rollback(); } catch {}
+    console.error('❌ Error al crear receta:', err);
     return res.status(500).json({ error: 'Error al crear receta', detalle: err.message });
   } finally {
     conn.release();
   }
 }
 
+
 async function crearJustificante(req, res) {
   console.log('📩 POST /patients/:id/justificantes');
   const pacienteId = Number(req.params.id);
   const userFromToken = req.user?.id ?? null;
-  if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
+
+  if (!pacienteId) {
+    return res.status(400).json({ error: 'paciente_id inválido' });
+  }
 
   const {
     fechaEmision,       // 'YYYY-MM-DD'
     nombrePaciente,     // snapshot
     procedimiento,
     fechaProcedimiento, // string libre (ej: "10 y 12 de octubre")
-    diasReposo          // número
-    // SIN firma y sin numero_paciente por ahora
+    diasReposo,         // número
+    firmaBase64         // 🔴 OPCIONAL: firma del profesional en base64
   } = req.body || {};
 
   if (!fechaEmision || !nombrePaciente || !procedimiento || !fechaProcedimiento || !diasReposo) {
@@ -346,10 +365,10 @@ async function crearJustificante(req, res) {
     const [formIns] = await conn.query(
       `INSERT INTO formulario (paciente_id, tipo_id, creado_por, estado, fecha_creacion)
        VALUES (?, ?, ?, 'firmado', NOW())`,
-      [pacienteId, tipoId, userFromToken] // estado: firmado o borrador, a tu criterio
+      [pacienteId, tipoId, userFromToken]
     );
     const formularioId = formIns.insertId;
-    console.log('✔️ formulario creado id=', formularioId);
+    console.log('✔️ formulario creado id =', formularioId);
 
     // 3) resolver medico_id desde users.id
     let medicoId = null;
@@ -362,22 +381,52 @@ async function crearJustificante(req, res) {
     }
     console.log('users.id =', userFromToken, '→ medicos.id =', medicoId);
 
-    // 4) justificante
+    // 4) guardar firma (si viene en el body)
+    let firmaPath = null;
+    let firmaHash = null;
+    let firmaProfesionalAt = null;
+
+    if (firmaBase64) {
+      try {
+        const { firmaPath: p, firmaHash: h } = await guardarFirma(firmaBase64);
+        firmaPath = p;                 // ej: "a1b2c3d4e5f6.png"
+        firmaHash = h;                 // Buffer VARBINARY(32)
+        firmaProfesionalAt = new Date();
+        console.log('✔️ Firma guardada en:', firmaPath);
+      } catch (errFirma) {
+        console.error('⚠️ Error guardando firma del profesional:', errFirma);
+        // Si falla la firma, NO tumbamos el justificante. Se guarda sin firma.
+      }
+    }
+
+    // 5) justificante
     await conn.query(
       `INSERT INTO formulario_justificante
-        (formulario_id, paciente_id, medico_id, fecha_emision, nombre_paciente,
-         procedimiento, fecha_procedimiento, dias_reposo,
-         numero_paciente, firma_profesional_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
+        (formulario_id,
+         paciente_id,
+         medico_id,
+         fecha_emision,
+         nombre_paciente,
+         procedimiento,
+         fecha_procedimiento,
+         dias_reposo,
+         numero_paciente,
+         firma_path,
+         firma_hash,
+         firma_profesional_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
       [
         formularioId,
         pacienteId,
-        medicoId,                  // puede ser null
+        medicoId,
         fechaEmision,
         nombrePaciente,
         procedimiento,
         fechaProcedimiento,
-        Number(diasReposo) || 0
+        Number(diasReposo) || 0,
+        firmaPath,           // puede ser null
+        firmaHash,           // puede ser null
+        firmaProfesionalAt   // puede ser null
       ]
     );
     console.log('✔️ justificante insertado');
@@ -394,6 +443,8 @@ async function crearJustificante(req, res) {
   }
 }
 
+
+
 async function crearConsentOdont(req, res) {
   console.log('📩 POST /patients/:id/consent-odont');
   const pacienteId = Number(req.params.id);
@@ -402,18 +453,20 @@ async function crearConsentOdont(req, res) {
   console.log('User (token decodificado):', req.user);
   console.log('Body:', JSON.stringify(req.body));
 
-  if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
+  if (!pacienteId) {
+    return res.status(400).json({ error: 'paciente_id inválido' });
+  }
 
-  // Payload esperado desde el front (sin firma)
   const {
-    fecha,              // date 'YYYY-MM-DD'  (fechaRegistroInput)
-    numero_paciente,    // string (normalmente el mismo id en string)
+    fecha,              // 'YYYY-MM-DD'
+    numero_paciente,    // string
     tratamiento,        // text
     monto,              // decimal o string numérico
     ausencia_dias,      // int o string numérico
     autorizacion,       // boolean
     economico,          // boolean
-    ausencia            // boolean
+    ausencia,           // boolean
+    firmaBase64         // string base64 de la firma del paciente
   } = req.body || {};
 
   // Validaciones mínimas
@@ -434,11 +487,13 @@ async function crearConsentOdont(req, res) {
       'SELECT id FROM formulario_tipo WHERE nombre = ? LIMIT 1',
       ['consentimiento_odontologico']
     );
-    if (!tipoRows.length) throw new Error('No existe tipo "consentimiento_odontologico"');
+    if (!tipoRows.length) {
+      throw new Error('No existe tipo "consentimiento_odontologico"');
+    }
     const tipoId = tipoRows[0].id;
     console.log('✔️ tipo_id:', tipoId);
 
-    // 2) formulario (usa tu ENUM: 'borrador','firmado','cerrado')
+    // 2) formulario
     const creadoPor = req.user?.id ?? null; // users.id
     const estado = 'firmado';
     const [formIns] = await conn.query(
@@ -449,7 +504,7 @@ async function crearConsentOdont(req, res) {
     const formularioId = formIns.insertId;
     console.log('✔️ formulario insertado id=', formularioId);
 
-    // 3) mapear users.id → medicos.id (opcional; si no existe, queda NULL)
+    // 3) mapear users.id → medicos.id
     let medicoId = null;
     if (creadoPor) {
       const [medRow] = await conn.query(
@@ -460,19 +515,40 @@ async function crearConsentOdont(req, res) {
     }
     console.log('users.id =', creadoPor, '→ medicos.id =', medicoId);
 
-    // 4) consentimiento odontológico (SIN firma; firma_paciente_at queda NULL)
-    const montoNum = Number(monto);
+    // 4) Guardar firma usando el HELPER del MODEL
+    let firmaPath = null;
+    let firmaHash = null;
+    let firmaPacienteAt = null;
+
+    if (firmaBase64) {
+      try {
+        const { firmaPath: fp, firmaHash: fh } = await guardarFirma(firmaBase64);
+        firmaPath = fp;      // string, ej "a1b2c3d4e5f6.png"
+        firmaHash = fh;      // Buffer (VARBINARY(32) en BD)
+        firmaPacienteAt = new Date();
+        console.log('✔️ Firma de consentimiento guardada:', firmaPath);
+      } catch (errFirma) {
+        console.warn('⚠️ Error al guardar firma de consentimiento (se continúa sin firma):', errFirma);
+        firmaPath = null;
+        firmaHash = null;
+        firmaPacienteAt = null;
+      }
+    }
+
+    // 5) Insert en formulario_consent_odont
+    const montoNum    = Number(monto);
     const ausenciaNum = parseInt(ausencia_dias, 10);
-    const autChk = autorizacion ? 1 : 0;
-    const ecoChk = economico ? 1 : 0;
-    const ausChk = ausencia ? 1 : 0;
+    const autChk      = autorizacion ? 1 : 0;
+    const ecoChk      = economico ? 1 : 0;
+    const ausChk      = ausencia ? 1 : 0;
 
     await conn.query(
       `INSERT INTO formulario_consent_odont
         (formulario_id, paciente_id, medico_id, fecha, numero_paciente, tratamiento, monto,
-         ausencia_dias, autorizacion_check, economico_check, ausencia_check, firma_paciente_at)
+         ausencia_dias, autorizacion_check, economico_check, ausencia_check,
+         firma_path, firma_hash, firma_paciente_at)
        VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         formularioId,
         pacienteId,
@@ -484,10 +560,13 @@ async function crearConsentOdont(req, res) {
         isNaN(ausenciaNum) ? 0 : ausenciaNum,
         autChk,
         ecoChk,
-        ausChk
+        ausChk,
+        firmaPath,
+        firmaHash,
+        firmaPacienteAt
       ]
     );
-    console.log('✔️ consentimiento odontológico insertado (sin firma)');
+    console.log('✔️ consentimiento odontológico insertado');
 
     await conn.commit();
     console.log('✅ Transacción confirmada');
@@ -500,6 +579,9 @@ async function crearConsentOdont(req, res) {
     conn.release();
   }
 }
+
+
+
 
 async function crearConsentQuirurgico(req, res) {
   const pacienteId = Number(req.params.id);
@@ -1004,31 +1086,56 @@ async function crearOrtodoncia(req, res) {
 
 // ============== Formularios: Historia Clínica ==================
 async function crearHistoriaClinica(req, res) {
-  console.log('──────────────────────────────────────────────');
   console.log('📩 POST /patients/:id/historia');
-  console.log('Auth header presente:', !!req.headers.authorization);
-  console.log('User (token decodificado):', { id: req.user?.id, rol: req.user?.rol, email: req.user?.email });
+  const pacienteId = Number(req.params.id);
+  const userFromToken = req.user?.id ?? null;
 
-  const pacienteId = Number(req.params.id || 0);
-  if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
+  if (!pacienteId) {
+    return res.status(400).json({ error: 'paciente_id inválido' });
+  }
 
-  // Body esperado (coincide con tu front)
-  const b = req.body || {};
-  const isis = b.interrogatorioSistemas || {};
-  const expl = b.exploracionClinica || {};
+  const {
+    nombrePaciente,
+    domicilioPaciente,
+    telefonoPaciente,
+    sexoPaciente,
+    fechaNacimiento,
+    edadPaciente,
+    estadoCivil,
+    ocupacionPaciente,
+    motivoConsulta,
 
-  // JSONs completos
-  const antecedentesPatologicosJson = Array.isArray(b.antecedentesPatologicos) ? b.antecedentesPatologicos : [];
-  const soloMujeresJson             = Array.isArray(b.antecedentesMujeres) ? b.antecedentesMujeres : [];
-  const noPatologicosJson           = Array.isArray(b.antecedentesNoPatologicos) ? b.antecedentesNoPatologicos : [];
-  const antecedentesFamiliaresJson  = Array.isArray(b.antecedentesFamiliares) ? b.antecedentesFamiliares : [];
+    tratamientoMedico,
+    tratamientoMedicoCual,
+    medicamento,
+    medicamentoCual,
+    problemaDental,
+    problemaDentalCual,
+
+    antecedentesPatologicos,
+    antecedentesMujeres,
+    antecedentesNoPatologicos,
+    antecedentesFamiliares,
+
+    interrogatorioSistemas,
+    exploracionClinica,
+    observacionesGenerales,
+    hallazgosRadiograficos,
+
+    firmaBase64,   // 🔴 firma del paciente desde el front
+  } = req.body || {};
+
+  if (!motivoConsulta) {
+    return res.status(400).json({ error: 'motivoConsulta es requerido' });
+  }
 
   const conn = await db.getConnection();
+
   try {
     await conn.beginTransaction();
-    console.log('🔹 TX historia clínica iniciada');
+    console.log('🔹 TX historia iniciada');
 
-    // 1) tipo_id para historia_clinica
+    // 1) tipo_id de historia_clinica
     const [tipoRows] = await conn.query(
       'SELECT id FROM formulario_tipo WHERE nombre = ? LIMIT 1',
       ['historia_clinica']
@@ -1037,118 +1144,192 @@ async function crearHistoriaClinica(req, res) {
     const tipoId = tipoRows[0].id;
     console.log('✔️ tipo_id:', tipoId);
 
-    // 2) formulario (mismo patrón)
-    const creadoPor = req.user?.id || null; // users.id
+    // 2) Insert en formulario
     const [formIns] = await conn.query(
-      `INSERT INTO formulario (paciente_id, tipo_id, creado_por, fecha_creacion)
-       VALUES (?, ?, ?, NOW())`,
-      [pacienteId, tipoId, creadoPor]
+      `INSERT INTO formulario (paciente_id, tipo_id, creado_por, estado, fecha_creacion)
+       VALUES (?, ?, ?, 'firmado', NOW())`,
+      [pacienteId, tipoId, userFromToken]
     );
     const formularioId = formIns.insertId;
-    console.log('✔️ formulario insertado id=', formularioId);
+    console.log('✔️ formulario creado id =', formularioId);
 
-    // 3) mapear users.id → medicos.id (puede quedar NULL)
+    // 3) Resolver medico_id desde users.id
     let medicoId = null;
-    if (creadoPor) {
+    if (userFromToken) {
       const [mRow] = await conn.query(
         'SELECT id FROM medicos WHERE user_id = ? LIMIT 1',
-        [creadoPor]
+        [userFromToken]
       );
       medicoId = mRow[0]?.id ?? null;
     }
-    console.log('users.id =', creadoPor, '→ medicos.id =', medicoId);
+    console.log('users.id =', userFromToken, '→ medicos.id =', medicoId);
 
-    // 4) Insert en formulario_historia_clinica — SIN firmas
-    const sql = `
+    // 4) Preparar datos "normales"
+    const edadNum = (edadPaciente != null && edadPaciente !== '')
+      ? Number(edadPaciente)
+      : null;
+
+    const tMedicoSi = !!tratamientoMedico ? 1 : 0;
+    const medSi     = !!medicamento ? 1 : 0;
+    const probSi    = !!problemaDental ? 1 : 0;
+
+    const patArr = Array.isArray(antecedentesPatologicos) ? antecedentesPatologicos : [];
+    const mujArr = Array.isArray(antecedentesMujeres) ? antecedentesMujeres : [];
+    const nopArr = Array.isArray(antecedentesNoPatologicos) ? antecedentesNoPatologicos : [];
+    const famArr = Array.isArray(antecedentesFamiliares) ? antecedentesFamiliares : [];
+
+    const patJson = JSON.stringify(patArr);
+    const mujJson = JSON.stringify(mujArr);
+    const nopJson = JSON.stringify(nopArr);
+    const famJson = JSON.stringify(famArr);
+
+    const sis  = interrogatorioSistemas || {};
+    const expl = exploracionClinica || {};
+
+    // 5) Guardar firma del paciente (si viene)
+    let firmaPath = null;
+    let firmaHash = null;
+    let firmaPacienteAt = null;
+
+    if (firmaBase64) {
+      try {
+        const { firmaPath: p, firmaHash: h } = await guardarFirma(firmaBase64);
+        firmaPath = p;
+        firmaHash = h;
+        firmaPacienteAt = new Date();
+        console.log('✔️ Firma de paciente guardada en:', firmaPath);
+      } catch (errFirma) {
+        console.error('⚠️ Error guardando firma de paciente:', errFirma);
+        // No tumbamos la historia, se guarda sin firma
+      }
+    }
+
+    // 6) Insert en formulario_historia_clinica
+    await conn.query(
+      `
       INSERT INTO formulario_historia_clinica (
-        formulario_id, paciente_id, medico_id,
-        nombre_paciente, domicilio, telefono, sexo, fecha_nacimiento, edad, estado_civil, ocupacion, motivo_consulta,
-        antecedentes_patologicos, antecedentes_patologicos_json,
-        tratamiento_medico_si, tratamiento_medico_cual,
-        medicamento_si, medicamento_cual,
-        problema_dental_si, problema_dental_cual,
-        solo_mujeres_json, no_patologicos_json, antecedentes_familiares_json,
-        sis_cardiovascular, sis_circulatorio, sis_respiratorio, sis_digestivo, sis_urinario, sis_genital, sis_musculoesqueletico, sis_snc,
-        expl_cabeza_cuello_cara_perfil, expl_atm, expl_labios_frenillos_lengua_paladar_orofaringe_yugal,
-        expl_piso_boca_glandulas_salivales_carrillos, expl_encias_procesos_alveolares,
-        observaciones, hallazgos, firma_paciente_at
-      )
-      VALUES (
-        ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?, ?, ?,
-        ?, CAST(? AS JSON),
-        ?, ?, ?, ?,
-        ?, ?,
-        CAST(? AS JSON), CAST(? AS JSON), CAST(? AS JSON),
+        formulario_id,
+        paciente_id,
+        medico_id,
+        nombre_paciente,
+        domicilio,
+        telefono,
+        sexo,
+        fecha_nacimiento,
+        edad,
+        estado_civil,
+        ocupacion,
+        motivo_consulta,
+        antecedentes_patologicos,
+        antecedentes_patologicos_json,
+        tratamiento_medico_si,
+        tratamiento_medico_cual,
+        medicamento_si,
+        medicamento_cual,
+        problema_dental_si,
+        problema_dental_cual,
+        solo_mujeres_json,
+        no_patologicos_json,
+        antecedentes_familiares_json,
+        sis_cardiovascular,
+        sis_circulatorio,
+        sis_respiratorio,
+        sis_digestivo,
+        sis_urinario,
+        sis_genital,
+        sis_musculoesqueletico,
+        sis_snc,
+        expl_cabeza_cuello_cara_perfil,
+        expl_atm,
+        expl_labios_frenillos_lengua_paladar_orofaringe_yugal,
+        expl_piso_boca_glandulas_salivales_carrillos,
+        expl_encias_procesos_alveolares,
+        observaciones,
+        hallazgos,
+        firma_path,
+        firma_hash,
+        firma_paciente_at
+      ) VALUES (
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, CAST(? AS JSON),
+        ?, ?, ?, ?, ?, ?,
+        CAST(? AS JSON),
+        CAST(? AS JSON),
+        CAST(? AS JSON),
         ?, ?, ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?,
-        ?, ?, NULL
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
-    `;
+      `,
+      [
+        // 1–3
+        formularioId,
+        pacienteId,
+        medicoId,
+        // 4–11 datos paciente
+        nombrePaciente || null,
+        domicilioPaciente || null,
+        telefonoPaciente || null,
+        sexoPaciente || null,
+        fechaNacimiento || null,
+        edadNum,
+        estadoCivil || null,
+        ocupacionPaciente || null,
+        // 12 motivo
+        motivoConsulta || null,
+        // 13 texto libre de antecedentes (si quieres algo, por ahora NULL)
+        null,
+        // 14 JSON patologicos
+        patJson,
+        // 15–20 flags y "¿cuál?"
+        tMedicoSi,
+        tratamientoMedicoCual || null,
+        medSi,
+        medicamentoCual || null,
+        probSi,
+        problemaDentalCual || null,
+        // 21–23 JSON varias tablas
+        mujJson,
+        nopJson,
+        famJson,
+        // 24–31 SIS
+        sis.Cardiovascular || null,
+        sis.Circulatorio  || null,
+        sis.Respiratorio  || null,
+        sis.Digestivo     || null,
+        sis.Urinario      || null,
+        sis.Genital       || null,
+        sis['Musculoesquelético'] || null,
+        sis.SNC || null,
+        // 32–36 Exploración
+        expl['Cabeza, Cuello, Cara, Perfil'] || null,
+        expl['ATM (Articulación Temporomandibular)'] || null,
+        expl['Labios, Frenillos, Lengua, Paladar Duro, Blando, Orofaringe, Región Yugal'] || null,
+        expl['Piso de Boca, Glándulas Salivales, Carrillos'] || null,
+        expl['Encías, Procesos Alveolares'] || null,
+        // 37–38 Otros
+        observacionesGenerales  || null,
+        hallazgosRadiograficos || null,
+        // 39–41 Firma
+        firmaPath,
+        firmaHash,
+        firmaPacienteAt
+      ]
+    );
 
-    const params = [
-      formularioId, pacienteId, medicoId,
-      b.nombrePaciente || null,
-      b.domicilioPaciente || null,
-      b.telefonoPaciente || null,
-      b.sexoPaciente || null,
-      b.fechaNacimiento || null,
-      b.edadPaciente ? parseInt(b.edadPaciente, 10) : null,
-      b.estadoCivil || null,
-      b.ocupacionPaciente || null,
-      b.motivoConsulta || null,
-
-      null, // antecedentes_patologicos (texto libre opcional) → por ahora null
-      JSON.stringify(antecedentesPatologicosJson),
-
-      (b.tratamientoMedico ? 1 : 0),
-      b.tratamientoMedicoCual || null,
-      (b.medicamento ? 1 : 0),
-      b.medicamentoCual || null,
-      (b.problemaDental ? 1 : 0),
-      b.problemaDentalCual || null,
-
-      JSON.stringify(soloMujeresJson),
-      JSON.stringify(noPatologicosJson),
-      JSON.stringify(antecedentesFamiliaresJson),
-
-      isis.Cardiovascular || '',
-      isis.Circulatorio || '',
-      isis.Respiratorio || '',
-      isis.Digestivo || '',
-      isis.Urinario || '',
-      isis.Genital || '',
-      isis['Musculoesquelético'] || '',
-      isis.SNC || '',
-
-      expl['Cabeza, Cuello, Cara, Perfil'] || '',
-      expl['ATM (Articulación Temporomandibular)'] || '',
-      expl['Labios, Frenillos, Lengua, Paladar Duro, Blando, Orofaringe, Región Yugal'] || '',
-      expl['Piso de Boca, Glándulas Salivales, Carrillos'] || '',
-      expl['Encías, Procesos Alveolares'] || '',
-
-      b.observacionesGenerales || '',
-      b.hallazgosRadiograficos || ''
-      // firma_paciente_at = NULL (no guardamos firmas)
-    ];
-
-    await conn.query(sql, params);
-    console.log('✔️ historia clínica insertada (sin firma)');
-
+    console.log('✔️ historia clínica insertada');
     await conn.commit();
-    console.log('✅ TX confirmada (historia clínica)');
-    console.log('──────────────────────────────────────────────');
+    console.log('✅ TX historia confirmada');
 
-    return res.status(201).json({ ok: true, formulario_id: formularioId });
+    return res.json({ ok: true, formulario_id: formularioId });
   } catch (err) {
-    try { await conn.rollback(); } catch {}
-    console.error('❌ Error en crearHistoriaClinica:', err);
-    console.log('──────────────────────────────────────────────');
+    await conn.rollback();
+    console.error('❌ crearHistoriaClinica error:', err);
     return res.status(500).json({ error: 'Error al crear historia clínica' });
   } finally {
     conn.release();
   }
 }
+
 
 async function crearOdontogramaFinal(req, res) {
   console.log('──────────────────────────────────────────────');
@@ -1717,7 +1898,8 @@ async function getRecetaByFormularioId(req, res) {
   try {
     const [hdrRows] = await db.query(
       `SELECT r.formulario_id, r.paciente_id, r.medico_id, r.fecha,
-              r.edad_texto, r.edad_anios, r.nombre_medico, r.cedula
+              r.edad_texto, r.edad_anios, r.nombre_medico, r.cedula,
+              r.firma_path               -- 👈 AÑADIMOS ESTO
        FROM formulario_receta r
        WHERE r.formulario_id = ? LIMIT 1`,
       [formularioId]
@@ -1758,6 +1940,7 @@ async function getRecetaByFormularioId(req, res) {
       edad_anios    : hdr.edad_anios,
       nombre_medico : hdr.nombre_medico,
       cedula        : hdr.cedula,
+      firma_path    : hdr.firma_path || null,    // 👈 AQUÍ SALE AL FRONT
       paciente,
       doctor,
       medicamentos  : meds
@@ -1767,6 +1950,7 @@ async function getRecetaByFormularioId(req, res) {
     return res.status(500).json({ error: 'Error al consultar receta' });
   }
 }
+
 
 async function getRecetaDetalle(req, res) {
   const { formularioId } = req.params;
@@ -1806,33 +1990,84 @@ async function getRecetaDetalle(req, res) {
     medicamentos: meds
   });
 }
+
+async function getFirmaByFile(req, res) {
+  try {
+    const fileName = req.params.fileName;
+
+    // Evitar path traversal tipo "../../etc/passwd"
+    if (!fileName || /[\/\\]/.test(fileName)) {
+      return res.status(400).json({ error: 'Nombre de archivo inválido' });
+    }
+
+    const fullPath = path.join(FIRMAS_DIR, fileName);
+
+    if (!fs.existsSync(fullPath)) {
+      return res.status(404).json({ error: 'Archivo de firma no encontrado' });
+    }
+
+    // Si luego guardas JPG/WEBP, podrías inferir el MIME según la extensión
+    res.setHeader('Content-Type', 'image/png');
+    return res.sendFile(fullPath);
+  } catch (err) {
+    console.error('❌ getFirmaByFile error:', err);
+    return res.status(500).json({ error: 'Error al obtener archivo de firma' });
+  }
+}
+
 async function obtenerJustificante(req, res) {
   try {
-    const { formularioId } = req.params;
-    const data = await getJustificanteByFormId(formularioId);
+    // Acepta /:formularioId o /:formId
+    const formularioId = Number(
+      req.params.formularioId || req.params.formId || req.params.id || 0
+    );
+    if (!formularioId) {
+      return res.status(400).json({ error: 'formulario_id inválido' });
+    }
 
-    if (!data) {
+    const j = await getJustificanteByFormId(formularioId);
+
+    if (!j) {
       return res.status(404).json({ error: 'Justificante no encontrado' });
     }
 
-    res.json(data);
+    // 👇 Asegúrate de incluir firma_path aquí
+    return res.json({
+      formulario_id:        j.formulario_id,
+      paciente_id:          j.paciente_id,
+      nombre_paciente:      j.nombre_paciente,
+      fecha_emision:        j.fecha_emision,
+      procedimiento:        j.procedimiento,
+      fecha_procedimiento:  j.fecha_procedimiento,
+      dias_reposo:          j.dias_reposo,
+      numero_paciente:      j.numero_paciente,
+      firma_path:           j.firma_path,
+      // si quieres no mandar el hash al front, puedes omitirlo:
+      // firma_hash:           j.firma_hash,
+      firma_profesional_at: j.firma_profesional_at
+    });
   } catch (err) {
     console.error("❌ Error obtenerJustificante:", err);
     res.status(500).json({ error: 'Error obteniendo justificante' });
   }
 }
 
+
+
 // === Obtener CONSENTIMIENTO ODONTOLÓGICO por formulario_id ===
 async function obtenerConsentOdont(req, res) {
   try {
     const formularioId = Number(req.params.formId || req.params.formularioId || 0);
-    if (!formularioId) return res.status(400).json({ error: 'formulario_id inválido' });
+    if (!formularioId) {
+      return res.status(400).json({ error: 'formulario_id inválido' });
+    }
 
     const [rows] = await db.query(`
       SELECT
         f.id AS formulario_id,
         f.estado AS estado_formulario,
         f.eliminado_logico,
+
         co.paciente_id,
         co.medico_id,
         co.fecha,
@@ -1843,11 +2078,18 @@ async function obtenerConsentOdont(req, res) {
         co.autorizacion_check,
         co.economico_check,
         co.ausencia_check,
+
+        -- 🔥 CAMPOS DE FIRMA
+        co.firma_path,
+        co.firma_hash,
         co.firma_paciente_at,
+
+        -- Paciente
         p.id AS paciente_id_real,
         p.nombre AS paciente_nombre,
         p.apellido AS paciente_apellido,
         CONCAT_WS(' ', COALESCE(p.nombre,''), COALESCE(p.apellido,'')) AS paciente_nombre_completo
+
       FROM formulario f
       JOIN formulario_consent_odont co ON co.formulario_id = f.id
       JOIN pacientes p ON p.id = co.paciente_id
@@ -1856,35 +2098,49 @@ async function obtenerConsentOdont(req, res) {
       LIMIT 1
     `, [formularioId]);
 
-    if (!rows.length) return res.status(404).json({ error: 'Consentimiento odontológico no encontrado' });
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Consentimiento odontológico no encontrado' });
+    }
 
     const r = rows[0];
+
     return res.json({
       formulario_id: r.formulario_id,
       estado: r.estado_formulario,
-      fecha: r.fecha,                          // YYYY-MM-DD
+
+      fecha: r.fecha,
       numero_paciente: r.numero_paciente,
       tratamiento: r.tratamiento,
+
       monto: r.monto != null ? Number(r.monto) : null,
       ausencia_dias: r.ausencia_dias != null ? Number(r.ausencia_dias) : null,
+
       autorizacion_check: !!r.autorizacion_check,
       economico_check: !!r.economico_check,
       ausencia_check: !!r.ausencia_check,
-      firmado: r.firma_paciente_at != null,
+
+      // 🔥 FIRMA
+      firma_path: r.firma_path || null,
+      firma_hash: r.firma_hash || null,
       firma_paciente_at: r.firma_paciente_at,
+      firmado: r.firma_paciente_at != null,
+
       paciente: {
         id: r.paciente_id_real,
         nombre: r.paciente_nombre,
         apellido: r.paciente_apellido,
         nombre_completo: r.paciente_nombre_completo
       },
+
       medico_id: r.medico_id
     });
+
   } catch (err) {
     console.error('❌ obtenerConsentOdont error:', err);
     return res.status(500).json({ error: 'Error al consultar consentimiento odontológico' });
   }
 }
+
 
 async function obtenerConsentQuiro(req, res) {
   try {
@@ -2126,12 +2382,12 @@ async function obtenerHistoriaDetalle(req, res) {
       return res.status(404).json({ error: 'Historia no encontrada' });
     }
 
-    // Normaliza columnas JSON por si el driver devuelve string
+    // Normaliza columnas JSON (si vienen como string)
     const jsonFields = [
       'antecedentes_patologicos_json',
       'solo_mujeres_json',
       'no_patologicos_json',
-      'antecedentes_familiares_json',
+      'antecedentes_familiares_json'
     ];
     jsonFields.forEach((k) => {
       if (typeof data[k] === 'string') {
@@ -2139,12 +2395,19 @@ async function obtenerHistoriaDetalle(req, res) {
       }
     });
 
+    // 🔥 Normalizamos los campos de firma para que el frontend siempre los reciba
+    data.firma_path        = data.firma_path || null;
+    data.firma_hash        = data.firma_hash || null;
+    data.firma_paciente_at = data.firma_paciente_at || null;
+
     return res.json(data);
+
   } catch (err) {
     console.error('❌ Error obtenerHistoriaDetalle:', err);
     return res.status(500).json({ error: 'Error al consultar historia' });
   }
 }
+
 
 async function obtenerOdontogramaFinal(req, res) {
   try {
@@ -2322,14 +2585,18 @@ module.exports = {
   // Obtener info específica de formularios
   getRecetaByFormularioId,
   getRecetaDetalle,
+  // getRecetaFirma,  // 👈 ESTA YA NO
   obtenerJustificante,
   obtenerConsentOdont,
   obtenerConsentQuiro,
-  obtenerOrtodonciaDetalle, 
+  obtenerOrtodonciaDetalle,
   obtenerHistoriaDetalle,
   obtenerOdontogramaFinal,
   getPresupuestoByFormId,
   getDiagInfantilByFormId,
   getEvolucionByFormId,
-  appendEvoluciones
+  appendEvoluciones,
+
+  // 👇 NUEVO
+  getFirmaByFile
 };

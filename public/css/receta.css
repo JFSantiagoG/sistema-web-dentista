@@ -145,3 +145,9 @@ h2 {
     .mode-pill { font-size:.85rem; }
     .firma-wrap{border:1px dashed #bbb; border-radius:8px; background:#fff}
     .d-none-important{display:none !important;}
+/* Imagen de firma protegida */
+#firmaRecetaImg {
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;  /* no responde a clic derecho ni arrastre */
+}

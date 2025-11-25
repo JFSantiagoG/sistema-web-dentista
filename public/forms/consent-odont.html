@@ -203,6 +203,7 @@
             <h5 class="mb-0">Firma del Paciente</h5>
           </div>
           <div class="card-body text-center">
+            <!-- Firma dibujada (modo crear/editar) -->
             <div class="firma-wrap">
               <canvas id="signature-pad" width="360" height="120"></canvas>
             </div>
@@ -211,8 +212,18 @@
                 🧹 Limpiar
               </button>
             </div>
+
+            <!-- Firma guardada (modo visualizar) -->
+            <div class="mt-3 d-flex justify-content-center">
+              <img
+                id="firmaConsentImg"
+                alt="Firma guardada"
+                style="max-width: 360px; display:none; border:1px solid #ccc; padding:4px; background:#fff;"
+              >
+            </div>
           </div>
         </div>
+
 
         <!-- Botones -->
         <div class="text-center mt-4">

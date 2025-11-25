@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const responsabilidadCheck = document.getElementById('responsabilidadCheck');
   const economicoCheck       = document.getElementById('economicoCheck');
 
-  // Firmas (solo para PDF; no se guardan en BD)
+  // Firmas (para BD + PDF)
   const canvasPac = document.getElementById('signature-pad-paciente');
   const canvasMed = document.getElementById('signature-pad-medico');
   const clearPac  = document.getElementById('clearSignature-pad-paciente');
@@ -165,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     return { getB64, clear };
   }
+
   const sigPac = initSignaturePad(canvasPac);
   const sigMed = initSignaturePad(canvasMed);
   clearPac?.addEventListener('click', sigPac.clear);
@@ -228,9 +229,9 @@ document.addEventListener('DOMContentLoaded', () => {
   btnNext?.addEventListener('click', goStep2);
   btnBack?.addEventListener('click', backStep1);
 
-  // ====== Payload BD (sin firmas)
+  // ====== Payload BD (incluye firmas ahora) ======
   function buildPayloadBD() {
-    return {
+    const payload = {
       fecha: fechaInput.value,
       numero_paciente: numeroPacienteEl.value || String(pacienteId),
       pronostico: pronosticoInput.value,
@@ -246,6 +247,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
       acuerdo_economico: acuerdoInput.value
     };
+
+    // 🔥 Firmas para BD (opcional, el backend decide si las usa)
+    const b64Pac = (typeof sigPac.getB64 === 'function') ? sigPac.getB64() : null;
+    if (b64Pac) {
+      payload.firmaBase64 = b64Pac;           // firma del paciente
+    }
+
+    const b64Med = (typeof sigMed.getB64 === 'function') ? sigMed.getB64() : null;
+    if (b64Med) {
+      payload.firmaMedicoBase64 = b64Med;     // firma del médico (si decides guardarla en BD)
+    }
+
+    return payload;
   }
 
   // ====== Guardar (borrador) → BD
@@ -375,7 +389,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       let j = {};
-      try { j = JSON.parse(raw); } catch { await Swal.fire({icon:'error',title:'Error',text:'Respuesta inválida del servidor.'}); return; }
+      try { j = JSON.parse(raw); } catch {
+        await Swal.fire({icon:'error',title:'Error',text:'Respuesta inválida del servidor.'});
+        return;
+      }
 
       const nombre = j?.paciente?.nombre_completo || '(Sin nombre)';
       const fecha  = (j?.fecha || '').slice(0,10) || hoyISO;
@@ -415,9 +432,6 @@ document.addEventListener('DOMContentLoaded', () => {
       btnNext?.classList.add('d-none');  // ocultar Siguiente
       btnBack?.classList.add('d-none');  // ocultar Volver
 
-      // ...pero **mantener las firmas interactivas** y sus botones de limpiar
-      // (NO bloqueamos los canvas, ni ocultamos clearPac/clearMed)
-
       // Deshabilitar inputs/checkboxes/selects y botones "step" (no PDF ni submit)
       form.querySelectorAll('input, textarea, select, button.btn-step').forEach(el => {
         if (el === btnPDF) return;               // permitir PDF
@@ -428,8 +442,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       // IMPORTANTE: no tocar pointerEvents de los canvas -> quedan dibujables
-      // if (canvasPac) canvasPac.style.pointerEvents = 'auto';
-      // if (canvasMed) canvasMed.style.pointerEvents = 'auto';
 
     } catch (e) {
       console.error('No se pudo visualizar consent-quiro:', e);

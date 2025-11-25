@@ -229,6 +229,57 @@ document.addEventListener('DOMContentLoaded', async () => {
   let hallEl = document.getElementById('hallazgos');
   if (!hallEl) hallEl = fallbackFindTextareaByHeader('Hallazgos Radiográficos');
 
+  // 🔹 Firma paciente (canvas + botón + <img>) igual que justificante
+  const canvasFirma   = document.getElementById('signature-pad-paciente');
+  const clearFirmaBtn = document.getElementById('clearSignature-pad-paciente');
+  const firmaImg      = document.getElementById('firmaPacienteImg'); // asegúrate de tener este <img> en el HTML
+  const FIRMA_BASE_URL = '/api/patients/uploads';
+
+  function isCanvasBlank(cnv) {
+    if (!cnv) return true;
+    const ctx = cnv.getContext('2d');
+    const pixelBuffer = new Uint32Array(
+      ctx.getImageData(0, 0, cnv.width, cnv.height).data.buffer
+    );
+    return !pixelBuffer.some(color => color !== 0);
+  }
+
+  async function getFirmaPacienteBase64() {
+    // 1) Canvas visible y con trazos
+    if (canvasFirma && canvasFirma.offsetParent !== null && !isCanvasBlank(canvasFirma)) {
+      try {
+        return canvasFirma.toDataURL('image/png');
+      } catch (e) {
+        console.warn('[historia] Error leyendo firma desde canvas:', e);
+      }
+    }
+
+    // 2) Imagen visible con firma guardada (modo visualizar)
+    if (firmaImg && firmaImg.src && firmaImg.style.display !== 'none') {
+      try {
+        const resp = await fetch(firmaImg.src);
+        if (!resp.ok) {
+          console.warn('[historia] HTTP error al cargar imagen de firma:', resp.status);
+          return null;
+        }
+        const blob = await resp.blob();
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        return base64; // data:image/png;base64,...
+      } catch (e) {
+        console.error('[historia] Error convirtiendo firma <img> a base64:', e);
+        return null;
+      }
+    }
+
+    // 3) No hay firma
+    return null;
+  }
+
   // QS / auth
   const qs = new URLSearchParams(location.search);
   const pacienteId = qs.get('paciente_id') || qs.get('id');
@@ -353,11 +404,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!r.isConfirmed) return null;
     }
 
+    // Construye payload y agrega firmaBase64 si existe
+    const payload = payloadComun();
+    const firma = await getFirmaPacienteBase64();
+    if (firma) {
+      payload.firmaBase64 = firma;
+    }
+
     try {
       const res = await fetch(`/api/patients/${pacienteId}/historia`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify(payloadComun())
+        body: JSON.stringify(payload)
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
@@ -393,17 +451,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!pre.isConfirmed) return;
 
     const dataPdf = payloadComun();
-
-    // Firma (solo para PDF)
-    const canvas = document.getElementById('signature-pad-paciente');
-    if (canvas) {
-      const blank = document.createElement('canvas');
-      blank.width = canvas.width; blank.height = canvas.height;
-      if (canvas.toDataURL() !== blank.toDataURL()) {
-        dataPdf.firmaPaciente = canvas.toDataURL('image/png');
-      }
-    }
     dataPdf.formularioId = formularioId;
+
+    // Firma del paciente para el PDF: usa canvas o imagen guardada
+    const firma = await getFirmaPacienteBase64();
+    if (firma) {
+      dataPdf.firmaPaciente = firma;
+    }
 
     try {
       const res = await fetch('/api/pdf/historia/generate', {
@@ -567,11 +621,37 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (obsEl) obsEl.value = d?.observaciones || '';
       if (hallEl) hallEl.value = d?.hallazgos || '';
 
-      // 7) Modo visualizar: bloquea edición y oculta Guardar
+      // 7) Firma del paciente en modo visualizar
+      console.log('[historia] detalle recibido:', d);
+      console.log('[historia] firma_path:', d.firma_path);
+
+      if (formularioIdQS) {
+        // Esconder canvas y botón limpiar; mostrar imagen si hay firma
+        if (canvasFirma) {
+          canvasFirma.classList.add('d-none');
+        }
+        if (clearFirmaBtn) {
+          clearFirmaBtn.classList.add('d-none');
+        }
+
+        if (firmaImg) {
+          if (d.firma_path) {
+            const url = `${FIRMA_BASE_URL}/${encodeURIComponent(d.firma_path)}`;
+            console.log('[historia] mostrando firma en <img> desde:', url);
+            firmaImg.src = url;
+            firmaImg.style.display = 'block';
+          } else {
+            console.warn('[historia] no se encontró firma guardada');
+            firmaImg.style.display = 'none';
+          }
+        }
+      }
+
+      // 8) Modo visualizar: bloquea edición y oculta Guardar
       if (formularioIdQS) {
         if (btnGuardar) btnGuardar.style.display = 'none';
         form.querySelectorAll('input, select, textarea, canvas').forEach(el => {
-          if (el.id === 'signature-pad-paciente') return; // permitir firmar si quisieras
+          if (el.id === 'signature-pad-paciente') return; // ya lo ocultamos arriba
           if (el.tagName === 'SELECT') el.disabled = true;
           else el.readOnly = true;
         });
@@ -636,13 +716,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   setConditionalVisibility('problemaDentalSi', 'problemaDentalCual');
 
   // Firma - limpiar
-  const clearBtn = document.getElementById('clearSignature-pad-paciente');
-  if (clearBtn) {
-    clearBtn.addEventListener('click', () => {
-      const c = document.getElementById('signature-pad-paciente');
-      if (!c) return;
-      const ctx = c.getContext('2d');
-      ctx.clearRect(0, 0, c.width, c.height);
+  if (clearFirmaBtn && canvasFirma) {
+    clearFirmaBtn.addEventListener('click', () => {
+      const ctx = canvasFirma.getContext('2d');
+      ctx.clearRect(0, 0, canvasFirma.width, canvasFirma.height);
     });
   }
 });
