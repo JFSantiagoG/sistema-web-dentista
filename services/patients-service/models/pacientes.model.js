@@ -170,9 +170,6 @@ async function getConsentOdontById(formularioId) {
   };
 }
 
-
-
-
 // ====== BUSCAR PACIENTES (tu código, levemente limpio) ======
 async function buscarPacientes(q, page = 1) {
   const limite = 15;
@@ -1011,8 +1008,6 @@ async function getJustificanteByFormId(formularioId) {
   return rows[0] || null;
 }
 
-
-
 async function getConsentQuiroById(formularioId) {
   const sql = `
     SELECT
@@ -1036,8 +1031,15 @@ async function getConsentQuiroById(formularioId) {
       cq.economico_aceptado,
 
       cq.acuerdo_economico,
+
+      -- 🔥 NUEVO: info de firmas
+      cq.firma_path_paciente,
+      cq.firma_hash_paciente,
+      cq.firma_path_medico,
+      cq.firma_hash_medico,
       cq.firma_paciente_at,
       cq.firma_medico_at
+
     FROM formulario_consent_quiro cq
     INNER JOIN formulario f ON f.id = cq.formulario_id AND f.eliminado_logico = 0
     INNER JOIN pacientes  p ON p.id = cq.paciente_id
@@ -1047,6 +1049,7 @@ async function getConsentQuiroById(formularioId) {
   const [rows] = await db.query(sql, [formularioId]);
   return rows[0] || null;
 }
+
 
 async function getOrtodonciaByFormId(formularioId) {
   const sql = `

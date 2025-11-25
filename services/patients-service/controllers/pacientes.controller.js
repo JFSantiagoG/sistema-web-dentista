@@ -580,129 +580,118 @@ async function crearConsentOdont(req, res) {
   }
 }
 
-
-
-
 async function crearConsentQuirurgico(req, res) {
   const pacienteId = Number(req.params.id);
-  if (!pacienteId) return res.status(400).json({ error: 'paciente_id inválido' });
 
   const {
-    fecha,                  // 'YYYY-MM-DD'
-    numero_paciente,        // string (usualmente mismo id del paciente en UI)
-    pronostico,
-    condiciones_posop,
+    fecha, numero_paciente,
+    pronostico, condiciones_posop,
     recuperacion_dias,
-    historia_aceptada,
-    anestesia_consentida,
-    pronostico_entendido,
-    recuperacion_entendida,
-    responsabilidad_aceptada,
-    economico_aceptado,
+    historia_aceptada, anestesia_consentida,
+    pronostico_entendido, recuperacion_entendida,
+    responsabilidad_aceptada, economico_aceptado,
     acuerdo_economico,
-  } = req.body || {};
-
-  // ⚠️ Ignoramos cualquier firma que venga en el body:
-  // firmaPacienteBase64, firmaMedicoBase64 —> NO se usan (quedan NULL)
-  // firma*_* no se guardan NOMBRES ni PATHS
-
-  // Logs
-  console.log('📩 POST /patients/:id/consent-quiro');
-  console.log('Auth header presente:', !!req.headers.authorization);
-  console.log('User (token decodificado):', { id: req.user?.id, rol: req.user?.rol, email: req.user?.email });
-  console.log('Body (sin firmas):', {
-    pacienteId,
-    fecha,
-    numero_paciente,
-    pronostico,
-    condiciones_posop,
-    recuperacion_dias,
-    historia_aceptada,
-    anestesia_consentida,
-    pronostico_entendido,
-    recuperacion_entendida,
-    responsabilidad_aceptada,
-    economico_aceptado,
-    acuerdo_economico,
-  });
-
-  if (!fecha) return res.status(400).json({ error: 'fecha requerida' });
-  if (!pronostico || !condiciones_posop) {
-    return res.status(400).json({ error: 'pronostico y condiciones_posop son requeridos' });
-  }
-  if (recuperacion_dias == null || Number.isNaN(Number(recuperacion_dias))) {
-    return res.status(400).json({ error: 'recuperacion_dias inválido' });
-  }
+    firmaPacienteBase64,
+    firmaMedicoBase64
+  } = req.body;
 
   const conn = await db.getConnection();
+
   try {
-    console.log('🔹 Transacción iniciada');
     await conn.beginTransaction();
 
-    // 1) tipo_id para consentimiento_quirurgico
+    // tipo_id
     const [tipoRows] = await conn.query(
-      'SELECT id FROM formulario_tipo WHERE nombre = ? LIMIT 1',
-      ['consentimiento_quirurgico']
+      `SELECT id FROM formulario_tipo WHERE nombre = 'consentimiento_quirurgico' LIMIT 1`
     );
-    if (!tipoRows.length) throw new Error('No existe tipo "consentimiento_quirurgico"');
     const tipoId = tipoRows[0].id;
-    console.log('✔️ tipo_id:', tipoId);
 
-    // 2) formulario
+    // formulario
     const creadoPor = req.user?.id || null;
-    const estado = 'firmado'; // o 'borrador' si lo prefieres
+    const estado = "firmado";
+
     const [formIns] = await conn.query(
       `INSERT INTO formulario (paciente_id, tipo_id, creado_por, estado, fecha_creacion)
        VALUES (?, ?, ?, ?, NOW())`,
       [pacienteId, tipoId, creadoPor, estado]
     );
-    const formularioId = formIns.insertId;
-    console.log('✔️ formulario insertado id=', formularioId);
 
-    // 3) mapear users.id -> medicos.id (puede quedar NULL)
+    const formularioId = formIns.insertId;
+
+    // obtener medico_id
     let medicoId = null;
     if (creadoPor) {
-      const [medRow] = await conn.query(
-        'SELECT id FROM medicos WHERE user_id = ? LIMIT 1',
+      const [m] = await conn.query(
+        `SELECT id FROM medicos WHERE user_id = ? LIMIT 1`,
         [creadoPor]
       );
-      medicoId = medRow[0]?.id ?? null;
+      medicoId = m[0]?.id ?? null;
     }
-    console.log('users.id =', creadoPor, '→ medicos.id =', medicoId);
 
-    // 4) Insertar consentimiento quirúrgico — SIN FIRMAS (en NULL)
+    // ======== GUARDAR FIRMAS — usando tu función EXACTA ==========
+    let fp = { firmaPath: null, firmaHash: null };
+    let fm = { firmaPath: null, firmaHash: null };
+
+    try {
+      if (firmaPacienteBase64)
+        fp = await guardarFirma(firmaPacienteBase64);
+    } catch (e) {
+      console.error("⚠️ Error guardando firma paciente:", e);
+    }
+
+    try {
+      if (firmaMedicoBase64)
+        fm = await guardarFirma(firmaMedicoBase64);
+    } catch (e) {
+      console.error("⚠️ Error guardando firma médico:", e);
+    }
+
+    // Fechas (se agregan manualmente aquí)
+    const fechaPac = fp.firmaPath ? new Date() : null;
+    const fechaMed = fm.firmaPath ? new Date() : null;
+
+    // Insert
     await conn.query(
-      `INSERT INTO formulario_consent_quiro
-        (formulario_id, paciente_id, medico_id, fecha, numero_paciente,
-         pronostico, condiciones_posop, recuperacion_dias,
-         historia_aceptada, anestesia_consentida, pronostico_entendido, recuperacion_entendida,
-         responsabilidad_aceptada, economico_aceptado, acuerdo_economico,
-         firma_paciente_at, firma_medico_at)
-       VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
+      `INSERT INTO formulario_consent_quiro (
+        formulario_id, paciente_id, medico_id, fecha, numero_paciente,
+        pronostico, condiciones_posop, recuperacion_dias,
+        historia_aceptada, anestesia_consentida, pronostico_entendido,
+        recuperacion_entendida, responsabilidad_aceptada,
+        economico_aceptado, acuerdo_economico,
+        firma_path_paciente, firma_hash_paciente,
+        firma_path_medico,   firma_hash_medico,
+        firma_paciente_at,   firma_medico_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        formularioId, pacienteId, medicoId, fecha, numero_paciente || String(pacienteId),
-        pronostico, condiciones_posop, Number(recuperacion_dias),
-        !!historia_aceptada, !!anestesia_consentida, !!pronostico_entendido, !!recuperacion_entendida,
-        !!responsabilidad_aceptada, !!economico_aceptado, acuerdo_economico || ''
+        formularioId, pacienteId, medicoId,
+        fecha, numero_paciente,
+        pronostico, condiciones_posop, recuperacion_dias,
+        historia_aceptada, anestesia_consentida, pronostico_entendido,
+        recuperacion_entendida, responsabilidad_aceptada,
+        economico_aceptado, acuerdo_economico,
+
+        fp.firmaPath, fp.firmaHash,
+        fm.firmaPath, fm.firmaHash,
+
+        fechaPac, fechaMed
       ]
     );
-    console.log('✔️ consentimiento quirúrgico insertado (sin firmar)');
 
     await conn.commit();
-    console.log('✅ Transacción confirmada');
-    console.log('──────────────────────────────────────────────');
 
-    return res.json({ ok: true, formulario_id: formularioId });
+    res.json({ ok: true, formulario_id: formularioId });
+
   } catch (err) {
     await conn.rollback();
-    console.error('❌ Error en crearConsentQuirurgico:', err);
-    console.log('──────────────────────────────────────────────');
-    return res.status(500).json({ error: 'Error al crear consentimiento quirúrgico' });
+    console.error(err);
+    res.status(500).json({ error: "Error en consentimiento quirúrgico" });
   } finally {
     conn.release();
   }
 }
+
+
 
 // ====== Crear Evolución Clínica (SIN firma en BD; igual estilo que Receta) ======
 async function crearEvolucion(req, res) {
@@ -2168,6 +2157,11 @@ async function obtenerConsentQuiro(req, res) {
 
       acuerdo_economico: row.acuerdo_economico,
 
+      // 🔥 rutas de firmas (sólo nombre de archivo, como tú querías)
+      firma_path_paciente: row.firma_path_paciente || null,
+      firma_path_medico:   row.firma_path_medico   || null,
+
+      // timestamps (por si los quieres mostrar)
       firma_paciente_at: row.firma_paciente_at,
       firma_medico_at:   row.firma_medico_at,
 
@@ -2183,6 +2177,7 @@ async function obtenerConsentQuiro(req, res) {
     return res.status(500).json({ error: 'Error interno' });
   }
 }
+
 
 // 📌 obtener detalle ORTODONCIA
 async function obtenerOrtodonciaDetalle(req, res) {
