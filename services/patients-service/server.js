@@ -10,3 +10,6 @@ app.use('/patients', pacientesRoutes);
 app.listen(3003, () => {
   console.log('Patients service running on port 3003');
 });
+
+app.requestTimeout = 0;  
+app.headersTimeout = 0;

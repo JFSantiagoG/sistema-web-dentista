@@ -459,6 +459,7 @@ async function cargarEstudios() {
     if (rows[0] && rows[0].files) {
       // ✅ Forma nueva (agrupado desde backend)
       grupos = rows.map(g => ({
+        key: g.group_key || g.group_id || null,
         files: g.files || [],
         cantidad: g.cantidad ?? (g.files?.length ?? 0),
         fechaPrimera: g.fecha_primera || g.fechaPrimera || null,
@@ -474,6 +475,28 @@ async function cargarEstudios() {
       const files = g.files || [];
       const n = g.cantidad || files.length || 0;
 
+      // 👇 identificador del grupo (para mandarlo al visualizador 3D)
+      const groupKey = g.key || files[0]?.group_id || null;
+
+      // --- Detectar si el grupo es 3D (CBCT/TAC con muchos DICOM) ---
+      const tiposSet = new Set(
+        files.map(f => f.tipo || guessTipoFromPath(f.storage_path || f.nombre_archivo || ''))
+      );
+      const singleTipo = tiposSet.size === 1 ? [...tiposSet][0] : null;
+
+      // todos los archivos tienen extensión .dcm
+      const allDicom = files.length > 0 && files.every(f => {
+        const p = (f.storage_path || f.nombre_archivo || '').toLowerCase();
+        return p.endsWith('.dcm');
+      });
+
+      // ¿Es estudio tomográfico?
+      const esTomografico = singleTipo === 'tac' || singleTipo === 'cbct';
+
+      // Regla final: tomografía + sólo DICOM + más de 1 archivo (puedes subir el umbral a 20)
+      const es3D = esTomografico && allDicom && n > 1;
+
+
       // Fecha: usamos la última disponible (YYYY-MM-DD)
       const fecha = fymdSafe(g.fechaUltima || g.fechaPrimera);
 
@@ -484,11 +507,8 @@ async function cargarEstudios() {
         const rawTipo = f0.tipo || guessTipoFromPath(f0.storage_path || f0.nombre_archivo);
         tipoHtml = `${tipoBadge(rawTipo)} <span class="text-muted ms-1">(1 archivo)</span>`;
       } else {
-        const tiposSet = new Set(
-          files.map(f => f.tipo || guessTipoFromPath(f.storage_path || f.nombre_archivo || ''))
-        );
         if (tiposSet.size === 1) {
-          const firstTipo = [...tiposSet][0];
+          const firstTipo = singleTipo;
           tipoHtml = `
             ${tipoBadge(firstTipo)}
             <span class="badge bg-dark ms-2">${n} archivos</span>
@@ -500,6 +520,7 @@ async function cargarEstudios() {
           `;
         }
       }
+
 
       // Notas (resumen)
       const fullNote = (g.notaResumen || '').toString();
@@ -521,21 +542,37 @@ async function cargarEstudios() {
           return '/visualizador/uploads/' + s;
         });
 
-      let btnVer;
+      let btnVer= '';
+      let btn3D = '';
       if (!filePaths.length) {
-        btnVer = `<button type="button" class="btn btn-sm btn-outline-secondary" disabled>Sin archivos</button>`;
+        btnVer = `<button type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                    Sin archivos
+                  </button>`;
       } else if (filePaths.length === 1) {
+        // Un solo archivo → ?file=
         const fileParam = encodeURIComponent(filePaths[0]);
         btnVer = `<button type="button" class="btn btn-sm btn-outline-primary"
-                    onclick="window.location.href='/visualizador?file=${fileParam}'">
+                      onclick="window.location.href='/visualizador?file=${fileParam}'">
                     👁️ Ver
                   </button>`;
       } else {
+        // Varios archivos → ?files=...
         const filesParam = encodeURIComponent(filePaths.join(','));
         btnVer = `<button type="button" class="btn btn-sm btn-outline-primary"
-                    onclick="window.location.href='/visualizador?files=${filesParam}'">
+                      onclick="window.location.href='/visualizador?files=${filesParam}'">
                     👁️ Ver
                   </button>`;
+      }
+
+      // Si es estudio tomográfico 3D, agregamos botón extra
+      if (es3D && groupKey) {
+        const url3d = `/visualizador?mode=3d&group=${encodeURIComponent(groupKey)}`;
+        btn3D = `
+          <button type="button" class="btn btn-sm btn-warning ms-1"
+                  onclick="window.location.href='${url3d}'">
+            🧊 3D
+          </button>
+        `;
       }
 
       return `
@@ -543,7 +580,7 @@ async function cargarEstudios() {
           <td>${fecha}</td>
           <td>${tipoHtml}</td>
           <td>${notaCell}</td>
-          <td>${btnVer}</td>
+          <td>${btnVer} </td>
         </tr>
       `;
     }).join('');
@@ -698,6 +735,8 @@ document.addEventListener('DOMContentLoaded', () => {
               xhr.open('POST', url, true);
               xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 
+              xhr.timeout = 10 * 60 * 1000;
+              
               xhr.upload.onprogress = (e) => {
                 if (e.lengthComputable) {
                   const pct = (e.loaded / e.total) * 100;
@@ -705,17 +744,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
               };
 
-              xhr.onreadystatechange = () => {
-                if (xhr.readyState === 4) {
-                  if (xhr.status >= 200 && xhr.status < 300) {
-                    resolve();
-                  } else {
-                    reject(new Error(`HTTP ${xhr.status}: ${xhr.responseText?.slice(0, 200) || ''}`));
-                  }
+              xhr.onload = () => {
+                // Se completó la petición
+                if (xhr.status >= 200 && xhr.status < 300) {
+                  resolve();
+                } else {
+                  // status 0 aquí suele ser timeout o conexión abortada
+                  const msg = `HTTP ${xhr.status}: ${(xhr.responseText || '').slice(0, 200)}`;
+                  reject(new Error(msg));
                 }
               };
 
-              xhr.onerror = () => reject(new Error('Error de red al subir.'));
+              xhr.onerror = () => {
+                reject(new Error('Error de red al subir (onerror).'));
+              };
+
+              xhr.ontimeout = () => {
+                reject(new Error('Timeout al subir (tardó demasiado en responder).'));
+              };
+
               xhr.send(fd);
             });
 

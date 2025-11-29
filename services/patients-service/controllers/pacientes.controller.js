@@ -22,15 +22,26 @@ const { buscarPacientes,
 const crypto = require('crypto');
 const multer = require('multer');
 const path = require('path');
-const axios = require('axios');
-const FormData = require('form-data');
 const mime = require('mime-types');
 const fs = require('fs');
 
 const ALLOWED_EXT = ['.png','.jpg','.jpeg','.webp','.bmp','.tif','.tiff','.gif','.dcm'];
 const IMAGE_MIME_PREFIX = 'image/';
-const upload = multer({ storage: multer.memoryStorage() });
 
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 200 * 1024 * 1024, 
+    files:1000
+  }
+});
+
+const VISUALIZADOR_UPLOADS_DIR =
+  process.env.VISUALIZADOR_UPLOADS_DIR ||
+  path.join(__dirname, '../..', 'visualizador-service', 'uploads');
+
+
+fs.mkdirSync(VISUALIZADOR_UPLOADS_DIR, { recursive: true });
 
 /* =======================
  *   Pacientes: Buscar
@@ -1786,74 +1797,89 @@ const uploadStudy = [
       const ext = (path.extname(originalName) || '').toLowerCase();
 
       if (!ALLOWED_EXT.includes(ext)) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: `Extensión no permitida. Usar: ${ALLOWED_EXT.join(', ')}`
         });
       }
 
       // Detectar MIME (si no viene, inferir por extensión)
-      const detectedMime = req.file.mimetype || mime.lookup(ext) || 'application/octet-stream';
+      const detectedMime =
+        req.file.mimetype ||
+        mime.lookup(ext) ||
+        'application/octet-stream';
 
-      // Validar "imagen" vs "DICOM"
-      const isDicom = (ext === '.dcm') || detectedMime === 'application/dicom' || detectedMime === 'application/dicom+json';
+      const isDicom =
+        ext === '.dcm' ||
+        detectedMime === 'application/dicom' ||
+        detectedMime === 'application/dicom+json';
+
       const isImage = (!isDicom && detectedMime.startsWith(IMAGE_MIME_PREFIX));
 
       if (!isDicom && !isImage) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: 'Sólo se aceptan imágenes (image/*) o archivos .dcm (DICOM)'
         });
       }
 
-      // Hash de nombre (evita colisiones) + conservar extensión
+      // ------------------------------
+      // 🔐 Generar nombre hasheado
+      // ------------------------------
       const hash = crypto
         .createHash('sha256')
         .update(originalName + Date.now().toString() + crypto.randomBytes(16))
         .digest('hex')
-        .slice(0, 24); // compacto
+        .slice(0, 24);
+
       const hashedName = `${hash}${ext}`;
 
-      // Enviar al Visualizador Flask (/upload) con el nombre hasheado
-      // IMPORTANTE: Flask espera el campo 'imagen'
-      const form = new FormData();
-      form.append('imagen', req.file.buffer, { filename: hashedName, contentType: detectedMime });
+      // ------------------------------
+      // 📝 Guardar DIRECTAMENTE en visualizador-service/uploads
+      // ------------------------------
+      const finalPathFs = path.join(VISUALIZADOR_UPLOADS_DIR, hashedName);
+      await fs.promises.writeFile(finalPathFs, req.file.buffer);
 
-      const VISUALIZADOR_BASE = process.env.VISUALIZADOR_BASE || 'http://localhost:3010';
-      const flaskUrl = `${VISUALIZADOR_BASE}/upload`;
-
-      // Nota: Flask devolverá el HTML; no necesitamos parsear
-      // Lo importante es que guardará el archivo exactamente con 'hashedName'
-      await axios.post(flaskUrl, form, { headers: form.getHeaders() });
-
-      // Construir storage_path ruteable por tu gateway
-      // (Asegúrate que el proxy del gateway no reescriba el path)
+      // Ruta que el FRONT puede abrir vía Gateway → Flask
       const storage_path = `/visualizador/uploads/${hashedName}`;
 
+      // ------------------------------
       // Tipo: usar el provisto o inferir
+      // ------------------------------
       let tipo = (req.body.tipo || '').toLowerCase();
-      const ALLOWED_TIPOS = ['rx','panoramica','tac','cbct','foto','otro'];
+      const ALLOWED_TIPOS = ['rx', 'panoramica', 'tac', 'cbct', 'foto', 'otro'];
+
       if (!ALLOWED_TIPOS.includes(tipo)) {
-        // Inferencia básica: imagen => 'foto', DICOM => 'otro' (o lo que prefieras)
         tipo = isDicom ? 'otro' : 'foto';
       }
 
       const notas = (req.body.notas || '').toString().slice(0, 500) || null;
 
-      // 👇 AQUÍ LEEMOS EL group_id QUE VIENE DEL FRONT
-      const rawGroupId = (req.body.group_id || req.body.groupId || '').toString().trim();
+      // ------------------------------
+      // group_id desde el FRONT
+      // ------------------------------
+      const rawGroupId =
+        (req.body.group_id || req.body.groupId || '')
+          .toString()
+          .trim();
+
       const group_id = rawGroupId || null;
 
+      // ------------------------------
       // Insertar en BD
+      // ------------------------------
       const record = await insertPatientFile({
         paciente_id: pacienteId,
         tipo,
-        nombre_archivo: hashedName,            // ✅ solo el nombre hasheado
-        storage_path,                          // ✅ ruta pública ruteable via gateway
+        nombre_archivo: hashedName,
+        storage_path,
         size_bytes: req.file.size || null,
         mime_type: detectedMime || null,
         notas,
-        group_id                               // ✅ AHORA SÍ SE GUARDA
+        group_id
       });
 
+      // ------------------------------
+      // Respuesta final al FRONT
+      // ------------------------------
       return res.status(201).json({
         ok: true,
         file: {
@@ -1865,7 +1891,8 @@ const uploadStudy = [
           size_bytes: req.file.size || null,
           mime_type: detectedMime || null,
           fecha_subida: record.fecha_subida,
-          notas
+          notas,
+          group_id
         }
       });
 
@@ -1875,6 +1902,7 @@ const uploadStudy = [
     }
   }
 ];
+
 
 
 // === Funciones para obtener información de formularios específicos ===

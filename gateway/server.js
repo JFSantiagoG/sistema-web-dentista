@@ -5,6 +5,13 @@ const path = require('path');
 const app = express();
 const PORT = 8080;
 
+app.use((req, res, next) => {
+  // 10 minutos (en ms)
+  req.setTimeout(10 * 60 * 1000);
+  res.setTimeout(10 * 60 * 1000);
+  next();
+});
+
 // 🔐 Auth Service — SIN pathRewrite
 app.use('/auth', createProxyMiddleware({
   target: 'http://localhost:3005',
@@ -30,7 +37,9 @@ app.use('/api/appointments', createProxyMiddleware({
 app.use('/api/patients', createProxyMiddleware({
   target: 'http://localhost:3003/patients',
   changeOrigin: true,
-  pathRewrite: { '^/api/patients': '' }
+  pathRewrite: { '^/api/patients': '' },
+  timeout: 10 * 60 * 1000,       // tiempo máximo cliente ↔ gateway
+  proxyTimeout: 10 * 60 * 1000,
 }));
 
 // 📲 WhatsApp Service
