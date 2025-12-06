@@ -1,3 +1,9 @@
+const urlParams = new URLSearchParams(window.location.search);
+const viewerMode = urlParams.get('mode') || '2d';
+const pacienteId = urlParams.get('paciente') || '';
+const groupId    = urlParams.get('group')   || '';
+const filesParam = urlParams.get('files')   || '';
+
 // ===============================
 //  HELPERS SWEETALERT2
 // ===============================
@@ -42,7 +48,7 @@ function swalDeletedToast(titulo) {
 // SELECTORES BASE
 // -------------------------------------------
 const imagen = document.getElementById("imagenVisualizada");
-const dicomViewer = document.getElementById("dicomViewer");
+let dicomViewer = document.getElementById("dicomViewer");
 
 // -------------------------------------------
 // ESTADO COMÚN (JPG/PNG)
@@ -95,6 +101,12 @@ let dicomPanStart = null;
 let dicomPanStartTranslation = null;
 
 let dicomPixelSpacing = null; // [rowSpacing, colSpacing]
+// Stack 3D (varios cortes DICOM)
+let dicomStack = {
+  imageIds: [],
+  currentIndex: 0
+};
+
 
 // Figuras y Notas DICOM
 let dicomShapes = [];       // [{type:"rect"|"circle", startImg:{x,y}, endImg:{x,y}}]
@@ -111,6 +123,8 @@ let dicomAnglePreview = null;
 // INICIALIZAR DICOM
 // -------------------------------------------
 function initDicomViewer() {
+  
+  if (viewerMode === '3d') return;
   if (!dicomViewer) return;
 
   dicomViewer.style.position = "relative";
@@ -1254,21 +1268,254 @@ function goBack() {
 
 window.setFilter = setFilter;
 
+// =======================================
+//  MODO 3D: STACK DICOM (varios cortes)
+// =======================================
+function normalizePathForViewer(p) {
+  if (!p) return null;
+  const s = String(p);
+
+  // Ya viene bien
+  if (s.startsWith('/visualizador/uploads/')) return s;
+  if (s.startsWith('/visualizador/')) return s;
+
+  // /uploads/archivo → /visualizador/uploads/archivo
+  if (s.startsWith('/uploads/')) return '/visualizador' + s;
+
+  // Ruta absoluta cualquiera
+  if (s.startsWith('/')) return s;
+
+  // Sólo nombre → asumimos /visualizador/uploads/nombre
+  return '/visualizador/uploads/' + s;
+}
+
+// 🔹 AHORA ES ASÍNCRONA Y SOPORTA:
+//   - ?files=...
+//   - ?group=... → /visualizador/api/group/<group>/files
+async function buildStackFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  let paths = [];
+
+  const filesParam = params.get('files');
+
+  if (filesParam) {
+    // Igual que en la rejilla: puede venir CSV o JSON
+    const trimmed = filesParam.trim();
+    try {
+      if (trimmed.startsWith('[') || trimmed.startsWith('%5B')) {
+        const jsonStr = decodeURIComponent(trimmed);
+        const parsed = JSON.parse(jsonStr);
+        if (Array.isArray(parsed)) {
+          if (parsed.length && typeof parsed[0] === 'object') {
+            paths = parsed
+              .map(item =>
+                item.storage_path ||
+                item.path ||
+                item.file ||
+                item.url ||
+                null
+              )
+              .filter(Boolean);
+          } else {
+            paths = parsed.map(String).filter(Boolean);
+          }
+        }
+      } else {
+        const decoded = decodeURIComponent(filesParam);
+        paths = decoded
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean);
+      }
+    } catch (e) {
+      console.error('❌ Error parseando ?files= para 3D:', e);
+    }
+  }
+
+  // Si NO hay ?files=, intentamos con ?group= (igual que la rejilla)
+  if (!paths.length) {
+    const groupId = params.get('group') || params.get('group_id');
+    if (groupId) {
+      const base =
+        window.location.pathname.startsWith('/visualizador')
+          ? '/visualizador'
+          : '';
+      const url = `${base}/api/group/${encodeURIComponent(groupId)}/files`;
+
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) {
+          console.error('❌ Error HTTP en /api/group/... para 3D:', resp.status);
+        } else {
+          const data = await resp.json();
+          if (data && Array.isArray(data.files)) {
+            paths = data.files
+              .map(f => f.storage_path || f.path || f.file || null)
+              .filter(Boolean);
+          }
+        }
+      } catch (e) {
+        console.error('❌ Error haciendo fetch a /api/group/... para 3D:', e);
+      }
+    }
+  }
+
+  console.log('DEBUG 3D - paths crudos para stack:', paths);
+
+  // Normalizamos las rutas y filtramos solo DICOM
+  paths = paths
+    .map(normalizePathForViewer)
+    .filter(Boolean);
+
+  const dicomPaths = paths.filter(p => p.toLowerCase().endsWith('.dcm'));
+  const imageIds = dicomPaths.map(p => 'wadouri:' + window.location.origin + p);
+
+  console.log('DEBUG 3D - imageIds DICOM para stack:', imageIds);
+  return imageIds;
+}
+
+function loadDicomSlice(index) {
+  if (!dicomViewer || !dicomStack.imageIds.length) return;
+  if (index < 0 || index >= dicomStack.imageIds.length) return;
+
+  const imageId = dicomStack.imageIds[index];
+  dicomStack.currentIndex = index;
+
+  cornerstone.loadImage(imageId).then(image => {
+    cornerstone.displayImage(dicomViewer, image);
+
+    // guardamos viewport base una sola vez
+    if (!dicomBaseViewport) {
+      dicomBaseViewport = deepClone(cornerstone.getViewport(dicomViewer));
+    }
+    redrawDicomOverlay();
+
+    const seriesInfo = document.getElementById('seriesInfo');
+    if (seriesInfo) {
+      const nombre = (imageId.split('/').pop() || '').replace(/^wadouri:/, '');
+      seriesInfo.textContent = `${index + 1} / ${dicomStack.imageIds.length} — ${nombre}`;
+    }
+  }).catch(err => {
+    console.error('❌ Error cargando slice DICOM 3D:', err);
+  });
+}
+
+function onDicomStackScroll(e) {
+  if (!dicomStack.imageIds.length) return;
+  e.preventDefault();
+
+  const delta = e.deltaY || e.wheelDelta || 0;
+  let nextIndex = dicomStack.currentIndex;
+
+  if (delta > 0) {
+    nextIndex = Math.min(dicomStack.imageIds.length - 1, dicomStack.currentIndex + 1);
+  } else if (delta < 0) {
+    nextIndex = Math.max(0, dicomStack.currentIndex - 1);
+  }
+
+  if (nextIndex !== dicomStack.currentIndex) {
+    loadDicomSlice(nextIndex);
+  }
+}
+
+// 🔹 AHORA ES ASÍNCRONA
+async function init3DStackFromFiles() {
+  // Contenedor: usamos dicomViewer si existe, si no, seriesViewer
+  let container = document.getElementById('dicomViewer');
+  if (!container) {
+    container = document.getElementById('seriesViewer');
+  }
+  if (!container) {
+    console.warn('⚠️ No hay contenedor para modo 3D (dicomViewer ni seriesViewer)');
+    return;
+  }
+
+  dicomViewer = container;
+  dicomViewer.style.display   = 'block';
+  dicomViewer.style.minHeight = '480px';
+  dicomViewer.style.background = '#000';
+  dicomViewer.style.position = 'relative';
+  dicomViewer.style.touchAction = 'none';
+
+  if (window.cornerstoneWADOImageLoader) {
+    cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
+    cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
+    try {
+      cornerstoneWADOImageLoader.webWorkerManager.initialize({
+        webWorkerPath: "/visualizador/static/libs/cornerstoneWADOImageLoaderWebWorker.js",
+        taskConfiguration: {
+          decodeTask: {
+            codecsPath: "/visualizador/static/libs/cornerstoneWADOImageLoaderCodecs.js"
+          }
+        }
+      });
+    } catch (e) {
+      console.warn("⚠️ WebWorker opcional no inicializado en 3D");
+    }
+  }
+
+  try {
+    cornerstone.enable(dicomViewer);
+  } catch (e) {
+    console.error('❌ cornerstone.enable falló en 3D:', e);
+    return;
+  }
+
+  // ⬇️ AQUÍ LA CLAVE: aceptamos ?files= o ?group=
+  const imageIds = await buildStackFromQuery();
+  if (!imageIds.length) {
+    console.warn('⚠️ No se encontraron DICOM válidos ni en ?files= ni en ?group= para 3D');
+    return;
+  }
+
+  dicomStack.imageIds = imageIds;
+  dicomStack.currentIndex = 0;
+  isDicom = true;
+
+  ensureDicomOverlay();
+  wireDicomMouseEvents();
+  loadDicomSlice(0);
+
+  dicomViewer.addEventListener('wheel', onDicomStackScroll, { passive: false });
+
+  console.log('✅ Modo 3D inicializado con', imageIds.length, 'slices');
+}
+
+
+
 // ======================
 //  REJILLA + CARRUSEL
 // ======================
-(function () {
-  // 1) Intentar leer desde el <script id="multi-files-data"> (modo clásico)
-  let files = [];
-  const dataTag = document.getElementById('multi-files-data');
+(async function () {
+  // Si estamos en modo 3D, no armamos rejilla/carrusel
+  if (viewerMode === '3d') return;
 
+  let files = [];
+
+  // =========================
+  // 1) multi-files-data (HTML)
+  // =========================
+  const dataTag = document.getElementById('multi-files-data');
   if (dataTag) {
     try {
       const raw = (dataTag.textContent || '').trim();
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          files = parsed;
+          // Puede venir como ["ruta1","ruta2"] o como [{storage_path:"..."}, ...]
+          if (parsed.length && typeof parsed[0] === 'object') {
+            files = parsed
+              .map(item =>
+                item.storage_path ||
+                item.path ||
+                item.file ||
+                item.url ||
+                null
+              )
+              .filter(Boolean);
+          } else {
+            files = parsed.map(String).filter(Boolean);
+          }
         }
       }
     } catch (err) {
@@ -1276,22 +1523,92 @@ window.setFilter = setFilter;
     }
   }
 
-  // 2) Si no hay nada en el script, intentamos con ?files= de la URL
+  // =========================
+  // 2) ?files= en la URL
+  // =========================
   if (!files.length) {
-    const params = new URLSearchParams(window.location.search);
-    const filesParam = params.get('files');
-    if (filesParam) {
-      const decoded = decodeURIComponent(filesParam);
-      files = decoded
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean);
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const filesParam = params.get('files');
+      if (filesParam) {
+        const trimmed = filesParam.trim();
+
+        // Puede venir como JSON encodeado o CSV plano
+        if (trimmed.startsWith('[') || trimmed.startsWith('%5B')) {
+          const jsonStr = decodeURIComponent(trimmed);
+          const parsed = JSON.parse(jsonStr);
+          if (Array.isArray(parsed)) {
+            if (parsed.length && typeof parsed[0] === 'object') {
+              files = parsed
+                .map(item =>
+                  item.storage_path ||
+                  item.path ||
+                  item.file ||
+                  item.url ||
+                  null
+                )
+                .filter(Boolean);
+            } else {
+              files = parsed.map(String).filter(Boolean);
+            }
+          }
+        } else {
+          const decoded = decodeURIComponent(filesParam);
+          files = decoded
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error leyendo ?files= de la URL:', err);
     }
   }
 
-  // Si seguimos sin archivos, no hay rejilla ni carrusel que mostrar
+  // =========================
+  // 3) ?group=  → API Flask
+  // =========================
+  if (!files.length) {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const groupId = params.get('group') || params.get('group_id');
+
+      if (groupId) {
+        const base =
+          window.location.pathname.startsWith('/visualizador')
+            ? '/visualizador'
+            : '';
+
+        const url = `${base}/api/group/${encodeURIComponent(
+          groupId
+        )}/files`;
+
+        const resp = await fetch(url);
+        if (!resp.ok) {
+          console.error('❌ Error HTTP en /api/group/...:', resp.status);
+        } else {
+          const data = await resp.json();
+          if (data && Array.isArray(data.files)) {
+            // Tu backend ya manda storage_path normalizado tipo "/visualizador/uploads/xxx"
+            files = data.files
+              .map(f => f.storage_path || f.path || f.file || null)
+              .filter(Boolean);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error haciendo fetch a /api/group/...:', err);
+    }
+  }
+
+  console.log('DEBUG REJILLA - files encontrados:', files);
+
+  // Si seguimos sin archivos, no mostramos nada
   if (!Array.isArray(files) || files.length === 0) return;
 
+  // =========================
+  //  A partir de aquí es igual: rejilla + carrusel
+  // =========================
   const pageSize = 9;
   let page = 0;
 
@@ -1316,13 +1633,18 @@ window.setFilter = setFilter;
   if (viewer) viewer.style.display = 'none';
   if (btnStop) btnStop.disabled = true;
 
-  // Helper: normalizar entrada (puede venir como nombre o ruta completa)
+  // Normaliza la ruta que viene del backend (nombre, /uploads/..., /visualizador/uploads/...)
   function resolvePath(entry) {
     if (!entry) return null;
-    // Si ya es una ruta absoluta (/visualizador/uploads/...), la usamos tal cual
-    if (entry.startsWith('/')) return entry;
-    // Si es solo el nombre, le anteponemos el prefijo estándar
-    return '/visualizador/uploads/' + entry;
+    const s = String(entry);
+
+    if (s.startsWith('/visualizador/uploads/')) return s;
+    if (s.startsWith('/visualizador/')) return s;
+    if (s.startsWith('/uploads/')) return '/visualizador' + s;
+    if (s.startsWith('/')) return s;
+
+    // Sólo nombre → asumimos /visualizador/uploads/nombre
+    return '/visualizador/uploads/' + s;
   }
 
   function getDisplayName(entry) {
@@ -1336,8 +1658,8 @@ window.setFilter = setFilter;
     if (typeof cornerstone === 'undefined' || typeof cornerstoneWADOImageLoader === 'undefined') return;
 
     try {
-      cornerstoneWADOImageLoader.external.cornerstone  = cornerstone;
-      cornerstoneWADOImageLoader.external.dicomParser  = dicomParser;
+      cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
+      cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
       try {
         cornerstoneWADOImageLoader.webWorkerManager.initialize({
           webWorkerPath: '/visualizador/static/libs/cornerstoneWADOImageLoaderWebWorker.js',
@@ -1565,6 +1887,7 @@ window.setFilter = setFilter;
 })();
 
 
+
 // ======================
 // INPUT MULTIPLE (subida)
 // ======================
@@ -1684,3 +2007,22 @@ if (contrastSlider) {
     }
   });
 }
+// ==========================
+//  INICIALIZACIÓN GLOBAL
+// ==========================
+document.addEventListener('DOMContentLoaded', () => {
+  if (viewerMode === '3d') {
+    // Iniciamos el stack 3D con archivos de ?files= o ?group=
+    (async () => {
+      try {
+        await init3DStackFromFiles();
+      } catch (e) {
+        console.error('❌ Error inicializando modo 3D:', e);
+        if (haveSwal()) {
+          Swal.fire('Error', 'No se pudo inicializar el modo 3D.', 'error');
+        }
+      }
+    })();
+  }
+});
+

@@ -38,8 +38,8 @@ app.use('/api/patients', createProxyMiddleware({
   target: 'http://localhost:3003/patients',
   changeOrigin: true,
   pathRewrite: { '^/api/patients': '' },
-  timeout: 10 * 60 * 1000,       // tiempo máximo cliente ↔ gateway
-  proxyTimeout: 10 * 60 * 1000,
+  timeout: 0,       
+  proxyTimeout: 0,
 }));
 
 // 📲 WhatsApp Service

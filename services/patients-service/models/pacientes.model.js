@@ -1582,6 +1582,25 @@ async function getEvolucionSummaryForPatient(pacienteId, conn) {
   return rows[0] || null;
 }
 
+async function getPatientStudyFilesByGroup(pacienteId, groupId) {
+  const [rows] = await db.query(
+    `
+    SELECT 
+      id,
+      storage_path,
+      tipo,
+      notas,
+      fecha_subida,
+      creado_en
+    FROM patient_files
+    WHERE paciente_id = ? AND group_id = ?
+    ORDER BY fecha_subida ASC, id ASC
+    `,
+    [pacienteId, groupId]
+  );
+  return rows;
+}
+
 
 module.exports = { 
   buscarPacientes, 
@@ -1604,5 +1623,6 @@ module.exports = {
   guardarFirma,
   FIRMAS_DIR,
   getRecetaByFormId,
-  getConsentOdontById 
+  getConsentOdontById,
+  getPatientStudyFilesByGroup
 };

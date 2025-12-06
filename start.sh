@@ -15,14 +15,25 @@ start_service() {
     npm install --omit=dev >/dev/null 2>&1
   fi
 
+  # 🔹 Config especial para el visualizador (Flask + MySQL)
   if [[ "$name" == "visualizador" ]]; then
+    # Crear venv si no existe
     if [ ! -d "venv" ]; then
+      echo "   🐍 Creando venv para visualizador..."
       python3 -m venv venv
-      source venv/bin/activate
-      pip install flask werkzeug
-    else
-      source venv/bin/activate
     fi
+
+    # Activar venv
+    # shellcheck disable=SC1091
+    source venv/bin/activate
+
+    echo "   📦 Instalando dependencias de Python en venv..."
+    # Opcional: actualizar pip dentro del venv
+    pip install --upgrade pip >/dev/null 2>&1
+
+    # Flask, Werkzeug y mysql-connector-python dentro del venv
+    pip install flask werkzeug mysql-connector-python >/dev/null 2>&1
+
     export FLASK_ENV=production
     export FLASK_DEBUG=0
   fi
@@ -35,7 +46,7 @@ start_service() {
 }
 
 # Iniciar servicios
-start_service "gateway"      "$BASE/gateway"                     "node server.js"
+start_service "gateway"      "$BASE/gateway"                      "node server.js"
 start_service "auth"         "$BASE/services/auth-service"        "node server.js"
 start_service "forms"        "$BASE/services/forms-service"       "node server.js"
 start_service "pdf"          "$BASE/services/pdf-service"         "node server.js"

@@ -48,14 +48,22 @@
       </button>
     </form>
 
-    <!-- ========== MODO CARPETA (MULTI FILES) ========== -->
-    {% if filenames and filenames|length > 0 %}
+       <!-- ========== MODO CARPETA / GRUPO (MULTI FILES) ========== -->
+    {# Se muestra si hay filenames (subida directa) O si venimos con ?group=... #}
+    {% if (filenames and filenames|length > 0) or group_id %}
 
       <div class="text-center mb-3">
-        <h5 class="mb-1">📂 Carpeta con {{ filenames|length }} archivos</h5>
-        <p class="text-muted mb-0">
-          Haz clic en una miniatura para abrirla o usa el modo serie para reproducirlas.
-        </p>
+        {% if filenames %}
+          <h5 class="mb-1">📂 Carpeta con {{ filenames|length }} archivos</h5>
+          <p class="text-muted mb-0">
+            Haz clic en una miniatura para abrirla o usa el modo serie para reproducirlas.
+          </p>
+        {% else %}
+          <h5 class="mb-1">📂 Estudio del paciente</h5>
+          <p class="text-muted mb-0">
+            Haz clic en una miniatura para abrirla o usa el modo serie para recorrer los cortes.
+          </p>
+        {% endif %}
       </div>
 
       <!-- Controles de serie -->
@@ -76,7 +84,7 @@
         <span id="seriesInfo" class="ms-3 small text-muted"></span>
       </div>
 
-      <!-- Visor de serie (oculto al inicio, se muestra con JS) -->
+      <!-- Visor de serie (lo usa también el modo 3D como contenedor) -->
       <div id="seriesViewer" class="series-viewer-container mb-4"></div>
 
       <!-- Rejilla 3x3 -->
@@ -89,11 +97,14 @@
         <button id="nextPage" class="btn btn-sm btn-outline-secondary">Siguiente ➡️</button>
       </div>
 
-      <!-- Pasamos filenames al JS -->
-      <script id="multi-files-data" type="application/json">
-        {{ filenames | tojson | safe }}
-      </script>
+      {# Sólo pasamos filenames al JS cuando realmente existen (modo upload) #}
+      {% if filenames %}
+        <script id="multi-files-data" type="application/json">
+          {{ filenames | tojson | safe }}
+        </script>
+      {% endif %}
     {% endif %}
+
 
     <!-- ========== MODO INDIVIDUAL ========== -->
     {% if filename %}

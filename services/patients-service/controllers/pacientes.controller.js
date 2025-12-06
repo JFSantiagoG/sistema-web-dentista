@@ -14,6 +14,7 @@ const { buscarPacientes,
   getEvolucionCabeceraByFormId,
   appendEvolucionesDetalle,
   getEvolucionSummaryForPatient,
+  getPatientStudyFilesByGroup,
   getRecetaByFormId,
   FIRMAS_DIR,
   guardarFirma
@@ -2586,6 +2587,16 @@ async function appendEvoluciones(req, res) {
   }
 }
 
+async function obtenerStudyFilesByGroup(req, res) {
+  const { id, groupId } = req.params;
+  try {
+    const rows = await getPatientStudyFilesByGroup(id, groupId);
+    res.json(rows);
+  } catch (err) {
+    console.error('Error en obtenerStudyFilesByGroup:', err);
+    res.status(500).json({ error: 'Error al obtener archivos del estudio' });
+  }
+}
 
 
 module.exports = {
@@ -2605,6 +2616,7 @@ module.exports = {
   crearDiagInfantil,
   crearReceta,
   uploadStudy,
+  obtenerStudyFilesByGroup,
   // Obtener info específica de formularios
   getRecetaByFormularioId,
   getRecetaDetalle,

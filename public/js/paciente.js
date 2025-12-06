@@ -529,58 +529,57 @@ async function cargarEstudios() {
         : '—';
       const notaCell = `<span title="${fullNote.replace(/"/g, '&quot;')}">${shortNote}</span>`;
 
-      // Rutas de archivos para el visualizador
-      const filePaths = files
-        .map(f => f.storage_path || f.nombre_archivo || '')
-        .filter(Boolean)
-        .map(p => {
-          const s = String(p);
-          // normalizamos para que siempre sea algo tipo /visualizador/uploads/xxxx
-          if (s.startsWith('/visualizador/uploads/')) return s;
-          if (s.startsWith('/uploads/')) return '/visualizador' + s;
-          if (s.startsWith('/')) return s;
-          return '/visualizador/uploads/' + s;
-        });
+            // 🔹 Intentamos usar group_id real del backend
+      const groupId =
+        g.key ||
+        files[0]?.group_id ||
+        files[0]?.group ||
+        null;
 
-      let btnVer= '';
+      let btnVer = '';
       let btn3D = '';
-      if (!filePaths.length) {
-        btnVer = `<button type="button" class="btn btn-sm btn-outline-secondary" disabled>
-                    Sin archivos
-                  </button>`;
-      } else if (filePaths.length === 1) {
-        // Un solo archivo → ?file=
-        const fileParam = encodeURIComponent(filePaths[0]);
-        btnVer = `<button type="button" class="btn btn-sm btn-outline-primary"
-                      onclick="window.location.href='/visualizador?file=${fileParam}'">
-                    👁️ Ver
-                  </button>`;
+
+      if (!groupId) {
+        // Sin grupo → botón deshabilitado
+        btnVer = `
+          <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
+            Sin grupo
+          </button>`;
       } else {
-        // Varios archivos → ?files=...
-        const filesParam = encodeURIComponent(filePaths.join(','));
-        btnVer = `<button type="button" class="btn btn-sm btn-outline-primary"
-                      onclick="window.location.href='/visualizador?files=${filesParam}'">
-                    👁️ Ver
-                  </button>`;
+        // URL base del visualizador
+        const baseViewerUrl =
+          `/visualizador?paciente=${encodeURIComponent(pacienteId)}&group=${encodeURIComponent(groupId)}`;
+
+        // 👁️ Ver (modo normal 2D)
+        btnVer = `
+          <a class="btn btn-sm btn-outline-primary"
+             href="${baseViewerUrl}"
+             rel="noopener">
+            👁️ Ver
+          </a>
+        `;
+
+        // 🧊 Ver secciones 3D SOLO si es tomografía con varios DICOM
+        if (es3D && files.length > 1) {
+          const url3d = `${baseViewerUrl}&mode=3d`;
+          btn3D = `
+            <a class="btn btn-sm btn-warning ms-1"
+               href="${url3d}"
+               rel="noopener">
+              🧊 Ver secciones
+            </a>
+          `;
+        }
       }
 
-      // Si es estudio tomográfico 3D, agregamos botón extra
-      if (es3D && groupKey) {
-        const url3d = `/visualizador?mode=3d&group=${encodeURIComponent(groupKey)}`;
-        btn3D = `
-          <button type="button" class="btn btn-sm btn-warning ms-1"
-                  onclick="window.location.href='${url3d}'">
-            🧊 3D
-          </button>
-        `;
-      }
+
 
       return `
         <tr>
           <td>${fecha}</td>
           <td>${tipoHtml}</td>
           <td>${notaCell}</td>
-          <td>${btnVer} </td>
+          <td>${btnVer} ${btn3D}</td>
         </tr>
       `;
     }).join('');
@@ -604,7 +603,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ========= Subida de estudios (frontend con modal y progreso, varios archivos) =========
 (() => {
-  const MAX_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB por archivo
+  const MAX_SIZE_BYTES   = 200 * 1024 * 1024; // 200 MB por archivo
+  const BATCH_SIZE       = 40;                // 👈 Tamaño de lote (50 archivos)
+  const XHR_TIMEOUT_MS   = 10 * 60 * 1000;    // 10 minutos por archivo
 
   let uploadModal, uploadForm, fileInput, tipoSelect, notasInput, bar, status, info, submitBtn;
 
@@ -616,13 +617,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function resetProgress() {
+    if (!bar) return;
     bar.style.width = '0%';
     bar.setAttribute('aria-valuenow', '0');
     bar.textContent = '0%';
-    status.textContent = '';
+    if (status) status.textContent = '';
   }
 
   function setProgress(pct) {
+    if (!bar) return;
     const v = Math.max(0, Math.min(100, Math.round(pct)));
     bar.style.width = `${v}%`;
     bar.setAttribute('aria-valuenow', String(v));
@@ -645,21 +648,82 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'grp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
 
+  // 🔧 Prepara el File (si no tiene punto, le agrega ".dcm")
+  function prepararFile(originalFile) {
+    const name = originalFile.name || '';
+    if (name.includes('.')) return originalFile;
+
+    const newName = name + '.dcm';
+    try {
+      return new File([originalFile], newName, {
+        type: originalFile.type || 'application/dicom'
+      });
+    } catch (err) {
+      console.warn('No se pudo recrear File, uso el original:', err);
+      return originalFile;
+    }
+  }
+
+  // 🔁 Sube UN solo archivo con XHR (devuelve Promise)
+  function uploadSingleFile(file, groupId, url) {
+    return new Promise((resolve, reject) => {
+      const f = prepararFile(file);
+      const fd = new FormData();
+
+      // nombre del campo que espera Multer
+      fd.append('file', f);
+      fd.append('group_id', groupId);
+      if (tipoSelect.value)  fd.append('tipo',  tipoSelect.value);
+      if (notasInput.value)  fd.append('notas', notasInput.value);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url, true);
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.timeout = XHR_TIMEOUT_MS;
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = (e.loaded / e.total) * 100;
+          setProgress(pct); // progreso *local* del archivo actual
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          const msg = `HTTP ${xhr.status}: ${(xhr.responseText || '').slice(0, 200)}`;
+          reject(new Error(msg));
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new Error('Error de red al subir (onerror).'));
+      };
+
+      xhr.ontimeout = () => {
+        reject(new Error('Timeout al subir (tardó demasiado en responder).'));
+      };
+
+      xhr.send(fd);
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     const btnOpen = document.getElementById('btn-subir-estudio');
-    uploadForm = document.getElementById('formUploadEstudio');
-    fileInput = document.getElementById('inputArchivoEstudio');
-    tipoSelect = document.getElementById('selectTipoEstudio');
-    notasInput = document.getElementById('inputNotasEstudio');
-    bar = document.getElementById('uploadProgressBar');
-    status = document.getElementById('uploadStatus');
-    info = document.getElementById('fileInfo');
-    submitBtn = document.getElementById('btnEnviarUpload');
+    uploadForm    = document.getElementById('formUploadEstudio');
+    fileInput     = document.getElementById('inputArchivoEstudio');
+    tipoSelect    = document.getElementById('selectTipoEstudio');
+    notasInput    = document.getElementById('inputNotasEstudio');
+    bar           = document.getElementById('uploadProgressBar');
+    status        = document.getElementById('uploadStatus');
+    info          = document.getElementById('fileInfo');
+    submitBtn     = document.getElementById('btnEnviarUpload');
 
     if (btnOpen) {
       btnOpen.addEventListener('click', () => {
         resetProgress();
-        info.textContent = '';
+        if (info) info.textContent = '';
         if (uploadForm) uploadForm.reset();
         const modalEl = document.getElementById('modalUploadEstudio');
         uploadModal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -672,11 +736,13 @@ document.addEventListener('DOMContentLoaded', () => {
       fileInput.addEventListener('change', () => {
         const files = Array.from(fileInput.files || []);
         if (!files.length) {
-          info.textContent = '';
+          if (info) info.textContent = '';
           return;
         }
         const totalBytes = files.reduce((acc, f) => acc + f.size, 0);
-        info.textContent = `Archivos seleccionados: ${files.length} — Total: ${fmtBytes(totalBytes)}`;
+        if (info) {
+          info.textContent = `Archivos seleccionados: ${files.length} — Total: ${fmtBytes(totalBytes)}`;
+        }
       });
     }
 
@@ -685,107 +751,68 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
 
         const files = Array.from(fileInput?.files || []);
-        const err = validateFiles(files);
+        const err   = validateFiles(files);
         if (err) {
           alert('⚠️ ' + err);
           return;
         }
 
-        // ✅ mismo group_id para TODOS los archivos en esta subida
         const groupId = generarGroupId();
-        const url = `/api/patients/${encodeURIComponent(pacienteId)}/studies/upload`;
+        const url     = `/api/patients/${encodeURIComponent(pacienteId)}/studies/upload`;
 
-        submitBtn.disabled = true;
-        status.textContent = 'Subiendo...';
+        if (submitBtn) submitBtn.disabled = true;
+        if (status) status.textContent = 'Subiendo...';
         resetProgress();
 
+        const total     = files.length;
+        let okCount     = 0;
+        let failCount   = 0;
+
         try {
-          let subidos = 0;
+          const totalBatches = Math.ceil(total / BATCH_SIZE);
 
-          
-          // 🔁 Enviamos CADA archivo en una petición separada
-          for (const originalFile of files) {
-            await new Promise((resolve, reject) => {
+          for (let start = 0; start < total; start += BATCH_SIZE) {
+            const batchIndex = Math.floor(start / BATCH_SIZE) + 1;
+            const batchFiles = files.slice(start, start + BATCH_SIZE);
+            console.log(`🔹 Lote ${batchIndex}/${totalBatches} con ${batchFiles.length} archivos`);
 
-              let f = originalFile;
-              const name = f.name || '';
-
-              // ⬇⬇⬇ SI NO TIENE PUNTO EN EL NOMBRE → le agregamos ".dcm"
-              if (!name.includes('.')) {
-                const newName = name + '.dcm';
-                try {
-                  f = new File([f], newName, {
-                    type: f.type || 'application/dicom'
-                  });
-                } catch (err) {
-                  console.warn('No se pudo recrear File, uso el original:', err);
-                  // si por alguna razón falla, seguimos con el original
-                }
+            // Dentro del lote, subimos uno por uno (con await)
+            for (const file of batchFiles) {
+              try {
+                await uploadSingleFile(file, groupId, url);
+                okCount++;
+              } catch (fileErr) {
+                failCount++;
+                console.error('❌ Error subiendo archivo (continuo con el siguiente):', file.name, fileErr);
+                // NO lanzamos hacia fuera para no abortar todo
               }
 
-              const fd = new FormData();
-              // 👇 nombre del campo que espera Multer (NO cambiar esto)
-              fd.append('file', f);
-              // 👇 group_id y metadatos como campos normales
-              fd.append('group_id', groupId);
-              if (tipoSelect.value) fd.append('tipo', tipoSelect.value);
-              if (notasInput.value) fd.append('notas', notasInput.value);
-
-              const xhr = new XMLHttpRequest();
-              xhr.open('POST', url, true);
-              xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-
-              xhr.timeout = 10 * 60 * 1000;
-              
-              xhr.upload.onprogress = (e) => {
-                if (e.lengthComputable) {
-                  const pct = (e.loaded / e.total) * 100;
-                  setProgress(pct);
-                }
-              };
-
-              xhr.onload = () => {
-                // Se completó la petición
-                if (xhr.status >= 200 && xhr.status < 300) {
-                  resolve();
-                } else {
-                  // status 0 aquí suele ser timeout o conexión abortada
-                  const msg = `HTTP ${xhr.status}: ${(xhr.responseText || '').slice(0, 200)}`;
-                  reject(new Error(msg));
-                }
-              };
-
-              xhr.onerror = () => {
-                reject(new Error('Error de red al subir (onerror).'));
-              };
-
-              xhr.ontimeout = () => {
-                reject(new Error('Timeout al subir (tardó demasiado en responder).'));
-              };
-
-              xhr.send(fd);
-            });
-
-            subidos++;
-            const pctGlobal = (subidos / files.length) * 100;
-            setProgress(pctGlobal);
+              // progreso global = (ok + fail) / total
+              const pctGlobal = ((okCount + failCount) / total) * 100;
+              setProgress(pctGlobal);
+            }
           }
 
-
-
-          status.textContent = '✅ Archivos subidos correctamente';
+          if (status) {
+            if (failCount === 0) {
+              status.textContent = `✅ Se subieron ${okCount} archivo(s) correctamente.`;
+            } else {
+              status.textContent =
+                `⚠️ Se subieron ${okCount} archivo(s); ${failCount} con error (ver consola).`;
+            }
+          }
 
           setTimeout(() => {
             if (uploadModal) uploadModal.hide();
             cargarEstudios(); // recarga la tabla agrupada
-          }, 600);
+          }, 800);
 
-        } catch (err) {
-          console.error('❌ Error subida:', err);
-          status.textContent = '❌ Error al subir';
-          alert('❌ Error al subir estudio: ' + (err.message || 'ver consola'));
+        } catch (err2) {
+          console.error('❌ Error general de subida:', err2);
+          if (status) status.textContent = '❌ Error al subir';
+          alert('❌ Error general al subir estudio: ' + (err2.message || 'ver consola'));
         } finally {
-          submitBtn.disabled = false;
+          if (submitBtn) submitBtn.disabled = false;
         }
       });
     }
