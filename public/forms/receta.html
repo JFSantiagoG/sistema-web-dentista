@@ -58,11 +58,26 @@
             </thead>
             <tbody>
               <tr>
-                <td><input type="text" class="form-control" name="medicamento[]"></td>
-                <td><input type="text" class="form-control" name="dosis[]"></td>
-                <td><input type="text" class="form-control" name="frecuencia[]"></td>
-                <td><input type="text" class="form-control" name="duracion[]"></td>
-                <td><input type="text" class="form-control" name="indicaciones[]"></td>
+                <td>
+                  <select class="form-control medicamento-select" name="medicamento[]">
+                    <option value="" selected disabled>Seleccionar medicamento...</option>
+                    <option value="Amoxicilina">Amoxicilina</option>
+                    <option value="Amoxicilina + Ácido clavulánico">Amoxicilina + Ácido clavulánico</option>
+                    <option value="Clindamicina">Clindamicina</option>
+                    <option value="Ibuprofeno">Ibuprofeno</option>
+                    <option value="Paracetamol">Paracetamol</option>
+                    <option value="Ibuprofeno + Paracetamol">Ibuprofeno + Paracetamol</option>
+                    <option value="Metronidazol">Metronidazol</option>
+                    <option value="Diclofenaco sódico">Diclofenaco sódico</option>
+                    <option value="Dexametasona">Dexametasona</option>
+                    <option value="Enjuague bucal con clorhexidina al 0.12%">Enjuague bucal con clorhexidina al 0.12%</option>
+                    <option value="Otros">Otros</option>
+                  </select>
+                </td>
+                <td><input type="text" class="form-control dosis-input" name="dosis[]" placeholder="Ej: 500 mg"></td>
+                <td><input type="text" class="form-control frecuencia-input" name="frecuencia[]" placeholder="Ej: Cada 8 horas"></td>
+                <td><input type="text" class="form-control duracion-input" name="duracion[]" placeholder="Ej: 5–7 días"></td>
+                <td><input type="text" class="form-control indicaciones-input" name="indicaciones[]" placeholder="Indicaciones..."></td>
                 <td class="text-center">
                   <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row">🗑️</button>
                 </td>

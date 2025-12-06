@@ -651,3 +651,120 @@ async function getFirmaBase64() {
     await cargarPaciente();
   }
 });
+
+// Definir los datos predeterminados para cada medicamento
+const medicamentosData = {
+  "Amoxicilina": {
+    dosis: "500 mg",
+    frecuencia: "Cada 8 horas",
+    duracion: "5–7 días",
+    indicaciones: "Infecciones dentales (abscesos, celulitis, periodontitis aguda)."
+  },
+  "Amoxicilina + Ácido clavulánico": {
+    dosis: "500/125 mg o 875/125 mg",
+    frecuencia: "Cada 8 o 12 horas (según formulación)",
+    duracion: "5–7 días",
+    indicaciones: "Infecciones moderadas a severas, o cuando se sospecha resistencia bacteriana."
+  },
+  "Clindamicina": {
+    dosis: "300 mg",
+    frecuencia: "Cada 6–8 horas",
+    duracion: "5–7 días",
+    indicaciones: "Alternativa en pacientes alérgicos a penicilinas."
+  },
+  "Ibuprofeno": {
+    dosis: "400–600 mg",
+    frecuencia: "Cada 6–8 horas (máx. 2400 mg/día)",
+    duracion: "3–5 días (solo mientras persista el dolor/inflamación)",
+    indicaciones: "Dolor postoperatorio, inflamación."
+  },
+  "Paracetamol": {
+    dosis: "500–1000 mg",
+    frecuencia: "Cada 6–8 horas (máx. 4000 mg/día)",
+    duracion: "3–5 días",
+    indicaciones: "Dolor leve a moderado; alternativa si hay contraindicación para AINEs."
+  },
+  "Ibuprofeno + Paracetamol": {
+    dosis: "Ibuprofeno 400 mg + Paracetamol 500–650 mg",
+    frecuencia: "Cada 8 horas (alternando o combinando según protocolo)",
+    duracion: "2–5 días",
+    indicaciones: "Manejo del dolor dental postoperatorio (sinergia analgésica)."
+  },
+  "Metronidazol": {
+    dosis: "500 mg",
+    frecuencia: "Cada 8 horas",
+    duracion: "5–7 días",
+    indicaciones: "Infecciones anaerobias (ej. periodontitis aguda, abscesos pericoronarios). Usualmente en combinación con amoxicilina."
+  },
+  "Diclofenaco sódico": {
+    dosis: "50 mg",
+    frecuencia: "Cada 8 horas",
+    duracion: "3–5 días",
+    indicaciones: "Dolor e inflamación postoperatoria."
+  },
+  "Dexametasona": {
+    dosis: "4–8 mg (dosis única o dividida)",
+    frecuencia: "Una sola dosis o dividida en 2–3 tomas el primer día",
+    duracion: "1–3 días (generalmente solo el día de la cirugía y el siguiente)",
+    indicaciones: "Reducción de edema postoperatorio (ej. tras extracciones complejas o cirugía de terceros molares)."
+  },
+  "Enjuague bucal con clorhexidina al 0.12%": {
+    dosis: "15 mL",
+    frecuencia: "Enjuague durante 30 segundos, 2 veces al día (mañana y noche)",
+    duracion: "7–14 días (no más de 2 semanas continuas para evitar manchas dentales)",
+    indicaciones: "Prevención de infecciones, control de placa postoperatoria."
+  }
+  // "Otros" no tiene datos predeterminados, se dejarán los campos vacíos.
+};
+
+// Función para llenar los campos basados en la selección
+function llenarCamposMedicamento(selectElement) {
+  const medicamentoNombre = selectElement.value;
+  const fila = selectElement.closest('tr');
+  
+  // Obtener los inputs de la misma fila
+  const dosisInput = fila.querySelector('.dosis-input');
+  const frecuenciaInput = fila.querySelector('.frecuencia-input');
+  const duracionInput = fila.querySelector('.duracion-input');
+  const indicacionesInput = fila.querySelector('.indicaciones-input');
+
+  if (medicamentoNombre && medicamentosData[medicamentoNombre]) {
+    // Si el medicamento está en nuestra lista, llenamos los campos
+    dosisInput.value = medicamentosData[medicamentoNombre].dosis;
+    frecuenciaInput.value = medicamentosData[medicamentoNombre].frecuencia;
+    duracionInput.value = medicamentosData[medicamentoNombre].duracion;
+    indicacionesInput.value = medicamentosData[medicamentoNombre].indicaciones;
+  } else {
+    // Si es "Otros" o no está definido, limpiamos los campos
+    dosisInput.value = '';
+    frecuenciaInput.value = '';
+    duracionInput.value = '';
+    indicacionesInput.value = '';
+  }
+}
+
+// Asociar el evento 'change' a todos los selects existentes (incluyendo los nuevos)
+document.addEventListener('DOMContentLoaded', function() {
+  // Para los selects que ya están en el DOM al cargar la página
+  document.querySelectorAll('.medicamento-select').forEach(function(select) {
+    select.addEventListener('change', function() {
+      llenarCamposMedicamento(this);
+    });
+  });
+
+  // Si tienes una función para agregar nuevas filas (como addMedicamentoBtn), asegúrate de que al crear una nueva fila,
+  // el nuevo select también tenga el evento 'change' asociado.
+  // Por ejemplo, si usas jQuery o plain JS para agregar filas, deberías hacer algo como:
+  // newSelect.addEventListener('change', function() { llenarCamposMedicamento(this); });
+});
+
+// Si estás usando jQuery para manejar el botón de agregar, aquí un ejemplo de cómo podrías integrarlo:
+// (Asumiendo que tu función addMedicamentoBtn ya existe)
+// document.getElementById('addMedicamentoBtn').addEventListener('click', function() {
+//   // ... código para clonar la fila o crear una nueva ...
+//   const nuevaFila = /* tu código para crear la nueva fila */;
+//   const nuevoSelect = nuevaFila.querySelector('.medicamento-select');
+//   nuevoSelect.addEventListener('change', function() {
+//     llenarCamposMedicamento(this);
+//   });
+// });
