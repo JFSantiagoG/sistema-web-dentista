@@ -1,3 +1,49 @@
+// services/pdf-service/utils/pdffirma.js
+const { Buffer } = require("buffer");
+
+/**
+ * Intenta convertir una firma (dataURL o base64) en un Buffer PNG válido
+ * @param {string} firmaBase64
+ * @returns {Buffer|null}
+ */
+function decodeFirmaToPngBuffer(firmaBase64) {
+  if (!firmaBase64 || typeof firmaBase64 !== "string") return null;
+
+  let raw = firmaBase64.trim();
+
+  // 1) Si viene como dataURL: data:image/png;base64,AAAA...
+  const m = raw.match(/^data:image\/[a-zA-Z0-9.+-]+;base64,(.*)$/);
+  if (m) {
+    raw = m[1];
+  }
+
+  // 2) Limpiar caracteres NO válidos de base64 (por si algo se coló)
+  //    Permitimos A-Z a-z 0-9 + / =
+  raw = raw.replace(/[^A-Za-z0-9+/=]/g, "");
+
+  let buffer;
+  try {
+    buffer = Buffer.from(raw, "base64");
+  } catch (err) {
+    console.error("❌ Error al decodificar base64 de firma:", err);
+    return null;
+  }
+
+  if (!buffer || buffer.length < 20) {
+    console.error("❌ Firma demasiado pequeña, posible PNG truncado. Size:", buffer.length);
+    return null;
+  }
+
+  // 3) Verificar cabecera PNG: 89 50 4E 47 0D 0A 1A 0A
+  const pngHeader = buffer.slice(0, 8).toString("hex");
+  if (pngHeader !== "89504e470d0a1a0a") {
+    console.error("❌ La firma no tiene cabecera PNG válida. Header:", pngHeader);
+    return null;
+  }
+
+  return buffer;
+}
+
 /**
  * Inserta una firma en el PDF, centrada y con línea base
  * @param {PDFDocument} doc - Instancia de PDFKit
@@ -17,22 +63,34 @@ function insertarFirma(
   } = {}
 ) {
   const pageWidth = doc.page.width;
-  const posX = (pageWidth - width) / 2;   // centrado horizontal
-  const startY = doc.y;                   // ancla vertical (siempre igual)
+  const posX = (pageWidth - width) / 2;
+  const startY = doc.y;
 
-  // 1) Intentar dibujar la imagen si existe
+  console.log(
+    "🖊️ insertarFirma() – firmaBase64 len:",
+    firmaBase64 ? firmaBase64.length : 0
+  );
+
+  // 1) Intentar decodificar la imagen si existe
   if (firmaBase64) {
     try {
-      const data = firmaBase64.replace(/^data:image\/\w+;base64,/, "");
-      const buffer = Buffer.from(data, "base64");
-      doc.image(buffer, posX, startY, { width, height });
+      const buffer = decodeFirmaToPngBuffer(firmaBase64);
+
+      if (buffer) {
+        console.log("🖊️ Firma decodificada OK. Buffer bytes:", buffer.length);
+        doc.image(buffer, posX, startY, { width, height });
+      } else {
+        console.warn("⚠️ No se pudo decodificar la firma, se dibuja solo línea y label.");
+      }
     } catch (err) {
       console.error("❌ Error al insertar firma:", err);
-      // Si falla, seguimos sin imagen, pero conservamos el layout.
+      // seguimos sin imagen, pero conservamos layout
     }
   }
-  // 2) SIEMPRE dibujar la línea base y el label, con la misma geometría
-  const lineY = startY + height - 10; // pegada al borde inferior de la firma
+
+  // 2) SIEMPRE dibujar la línea base y el label
+  const lineY = startY + height - 10;
+
   doc
     .moveTo(posX, lineY)
     .lineTo(posX + width, lineY)
@@ -40,14 +98,12 @@ function insertarFirma(
     .lineWidth(1)
     .stroke();
 
-  // Texto bajo la línea, centrado
   doc
     .fontSize(10)
     .fillColor("black")
     .text(`${label}`, 0, lineY + 3, { align: "center" });
 
-  // Avanzar el cursor dejando un respiro uniforme
-  doc.y = lineY + 22; // deja espacio bajo el label
+  doc.y = lineY + 22;
   doc.moveDown(0.5);
 }
 

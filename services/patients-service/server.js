@@ -1,9 +1,19 @@
 const express = require('express');
 const pacientesRoutes = require('./routes/pacientes.routes');
+const { sanitizeBody } = require('./middlewares/sanitizeBody');
 require('dotenv').config();
-const app = express();
-app.use(express.json());
 
+const app = express();
+
+app.use(express.json({ limit: '5mb' }));
+
+app.use(
+  sanitizeBody({
+    maxLength: 500000,
+    escapeHtml: true,
+    trim: true
+  })
+);
 
 app.use('/patients', pacientesRoutes);
 

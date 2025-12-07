@@ -45,6 +45,7 @@ router.post('/:id/justificantes', verificarToken, crearJustificante);
 router.post('/:id/consent-odont', verificarToken, crearConsentOdont);
 router.post('/:id/consent-quiro', verificarToken, crearConsentQuirurgico);
 router.post('/:id/evoluciones', verificarToken, crearEvolucion);
+router.post('/evoluciones/:formularioId', verificarToken, appendEvoluciones);
 router.post('/:id/ortodoncia', verificarToken, crearOrtodoncia);
 router.post('/:id/historia', verificarToken, crearHistoriaClinica);
 router.post('/:id/odontograma', verificarToken, crearOdontogramaFinal);

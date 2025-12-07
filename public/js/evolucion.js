@@ -329,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       try {
         const res = await fetch(`/api/patients/evoluciones/${encodeURIComponent(formularioIdParam)}`, {
-          method: 'PUT',
+          method: 'POST',
           headers: { 'Content-Type': 'application/json', ...authHeaders },
           body: JSON.stringify(payload)
         });
