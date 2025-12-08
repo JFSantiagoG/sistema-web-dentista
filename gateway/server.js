@@ -64,19 +64,19 @@ app.use('/api/pdf', createProxyMiddleware({
 
 // 🖼️ Visualizador Flask
 app.use('/static', createProxyMiddleware({
-  target: 'http://localhost:3010',
+  target: 'http://127.0.0.1:3010',
   changeOrigin: true,
   pathRewrite: { '^/static': '/static' }
 }));
 
 app.use('/visualizador', createProxyMiddleware({
-  target: 'http://localhost:3010',
+  target: 'http://127.0.0.1:3010',
   changeOrigin: true,
   pathRewrite: { '^/visualizador': '' }
 }));
 
 app.use('/uploads', createProxyMiddleware({
-  target: 'http://localhost:3010',
+  target: 'http://127.0.0.1:3010',
   changeOrigin: true
 }));
 
