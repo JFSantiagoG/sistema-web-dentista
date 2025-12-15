@@ -1,4 +1,14 @@
 // =============================
+// Validación correo electrónico (sin espacios)
+// =============================
+document.getElementById('email')?.addEventListener('input', function (e) {
+  let value = e.target.value;
+  if (value.includes(' ')) {
+    e.target.value = value.replace(/\s+/g, '');
+  }
+});
+
+// =============================
 // Autorellena edad desde la fecha de nacimiento
 // =============================
 (function () {
@@ -29,6 +39,13 @@
 
   let sending = false;
 
+  // ➕ Función de validación de correo (definida una sola vez)
+  const validarEmail = (email) => {
+    if (!email) return true; // opcional → vacío es válido
+    const re = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+    return re.test(String(email).toLowerCase());
+  };
+
   const getPayload = () => ({
     nombre:               document.getElementById('nombre').value.trim(),
     apellido:             document.getElementById('apellido').value.trim(),
@@ -50,13 +67,24 @@
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    // 1. Validación básica de HTML5
     if (!form.checkValidity()) {
       form.classList.add('was-validated');
       await Swal.fire('Campos incompletos', 'Revisa los campos marcados con *', 'warning');
       return;
     }
 
+    // 2. ➕ Validación adicional: correo electrónico
+    const email = document.getElementById('email')?.value.trim();
+    if (email && !validarEmail(email)) {
+      await Swal.fire('Correo inválido', 'Por favor ingresa un correo electrónico válido (ej: nombre@dominio.com).', 'error');
+      document.getElementById('email').focus();
+      return;
+    }
+
+    // 3. Evitar envíos múltiples
     if (sending) return;
+
     const payload = getPayload();
 
     // === Confirmación antes de guardar ===
@@ -85,23 +113,21 @@
     if (!isConfirmed) return;
 
     const token = localStorage.getItem('token') || '';
-    const url = '/api/patients'; // pasa por el gateway
+    const url = '/api/patients';
 
     try {
       sending = true;
       toggleForm(true);
 
-      // === Loader mientras guarda ===
       Swal.fire({
         title: 'Guardando…',
         allowOutsideClick: false,
         allowEscapeKey: false,
-        didOpen: () => { Swal.showLoading(); }
+        didOpen: () => Swal.showLoading()
       });
 
-      // === Request con timeout ===
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 20000); // 20s
+      const timeout = setTimeout(() => controller.abort(), 20000);
 
       const res = await fetch(url, {
         method: 'POST',
@@ -118,7 +144,6 @@
       const ct = res.headers.get('content-type') || '';
       const body = ct.includes('application/json') ? await res.json() : await res.text();
 
-      // === Manejo de errores HTTP ===
       if (!res.ok) {
         let msg = 'Error al crear paciente';
         if (typeof body === 'string') msg = body.slice(0, 200);
@@ -129,7 +154,6 @@
         throw new Error(msg);
       }
 
-      // ✅ Cerrar loader y mostrar éxito
       Swal.close();
       await Swal.fire({
         icon: 'success',
@@ -139,7 +163,6 @@
         showConfirmButton: false
       });
 
-      // 🚀 Redirigir al menú
       location.href = '/menu.html';
 
     } catch (err) {

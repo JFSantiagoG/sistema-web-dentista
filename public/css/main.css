@@ -1,21 +1,62 @@
+/* Tarjeta principal personalizada */
 .main-card {
-  height: 150px;
-  transition: transform 0.2s;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #fff;
 }
+
 .main-card:hover {
-  transform: scale(1.02);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
-.main-card .card-body {
+
+/* Círculo de ícono dentro de las tarjetas */
+.icon-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
   align-items: center;
-}
-.form-card {
-  height: 120px;
-}
-.form-card .card-body {
-  display: flex;
-  flex-direction: column;
   justify-content: center;
+}
+
+/* Asegurar altura consistente en todas las tarjetas */
+.main-card .card-body {
+  min-height: 160px;
+}
+
+/* Estilo del contenedor principal */
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* Alerta informativa mejorada */
+.alert {
+  border: none;
+  background-color: #e3f2fd;
+  color: #0d47a1;
+  border-left: 4px solid #1e88e5;
+}
+
+/* Botón de cierre de sesión */
+#btnLogout {
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Estilo para el aviso de privacidad en el footer */
+.footer-privacidad {
+  background-color: #ffffff;
+  color: #6c757d;
+  font-size: 0.85rem;
+  border-color: #e9ecef !important;
+}
+
+.footer-privacidad a {
+  color: #1e88e5;
+  text-decoration: underline;
+}
+
+.footer-privacidad a:hover {
+  color: #1565c0;
 }

@@ -1,16 +1,66 @@
+/* Fuente y estilos generales */
 body {
-  font-family: 'Segoe UI', sans-serif;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
+/* Botones con íconos */
+.btn i {
+  font-size: 0.9rem;
+}
+
+/* Tarjetas sin borde visual fuerte */
+.card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Estilo para resultados dinámicos (cuando se inyecten) */
 #resultados ul {
-  text-align: left;
+  list-style: none;
+  padding: 0;
   margin-top: 20px;
+  text-align: left;
+}
+
+#resultados .list-group-item {
+  border-radius: 8px !important;
+  margin-bottom: 8px;
+  border: 1px solid #e9ecef;
+  transition: background 0.2s;
+}
+
+#resultados .list-group-item:hover {
+  background-color: #f8fff9;
+  cursor: pointer;
 }
 
 .list-group-item strong {
   font-weight: 600;
+  color: #1e7e34;
 }
-.table td {
-  color: #212529; /* negro Bootstrap */
-  text-decoration: none;
+
+/* Footer de privacidad */
+.footer-privacidad {
+  background-color: #ffffff;
+  color: #6c757d;
+  font-size: 0.85rem;
+  border-color: #e9ecef !important;
+}
+
+.footer-privacidad a {
+  color: #198754;
+  text-decoration: underline;
+}
+
+.footer-privacidad a:hover {
+  color: #14532d;
+}
+
+/* Teclas (kbd) */
+kbd {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.85em;
+  background-color: #f1f3f5;
+  border: 1px solid #d2d6da;
+  border-radius: 4px;
 }

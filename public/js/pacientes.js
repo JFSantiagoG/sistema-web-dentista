@@ -104,3 +104,5 @@ function mostrarResultados(pacientes) {
 document.addEventListener('DOMContentLoaded', () => {
   buscarPacientes(); // ← carga 15 pacientes al entrar
 });
+
+document.getElementById('anio-actual').textContent = new Date().getFullYear();
