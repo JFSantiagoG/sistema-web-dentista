@@ -19,7 +19,7 @@ const { buscarPacientes,
   FIRMAS_DIR,
   guardarFirma
  } = require('../models/pacientes.model');
-
+const archiver = require('archiver');
 const crypto = require('crypto');
 const multer = require('multer');
 const path = require('path');
@@ -2598,6 +2598,89 @@ async function obtenerStudyFilesByGroup(req, res) {
   }
 }
 
+async function descargarHistorialZip(req, res) {
+  const pacienteId = Number(req.params.id);
+
+  if (!pacienteId) {
+    return res.status(400).json({ error: 'paciente_id inválido' });
+  }
+
+  // 🔹 nombre del paciente
+  const [[paciente]] = await db.query(
+    `SELECT nombre, apellido FROM pacientes WHERE id=?`,
+    [pacienteId]
+  );
+
+  const nombreZip = `historial_medico_${paciente.nombre}_${paciente.apellido}.zip`
+    .replace(/\s+/g, '_')
+    .toLowerCase();
+
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename="${nombreZip}"`);
+
+  const archive = archiver('zip', { zlib: { level: 9 } });
+  archive.pipe(res);
+
+  /* ===========================
+   * 1. OBTENER FORMULARIOS
+   * =========================== */
+  const [formularios] = await db.query(`
+    SELECT f.id, ft.nombre AS tipo
+    FROM formulario f
+    JOIN formulario_tipo ft ON ft.id = f.tipo_id
+    WHERE f.paciente_id = ?
+      AND f.eliminado_logico = 0
+  `, [pacienteId]);
+
+  /* ===========================
+   * 2. GENERAR PDFs (PDF-SERVICE)
+   * =========================== */
+  for (const f of formularios) {
+    try {
+      const pdfResponse = await axios.get(
+        `http://localhost:3006/api/pdf/${f.tipo}/generate`,
+        {
+          params: { formulario_id: f.id },
+          responseType: 'arraybuffer'
+        }
+      );
+
+      archive.append(pdfResponse.data, {
+        name: `pdfs/${f.tipo}_${f.id}.pdf`
+      });
+
+    } catch (err) {
+      console.error(`❌ Error PDF ${f.tipo} ${f.id}`, err.message);
+    }
+  }
+
+  /* ===========================
+   * 3. ESTUDIOS (IMÁGENES / DICOM)
+   * =========================== */
+  const [studies] = await db.query(`
+    SELECT nombre_archivo, storage_path
+    FROM patient_files
+    WHERE paciente_id = ?
+  `, [pacienteId]);
+
+  for (const s of studies) {
+    const realPath = path.join(
+      __dirname,
+      '../../visualizador-service',
+      'uploads',
+      s.nombre_archivo
+    );
+
+    if (fs.existsSync(realPath)) {
+      archive.file(realPath, {
+        name: `estudios/${s.nombre_archivo}`
+      });
+    }
+  }
+
+  await archive.finalize();
+}
+
 
 module.exports = {
   crearPaciente,
@@ -2620,7 +2703,6 @@ module.exports = {
   // Obtener info específica de formularios
   getRecetaByFormularioId,
   getRecetaDetalle,
-  // getRecetaFirma,  // 👈 ESTA YA NO
   obtenerJustificante,
   obtenerConsentOdont,
   obtenerConsentQuiro,
@@ -2632,6 +2714,6 @@ module.exports = {
   getEvolucionByFormId,
   appendEvoluciones,
 
-  // 👇 NUEVO
-  getFirmaByFile
+  getFirmaByFile,
+  descargarHistorialZip
 };

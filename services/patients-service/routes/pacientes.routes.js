@@ -71,4 +71,6 @@ router.get('/forms/evolucion/:formularioId', verificarToken, getEvolucionByFormI
 // Ruta para servir archivos de firma (carpeta única de firmas)
 router.get('/uploads/:fileName', pacientesCtrl.getFirmaByFile);
 
+router.get('/:id/historial/zip', verificarToken, pacientesCtrl.descargarHistorialZip);
+
 module.exports = router;

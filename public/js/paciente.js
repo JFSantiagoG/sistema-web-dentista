@@ -2,6 +2,34 @@
 const token = localStorage.getItem('token');
 const roles = JSON.parse(localStorage.getItem('roles') || '[]');
 if (!token || roles.length === 0) location.href = '/login.html';
+const rol = (roles[0] || '').toLowerCase();
+
+// ✅ Oculta SOLO botones de "crear" si NO es doctor
+function ocultarBotonesCrearPorRol() {
+  const esDoctor = rol === 'doctor';
+
+  // IDs de SOLO los botones verdes "➕ Crear..."
+  const createBtnIds = [
+    'btn-subir-estudio',
+    'btn-nueva-evo',
+    'btn-nueva-receta',
+    'btn-nuevo-pres',
+    'btn-nuevo-co',
+    'btn-nuevo-cq',
+    'btn-nueva-historia',
+    'btn-nuevo-justificante',
+    'btn-nuevo-odont',
+    'btn-nueva-orto',
+    'btn-diag-infantil'
+  ];
+
+  if (!esDoctor) {
+    createBtnIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+  }
+}
 
 // === Segundo: lee el id de la URL ===
 const pacienteId = new URLSearchParams(location.search).get('id');
@@ -562,13 +590,14 @@ async function cargarEstudios() {
         // 🧊 Ver secciones 3D SOLO si es tomografía con varios DICOM
         if (es3D && files.length > 1) {
           const url3d = `${baseViewerUrl}&mode=3d`;
+          /*
           btn3D = `
             <a class="btn btn-sm btn-warning ms-1"
                href="${url3d}"
                rel="noopener">
               🧊 Ver secciones
             </a>
-          `;
+          `;*/
         }
       }
 
@@ -596,10 +625,25 @@ async function cargarEstudios() {
 
 
 // Llamadas iniciales
-document.addEventListener('DOMContentLoaded', () => {
-  cargarPerfil();
-  cargarEstudios();
+document.addEventListener('DOMContentLoaded', async () => {
+  ocultarBotonesCrearPorRol();
+  await cargarPerfil();
+  await cargarEstudios();
+
+  // aplicar colapso ya que las filas existen
+  applyTbodyCollapse('#tb-studies', 5);
+  applyTbodyCollapse('#tb-evoluciones', 5);
+  applyTbodyCollapse('#tb-recetas', 5);
+  applyTbodyCollapse('#tb-presupuestos', 5);
+  applyTbodyCollapse('#tb-consent-odont', 5);
+  applyTbodyCollapse('#tb-consent-quiro', 5);
+  applyTbodyCollapse('#tb-historia', 5);
+  applyTbodyCollapse('#tb-justificantes', 5);
+  applyTbodyCollapse('#tb-odont-final', 5);
+  applyTbodyCollapse('#tb-ortodoncia', 5);
+  applyTbodyCollapse('#tb-diag-infantil', 5);
 });
+
 
 // ========= Subida de estudios (frontend con modal y progreso, varios archivos) =========
 (() => {
@@ -818,4 +862,92 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 })();
+
+/**
+ * Aplica colapso de filas a un tbody
+ * @param {string} tbodySelector - ej: "#tb-studies"
+ * @param {number} maxRows - filas visibles por defecto
+ */
+function applyTbodyCollapse(tbodySelector, maxRows = 5) {
+  const tbody = document.querySelector(tbodySelector);
+  if (!tbody) return;
+
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  if (rows.length <= maxRows) return; // no hace falta colapsar
+
+  const toggleBtn = document.querySelector(
+    `.table-toggle[data-tbody="${tbodySelector}"]`
+  );
+  if (!toggleBtn) return;
+
+  let expanded = false;
+
+  function update() {
+    rows.forEach((row, idx) => {
+      row.style.display = (!expanded && idx >= maxRows) ? 'none' : '';
+    });
+
+    toggleBtn.textContent = expanded ? '▲ Ver menos' : '▼ Ver todo';
+  }
+
+  toggleBtn.style.display = 'inline-block';
+
+  toggleBtn.addEventListener('click', () => {
+    expanded = !expanded;
+    update();
+  });
+
+  update(); // estado inicial
+}
+
+document.getElementById('btn-crear-historial')?.addEventListener('click', async () => {
+  const pacienteId = new URLSearchParams(window.location.search).get('id') 
+                  || new URLSearchParams(window.location.search).get('paciente_id');
+
+  if (!pacienteId) return alert('No se encontró paciente_id en la URL');
+
+  const ok = confirm('¿Estás seguro de generar el historial médico? Se generará un ZIP con PDFs y estudios.');
+  if (!ok) return;
+
+  const btn = document.getElementById('btn-crear-historial');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generando...';
+
+  try {
+    const token = localStorage.getItem('token');
+    const url = `/api/patients/${pacienteId}/historial/zip`;
+
+    const r = await fetch(url, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+
+    const blob = await r.blob();
+
+    // nombre sugerido desde backend (Content-Disposition)
+    let filename = `historial_medico_${pacienteId}.zip`;
+    const dispo = r.headers.get('Content-Disposition') || '';
+    const m = dispo.match(/filename="(.+?)"/);
+    if (m?.[1]) filename = m[1];
+
+    const a = document.createElement('a');
+    const href = URL.createObjectURL(blob);
+    a.href = href;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(href);
+
+    alert('✅ Historial médico generado. Descarga iniciada.');
+  } catch (e) {
+    console.error(e);
+    alert('❌ Error generando historial médico: ' + (e.message || e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📋 Crear historial médico';
+  }
+});
 
