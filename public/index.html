@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🔐 Iniciar sesión | Consultorio Dental</title>
   <link rel="stylesheet" href="css/login.css" />
-  <!-- Fuente moderna (Opcional, pero mejora mucho el aspecto) -->
+
+  <!-- ✅ DEFER (como ocupamos) -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <!-- Íconos (opcional, puedes usar solo emojis si prefieres) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 <body>
@@ -17,8 +19,8 @@
     </div>
     <h1>🦷 Consultorio Dental</h1>
     <p class="instructions">Ingresa tus credenciales institucionales para acceder al sistema de gestión clínica.</p>
-    
-    <form id="login-form">
+
+    <form id="login-form" novalidate>
       <div class="input-group">
         <label for="email">Correo electrónico</label>
         <div class="input-icon">
@@ -47,6 +49,7 @@
     </form>
   </div>
 
-  <script src="js/login.js"></script>
+  <!-- ✅ DEFER también -->
+  <script src="js/login.js" defer></script>
 </body>
 </html>

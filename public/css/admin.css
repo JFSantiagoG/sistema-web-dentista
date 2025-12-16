@@ -1,0 +1,72 @@
+:root {
+  --sw-card-radius: 14px;
+}
+
+body {
+  background: #f6f7fb;
+}
+
+.navbar-brand {
+  letter-spacing: 0.2px;
+}
+
+.card {
+  border-radius: var(--sw-card-radius);
+}
+
+.card.shadow-sm {
+  box-shadow: 0 10px 20px rgba(20, 20, 20, 0.06) !important;
+}
+
+.table {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.table thead th {
+  font-weight: 600;
+  color: #333;
+}
+
+.badge {
+  font-weight: 600;
+}
+
+.btn {
+  border-radius: 10px;
+}
+
+.btn-sm {
+  border-radius: 9px;
+}
+
+.modal-content {
+  border-radius: 16px;
+}
+
+.modal-header {
+  background: #f8f9fa;
+}
+
+.text-muted.small {
+  line-height: 1.2rem;
+}
+
+#admin-email {
+  opacity: 0.95;
+}
+
+.action-btns .btn {
+  margin-right: 6px;
+  margin-bottom: 6px;
+}
+/* ✅ FIX: si algún CSS global bloquea inputs, esto salva SweetAlert2 */
+.swal2-container input,
+.swal2-container textarea,
+.swal2-container select {
+  pointer-events: auto !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  opacity: 1 !important;
+}

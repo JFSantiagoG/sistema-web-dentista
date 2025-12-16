@@ -170,7 +170,7 @@ async function getConsentOdontById(formularioId) {
   };
 }
 
-// ====== BUSCAR PACIENTES (tu código, levemente limpio) ======
+// ====== BUSCAR PACIENTES (filtrando eliminados) ======
 async function buscarPacientes(q, page = 1) {
   const limite = 15;
   const offset = (page - 1) * limite;
@@ -184,12 +184,19 @@ async function buscarPacientes(q, page = 1) {
       telefono_principal,
       telefono_secundario
     FROM pacientes
+    WHERE (eliminado_logico = 0 OR eliminado_logico IS NULL)
   `;
   let params = [];
 
   if (q && q.trim()) {
     query += `
-      WHERE nombre LIKE ? OR apellido LIKE ? OR email LIKE ? OR telefono_principal LIKE ? OR telefono_secundario LIKE ?
+      AND (
+        nombre LIKE ? OR
+        apellido LIKE ? OR
+        email LIKE ? OR
+        telefono_principal LIKE ? OR
+        telefono_secundario LIKE ?
+      )
     `;
     params = [`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`];
   }
@@ -199,19 +206,35 @@ async function buscarPacientes(q, page = 1) {
 
   const [rows] = await db.query(query, params);
 
-  // total para páginas
-  const [totalRows] = await db.query(`
-    SELECT COUNT(*) AS total FROM pacientes
-    ${q && q.trim() ? `
-      WHERE nombre LIKE ? OR apellido LIKE ? OR email LIKE ? OR telefono_principal LIKE ? OR telefono_secundario LIKE ?
-    ` : ''}
-  `, q && q.trim() ? [`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`] : []);
+  // total para páginas (MISMO FILTRO)
+  let countQuery = `
+    SELECT COUNT(*) AS total
+    FROM pacientes
+    WHERE (eliminado_logico = 0 OR eliminado_logico IS NULL)
+  `;
+  let countParams = [];
+
+  if (q && q.trim()) {
+    countQuery += `
+      AND (
+        nombre LIKE ? OR
+        apellido LIKE ? OR
+        email LIKE ? OR
+        telefono_principal LIKE ? OR
+        telefono_secundario LIKE ?
+      )
+    `;
+    countParams = [`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`];
+  }
+
+  const [totalRows] = await db.query(countQuery, countParams);
 
   const total = totalRows[0].total;
-  const totalPaginas = Math.ceil(total / limite);
+  const totalPaginas = Math.max(1, Math.ceil(total / limite));
 
   return { pacientes: rows, totalPaginas };
 }
+
 
 const inList = (arr) => arr.map(() => '?').join(',');
 async function getFormsSummary(pacienteId) {
@@ -223,18 +246,20 @@ async function getFormsSummary(pacienteId) {
     if (!paciente) return { paciente: null };
 
     // 2) Formularios (usa creado_por y fecha_creacion según tu esquema)
-    const [forms] = await conn.query(
-      `
-      SELECT
-        f.id, f.tipo_id, f.creado_por, f.estado, f.fecha_creacion,
-        ft.nombre AS tipo
-      FROM formulario f
-      JOIN formulario_tipo ft ON ft.id = f.tipo_id
-      WHERE f.paciente_id = ?
-      ORDER BY f.fecha_creacion DESC
-      `,
-      [pacienteId]
-    );
+      const [forms] = await conn.query(
+        `
+        SELECT
+          f.id, f.tipo_id, f.creado_por, f.estado, f.fecha_creacion,
+          ft.nombre AS tipo
+        FROM formulario f
+        JOIN formulario_tipo ft ON ft.id = f.tipo_id
+        WHERE f.paciente_id = ?
+          AND f.eliminado_logico = 0
+        ORDER BY f.fecha_creacion DESC
+        `,
+        [pacienteId]
+      );
+
 
     const porTipo = {};
     for (const f of forms) (porTipo[f.tipo] ||= []).push(f);
@@ -1601,6 +1626,63 @@ async function getPatientStudyFilesByGroup(pacienteId, groupId) {
   return rows;
 }
 
+async function softDeletePaciente(pacienteId) {
+  const [res] = await db.query(
+    `UPDATE pacientes SET eliminado_logico = 1 WHERE id = ? AND eliminado_logico = 0`,
+    [pacienteId]
+  );
+
+  if (res.affectedRows === 0) {
+    // o no existe, o ya estaba eliminado
+    throw new Error('Paciente no encontrado o ya eliminado');
+  }
+
+  return true;
+}
+
+async function softDeleteFormulario(formularioId) {
+  const [res] = await db.query(
+    `UPDATE formulario
+     SET eliminado_logico = 1
+     WHERE id = ? AND (eliminado_logico = 0 OR eliminado_logico IS NULL)`,
+    [formularioId]
+  );
+
+  if (res.affectedRows === 0) {
+    throw new Error('Formulario no encontrado o ya estaba eliminado');
+  }
+
+  return res.affectedRows;
+}
+
+
+async function actualizarPacienteModel(id, data) {
+  const fields = [];
+  const values = [];
+
+  Object.entries(data).forEach(([key, value]) => {
+    fields.push(`${key} = ?`);
+    values.push(value);
+  });
+
+  if (!fields.length) return null;
+
+  values.push(id);
+
+  const [result] = await db.query(
+    `UPDATE pacientes SET ${fields.join(', ')} WHERE id = ? AND eliminado_logico = 0`,
+    values
+  );
+
+  if (result.affectedRows === 0) return null;
+
+  const [rows] = await db.query(
+    `SELECT * FROM pacientes WHERE id = ?`,
+    [id]
+  );
+
+  return rows[0];
+}
 
 module.exports = { 
   buscarPacientes, 
@@ -1624,5 +1706,8 @@ module.exports = {
   FIRMAS_DIR,
   getRecetaByFormId,
   getConsentOdontById,
-  getPatientStudyFilesByGroup
+  getPatientStudyFilesByGroup,
+  softDeletePaciente,
+  softDeleteFormulario,
+  actualizarPacienteModel
 };

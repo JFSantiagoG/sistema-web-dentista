@@ -1,5 +1,9 @@
 const express = require('express');
 const router = express.Router();
+
+const adminRoutes = require('./admin.routes');
+const requireAdmin = require('../middlewares/requireAdmin');
+
 const { crearPaciente } = require('../controllers/pacientes.controller');
 const { buscar } = require('../controllers/pacientes.controller');
 const { obtenerPorId } = require('../controllers/pacientes.controller');
@@ -18,10 +22,12 @@ const { crearDiagInfantil } = require('../controllers/pacientes.controller');
 const pacientesCtrl = require('../controllers/pacientes.controller');
 const { uploadStudy } = require('../controllers/pacientes.controller');
 const { obtenerStudyFilesByGroup } = require('../controllers/pacientes.controller');
+const { actualizarPaciente } = require('../controllers/pacientes.controller');
 const { verificarToken } = require('../middlewares/auth');
+const { deletePaciente } = require('../controllers/pacientes.controller');
 
 // Para obtener información de formularios específicos
-const { getRecetaByFormularioId } = require('../controllers/pacientes.controller'); // 👈 SIN getRecetaFirma
+const { getRecetaByFormularioId } = require('../controllers/pacientes.controller');
 const { obtenerJustificante } = require('../controllers/pacientes.controller');
 const { obtenerConsentOdont } = require('../controllers/pacientes.controller');
 const { obtenerConsentQuiro } = require('../controllers/pacientes.controller');
@@ -34,6 +40,9 @@ const { getEvolucionByFormId } = require('../controllers/pacientes.controller');
 
 // Para actualizar evoluciones
 const { appendEvoluciones } = require('../controllers/pacientes.controller');
+
+router.use('/admin', verificarToken, requireAdmin, adminRoutes);
+
 
 router.post('/', crearPaciente);
 router.get('/search', verificarToken, buscar);
@@ -73,4 +82,8 @@ router.get('/uploads/:fileName', pacientesCtrl.getFirmaByFile);
 
 router.get('/:id/historial/zip', verificarToken, pacientesCtrl.descargarHistorialZip);
 
+router.delete('/:id', verificarToken, requireAdmin, deletePaciente);
+router.delete('/forms/:formularioId', verificarToken, requireAdmin, pacientesCtrl.deleteFormulario);
+
+router.put('/:id', verificarToken, actualizarPaciente);
 module.exports = router;

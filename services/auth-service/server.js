@@ -1,4 +1,4 @@
-// auth-service/server.js (o donde tengas este código)
+// auth-service/server.js
 import express from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
@@ -13,36 +13,51 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Pequeño helper: detectar si el password_hash ya es un hash bcrypt
+// Helper: detectar si password_hash ya es bcrypt
 function isBcryptHash(str) {
   return typeof str === 'string' && str.startsWith('$2') && str.length > 40;
 }
 
 app.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const email = (req.body?.email || '').trim().toLowerCase();
+  const password = (req.body?.password || '').trim();
 
   try {
+    if (!email || !password) {
+      return res.status(400).json({ msg: 'Email y contraseña son requeridos' });
+    }
+
     // 1) Buscar usuario por email
-    const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    const [rows] = await pool.query(
+      'SELECT id, email, password_hash, is_active FROM users WHERE email = ? LIMIT 1',
+      [email]
+    );
     const user = rows[0];
 
     if (!user) {
       return res.status(401).json({ msg: 'Credenciales inválidas' });
     }
 
+    // ✅ Bloqueo por cuenta inactiva
+    const isActive = Number(user.is_active) === 1;
+    if (!isActive) {
+      return res.status(403).json({
+        code: 'ACCOUNT_BLOCKED',
+        msg: 'Cuenta bloqueada. Por favor contacte al administrador.'
+      });
+    }
+
+    // 2) Validar password
     let passwordOk = false;
 
-    // 2) Si el campo password_hash YA es un bcrypt, usamos compare
     if (isBcryptHash(user.password_hash)) {
       passwordOk = await bcrypt.compare(password, user.password_hash);
     } else {
-      // 3) MODO COMPATIBILIDAD:
-      //    Todavía tienes contraseñas "en claro" en password_hash (ej. '12345')
-      //    Comparamos directo por ÚLTIMA vez, y si coincide, la migramos a bcrypt
+      // Compatibilidad: password en claro
       if (user.password_hash === password) {
         passwordOk = true;
 
-        // Migrar en caliente a bcrypt para próximos logins
+        // Migrar a bcrypt
         const newHash = await bcrypt.hash(password, 10);
         await pool.query(
           'UPDATE users SET password_hash = ? WHERE id = ?',
@@ -58,31 +73,38 @@ app.post('/login', async (req, res) => {
       return res.status(401).json({ msg: 'Credenciales inválidas' });
     }
 
-    // 4) Cargar roles
+    // 3) Cargar roles
     const [roles] = await pool.query(
-      'SELECT r.name FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = ?',
+      `SELECT r.name
+       FROM roles r
+       JOIN user_roles ur ON ur.role_id = r.id
+       WHERE ur.user_id = ?`,
       [user.id]
     );
 
+    const rolesArr = roles.map(r => r.name);
+
+    // 4) Firmar JWT
     const payload = {
       id: user.id,
       email: user.email,
-      rol: roles[0]?.name || 'sin-rol'
+      rol: rolesArr[0] || 'sin-rol'
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '2h' });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
 
-    res.json({
+    return res.json({
       accessToken: token,
       user: {
         id: user.id,
         email: user.email,
-        roles: roles.map(r => r.name),
-      },
+        roles: rolesArr,
+        is_active: 1
+      }
     });
   } catch (err) {
     console.error('Error en login:', err.message, err.stack);
-    res.status(500).json({ msg: 'Error interno del servidor' });
+    return res.status(500).json({ msg: 'Error interno del servidor' });
   }
 });
 

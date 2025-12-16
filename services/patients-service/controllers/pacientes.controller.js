@@ -16,8 +16,12 @@ const { buscarPacientes,
   getEvolucionSummaryForPatient,
   getPatientStudyFilesByGroup,
   getRecetaByFormId,
+  softDeletePaciente,
+  softDeleteFormulario,
+  actualizarPacienteModel,
   FIRMAS_DIR,
-  guardarFirma
+  guardarFirma, 
+  pacientesModel
  } = require('../models/pacientes.model');
 const archiver = require('archiver');
 const crypto = require('crypto');
@@ -2598,6 +2602,93 @@ async function obtenerStudyFilesByGroup(req, res) {
   }
 }
 
+async function deletePaciente(req, res) {
+  try {
+    const pacienteId = Number(req.params.id);
+    if (!Number.isInteger(pacienteId) || pacienteId <= 0) {
+      return res.status(400).json({ msg: 'ID inválido' });
+    }
+
+    await softDeletePaciente(pacienteId);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('deletePaciente:', err);
+    return res.status(400).json({ msg: err.message || 'Error eliminando paciente' });
+  }
+}
+
+
+async function deleteFormulario(req, res) {
+  try {
+    const formularioId = Number(req.params.formularioId);
+    if (!Number.isInteger(formularioId) || formularioId <= 0) {
+      return res.status(400).json({ msg: 'formularioId inválido' });
+    }
+
+    // opcional: evitar borrar dos veces
+    const ok = await softDeleteFormulario(formularioId);
+    return res.json({ ok: true, affected: ok });
+  } catch (err) {
+    console.error('deleteFormulario:', err);
+    return res.status(400).json({ msg: err.message || 'Error eliminando formulario' });
+  }
+}
+
+async function actualizarPaciente(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!id) {
+      return res.status(400).json({ msg: 'ID inválido' });
+    }
+
+    const {
+      nombre,
+      apellido,
+      email,
+      telefono_principal,
+      telefono_secundario,
+      sexo,
+      edad
+    } = req.body || {};
+
+    // ✅ mínimos
+    if (!nombre || !apellido) {
+      return res.status(400).json({ msg: 'Nombre y apellido son obligatorios' });
+    }
+
+    const payload = {
+      nombre: String(nombre).trim(),
+      apellido: String(apellido).trim(),
+      email: email ? String(email).trim() : null,
+      telefono_principal: telefono_principal ? String(telefono_principal).trim() : null,
+      telefono_secundario: telefono_secundario ? String(telefono_secundario).trim() : null,
+      sexo: sexo ? String(sexo).trim() : null,
+      edad:
+        edad === '' || edad === null || typeof edad === 'undefined'
+          ? null
+          : Number(edad)
+    };
+
+    if (payload.edad !== null && (Number.isNaN(payload.edad) || payload.edad < 0)) {
+      return res.status(400).json({ msg: 'Edad inválida' });
+    }
+
+    const result = await actualizarPacienteModel(id, payload);
+
+    if (!result) {
+      return res.status(404).json({ msg: 'Paciente no encontrado' });
+    }
+
+    return res.json({
+      msg: 'Paciente actualizado correctamente',
+      paciente: result
+    });
+  } catch (err) {
+    console.error('actualizarPaciente error:', err);
+    return res.status(500).json({ msg: 'Error actualizando paciente' });
+  }
+}
+
 async function descargarHistorialZip(req, res) {
   const pacienteId = Number(req.params.id);
 
@@ -2681,7 +2772,6 @@ async function descargarHistorialZip(req, res) {
   await archive.finalize();
 }
 
-
 module.exports = {
   crearPaciente,
   buscar,
@@ -2715,5 +2805,8 @@ module.exports = {
   appendEvoluciones,
 
   getFirmaByFile,
+  deletePaciente,
+  deleteFormulario,
+  actualizarPaciente,
   descargarHistorialZip
 };
