@@ -252,3 +252,18 @@ exports.createRange = async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
+
+exports.getById = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: 'ID inválido' });
+
+    const cita = await model.getAppointmentById(id);
+    if (!cita) return res.status(404).json({ error: 'Cita no encontrada' });
+
+    res.json(cita);
+  } catch (err) {
+    console.error('Error en getById:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
