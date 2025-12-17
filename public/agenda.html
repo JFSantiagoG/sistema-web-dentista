@@ -13,36 +13,50 @@
   <script src="js/auth-guard.js"></script>
 </head>
 
-<body class="bg-light">
-  <div class="container py-5">
+<body class="bg-light d-flex flex-column min-vh-100">
+  <div class="container py-4 flex-grow-1">
     <!-- 🔹 Encabezado -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="mb-0">📅 Agenda de Citas</h2>
+      <h1 class="h4 fw-bold text-primary">📅 Agenda de Citas</h1>
       <div class="d-flex gap-2">
-        <button id="btn-nueva-cita" class="btn btn-primary">➕ Nueva cita</button>
-        <button class="btn btn-outline-secondary" onclick="window.history.back()">← Volver</button>
+        <button id="btn-nueva-cita" class="btn btn-primary d-flex align-items-center gap-1">
+          <span>➕</span> Nueva cita
+        </button>
+        <button class="btn btn-outline-secondary d-flex align-items-center gap-1" onclick="window.history.back()">
+          <span>←</span> Volver
+        </button>
       </div>
+    </div>
+
+    <!-- 📘 Instrucciones de uso -->
+    <div class="alert alert-light border rounded-3 shadow-sm mb-4">
+      <h6 class="alert-heading fw-bold text-muted mb-2">ℹ️ Cómo usar esta agenda</h6>
+      <ul class="mb-0 small">
+        <li>Use el campo <strong>"Buscar paciente"</strong> para asociar una cita a un paciente registrado.</li>
+        <li>Seleccione una fecha y luego cargue las horas disponibles para ver los horarios libres.</li>
+        <li>Puede <strong>seleccionar múltiples citas</strong> y usar las acciones masivas para eliminar o reenviar recordatorios.</li>
+      </ul>
     </div>
 
     <!-- 🔍 Filtro por fecha -->
     <div class="mb-4">
-      <label for="filtro-fecha" class="form-label">Filtrar por fecha:</label>
+      <label for="filtro-fecha" class="form-label fw-medium">Filtrar por fecha:</label>
       <input type="date" id="filtro-fecha" class="form-control" onchange="filtrarPorFecha()" />
     </div>
 
     <!-- 📋 Tabla de citas -->
-    <div class="table-responsive">
-      <table class="table table-bordered table-hover" id="tabla-citas">
+    <div class="table-responsive bg-white rounded-3 shadow-sm p-2 mb-4">
+      <table class="table table-hover align-middle mb-0" id="tabla-citas">
         <thead class="table-light">
           <tr>
-            <th><input type="checkbox" id="check-todos" onclick="seleccionarTodos(this)" /></th>
-            <th>ID</th>
-            <th>Paciente</th>
-            <th>Fecha</th>
-            <th>Hora inicio</th>
-            <th>Hora fin</th>
-            <th>Motivo</th>
-            <th class="col-acciones">Acciones</th>
+            <th scope="col" class="text-center"><input type="checkbox" id="check-todos" onclick="seleccionarTodos(this)" /></th>
+            <th scope="col">ID</th>
+            <th scope="col">Paciente</th>
+            <th scope="col">Fecha</th>
+            <th scope="col">Hora inicio</th>
+            <th scope="col">Hora fin</th>
+            <th scope="col">Motivo</th>
+            <th scope="col" class="col-acciones">Acciones</th>
           </tr>
         </thead>
         <tbody id="citas-body">
@@ -52,9 +66,13 @@
     </div>
 
     <!-- 🛠️ Acciones masivas -->
-    <div id="acciones-masivas" class="text-end mt-3" style="display: none;">
-      <button class="btn btn-danger me-2" id="btn-eliminar" onclick="eliminarSeleccionadas()">🗑️ Eliminar seleccionadas</button>
-      <button class="btn btn-primary" id="btn-reenviar" onclick="reenviarSeleccionadas()">📤 Reenviar seleccionadas</button>
+    <div id="acciones-masivas" class="d-flex justify-content-end mt-3" style="display: none;">
+      <button class="btn btn-danger me-2 d-flex align-items-center gap-1" id="btn-eliminar" onclick="eliminarSeleccionadas()">
+        <span>🗑️</span> Eliminar seleccionadas
+      </button>
+      <button class="btn btn-primary d-flex align-items-center gap-1" id="btn-reenviar" onclick="reenviarSeleccionadas()">
+        <span>📤</span> Reenviar recordatorios
+      </button>
     </div>
   </div>
 
@@ -62,16 +80,16 @@
   <!-- 🧩 Modal: Crear nueva cita -->
   <!-- ====================================================== -->
   <div id="modal-cita" class="modal d-none">
-    <div class="modal-dialog">
-      <div class="modal-content p-3">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <h5 class="modal-title">➕ Nueva cita</h5>
-          <button id="btn-cerrar-modal" class="btn btn-sm btn-outline-secondary">✖</button>
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="modal-title fw-bold text-primary">➕ Nueva cita</h5>
+          <button id="btn-cerrar-modal" class="btn btn-sm btn-outline-secondary rounded-circle" aria-label="Cerrar">✖</button>
         </div>
 
         <!-- Buscar paciente -->
-        <div class="mb-2">
-          <label for="paciente-q" class="form-label">Buscar paciente</label>
+        <div class="mb-3">
+          <label for="paciente-q" class="form-label fw-medium">Buscar paciente</label>
           <div class="input-group">
             <input type="text" id="paciente-q" class="form-control" placeholder="Nombre, teléfono o correo" />
             <button id="btn-buscar-paciente" class="btn btn-outline-primary">🔍 Buscar</button>
@@ -83,40 +101,54 @@
         <hr class="my-3" />
 
         <!-- Fecha y horas -->
-        <div class="mb-2">
-          <label for="nueva-fecha" class="form-label">📅 Fecha</label>
+        <div class="mb-3">
+          <label for="nueva-fecha" class="form-label fw-medium">📅 Fecha</label>
           <div class="input-group">
             <input type="date" id="nueva-fecha" class="form-control" />
-            <button id="btn-cargar-horas" class="btn btn-outline-secondary">⏰ Cargar horas disponibles</button>
+            <button id="btn-cargar-horas" class="btn btn-outline-secondary">⏰ Cargar horas</button>
           </div>
         </div>
 
-        <div class="row g-2">
+        <div class="row g-3 mb-3">
           <div class="col-6">
-            <label for="hora-inicio" class="form-label">Hora inicio</label>
+            <label for="hora-inicio" class="form-label fw-medium">Hora inicio</label>
             <select id="hora-inicio" class="form-select"></select>
           </div>
           <div class="col-6">
-            <label for="hora-fin" class="form-label">Hora fin</label>
+            <label for="hora-fin" class="form-label fw-medium">Hora fin</label>
             <select id="hora-fin" class="form-select"></select>
           </div>
         </div>
 
-        <hr class="my-3" />
-
         <!-- Motivo -->
-        <div class="mb-2">
-          <label for="motivo" class="form-label">🦷 Motivo</label>
-          <input type="text" id="motivo" class="form-control" placeholder="Motivo del tratamiento o revisión" />
+        <div class="mb-3">
+          <label for="motivo" class="form-label fw-medium">🦷 Motivo</label>
+          <input type="text" id="motivo" class="form-control" placeholder="Ej. Limpieza, revisión, etc." />
         </div>
 
-        <div class="text-end">
-          <button id="btn-guardar-cita" class="btn btn-success">💾 Guardar cita</button>
+        <div class="d-grid">
+          <button id="btn-guardar-cita" class="btn btn-success btn-lg">
+            <span>💾</span> Guardar cita
+          </button>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Aviso de privacidad -->
+  <footer class="footer-privacidad mt-5 py-4 border-top">
+    <div class="container text-center text-muted small">
+      <p class="mb-1">
+        <i class="fas fa-lock me-1"></i>
+        <strong>Aviso de Privacidad:</strong> Los datos personales presentados son tratados con confidencialidad y únicamente para fines clínicos y administrativos del consultorio dental, conforme a la 
+        <a href="https://www.diputados.gob.mx/LeyesBiblio/pdf/LFPDPPP.pdf" target="_blank" rel="noopener noreferrer" class="text-decoration-underline">Ley Federal de Protección de Datos Personales en Posesión de Particulares</a>.
+      </p>
+      <p class="mb-0">
+        © <span id="anio-actual"></span> ESCOM. Todos los derechos reservados.
+      </p>
+    </div>
+  </footer>
+
   <script src="js/agenda.js"></script>
-  </style>
 </body>
 </html>

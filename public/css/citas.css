@@ -1,17 +1,20 @@
-/* Fuente base */
+/* Fuente base y diseño general */
 body {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   color: #333;
+  background-color: #f9fafc;
 }
 
-/* Botones con íconos */
-.btn i {
-  font-size: 0.9rem;
+/* Botón con íconos y alineación vertical */
+.btn i, .btn span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Tabla estilizada */
 #tabla-citas {
-  border: 1px solid #e9ecef;
+  border: 1px solid #e3e8f0;
 }
 #tabla-citas thead th {
   font-weight: 600;
@@ -19,13 +22,17 @@ body {
   background-color: #f8f9fa;
 }
 #tabla-citas tbody tr:hover {
-  background-color: #f1f8ff;
+  background-color: #f0f7ff;
+}
+#tabla-citas td, #tabla-citas th {
+  vertical-align: middle;
 }
 
 /* Modal personalizado */
 .modal-content {
-  border-radius: 12px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
 }
 
 /* Pacientes list */
@@ -37,32 +44,10 @@ body {
   background-color: #e3f2fd !important;
 }
 
-/* Mensaje sin resultados */
-#sin-resultados {
-  border-top: 1px solid #e9ecef;
-}
-
-/* Alertas informativas */
-.alert {
-  border: none;
-  font-size: 0.9rem;
-}
-
-/* Asegurar que los checkboxes tengan tamaño adecuado */
-input[type="checkbox"] {
-  transform: scale(1.2);
-  margin-right: 6px;
-}
-
-/* Responsividad en acciones */
-.col-acciones {
-  white-space: nowrap;
-}
-
 /* Scroll suave en listas */
 .list-group {
   scrollbar-width: thin;
-  scrollbar-color: #c0c0c0 transparent;
+  scrollbar-color: #adb5bd transparent;
 }
 .list-group::-webkit-scrollbar {
   width: 6px;
@@ -71,15 +56,26 @@ input[type="checkbox"] {
   background: transparent;
 }
 .list-group::-webkit-scrollbar-thumb {
-  background-color: #c0c0c0;
+  background-color: #adb5bd;
   border-radius: 3px;
 }
 
-/* Estilo para el aviso de privacidad en el footer */
+/* Ajuste de checkboxes */
+input[type="checkbox"] {
+  transform: scale(1.2);
+  margin-right: 6px;
+}
+
+/* Acciones en tabla */
+.col-acciones {
+  white-space: nowrap;
+}
+
+/* Footer de privacidad */
 .footer-privacidad {
   background-color: #ffffff;
   color: #6c757d;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   border-color: #e9ecef !important;
 }
 
@@ -90,4 +86,15 @@ input[type="checkbox"] {
 
 .footer-privacidad a:hover {
   color: #1565c0;
+}
+
+/* Mejor contraste en alertas */
+.alert-info {
+  background-color: #e3f2fd;
+  border-left: 4px solid #2196f3;
+}
+
+/* Espaciado consistente y sombras suaves */
+.container {
+  max-width: 1200px;
 }

@@ -591,3 +591,5 @@ function construirFinesContiguos(horaInicio, libresHHMM) {
   }
   return result;
 }
+
+document.getElementById('anio-actual').textContent = new Date().getFullYear();
