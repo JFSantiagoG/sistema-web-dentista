@@ -111,7 +111,7 @@ function renderizarCitas(citas) {
     const horaFin = fmtHora(cita.hora_fin || '');
 
     const acciones = `
-      <button class="btn btn-primary" onclick="reenviar(${cita.id})">📤 Reenviar</button>
+      <button class="btn btn-primary" onclick="reenviar(${cita.id})">📤 Contactar</button>
       <button class="btn btn-warning" onclick="posponer(${cita.id})">⏳ Posponer</button>
       <button class="btn btn-danger" onclick="cancelar(${cita.id})">❌ Cancelar</button>
     `;
@@ -182,23 +182,71 @@ function reenviarSeleccionadas() {
 
 // 🔁 Funciones individuales
 async function reenviar(id) {
-  const result = await Swal.fire({
-    title: '¿Reenviar información?',
-    text: `Esto notificará al paciente de la cita #${id}.`,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, reenviar',
-    cancelButtonText: 'Cancelar'
-  });
+  // 1. Cargar los datos completos de la cita
+  try {
+    const res = await fetch(`/api/appointments/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error(`Cita no encontrada: ${res.status}`);
+    const cita = await res.json();
 
-  if (!result.isConfirmed) return;
+    // 2. Extraer datos
+    const nombrePaciente = getNombrePaciente(cita);
+    const fecha = fmtFechaISO(cita.fecha);
+    const horaInicio = fmtHora(cita.hora_inicio || cita.hora || '');
+    const horaFin = fmtHora(cita.hora_fin || '');
+    const motivo = cita.motivo || 'Consulta dental';
 
-  await fetch(`/api/appointments/${id}/resend`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` }
-  });
+    // 3. Obtener número del paciente
+    const pacienteId = cita.pacienteId || cita.paciente?.id || cita.paciente_id;
+    if (!pacienteId) {
+      return Swal.fire('Error', 'No se encontró el ID del paciente.', 'error');
+    }
 
-  Swal.fire('Reenviado', `Información enviada para la cita #${id}`, 'success');
+    const pacienteRes = await fetch(`/api/patients/${pacienteId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!pacienteRes.ok) throw new Error('Paciente no encontrado');
+    const paciente = await pacienteRes.json();
+
+    // Normalizar teléfono (igual que en receta.js)
+    const normalizarTelefono = (telefonoRaw) => {
+      if (!telefonoRaw) return null;
+      const limpio = String(telefonoRaw).replace(/\D/g, '');
+      if (limpio.length === 10) return '52' + limpio; // MX
+      if (limpio.length >= 11 && limpio.length <= 15) return limpio;
+      return null;
+    };
+
+    const numero =
+      normalizarTelefono(paciente.telefono_principal) ||
+      normalizarTelefono(paciente.telefono_secundario) ||
+      normalizarTelefono(paciente.telefono) ||
+      normalizarTelefono(paciente.celular) ||
+      normalizarTelefono(paciente.whatsapp);
+
+    if (!numero || !/^\d{10,15}$/.test(numero)) {
+      return Swal.fire({
+        icon: 'warning',
+        title: 'Número no disponible',
+        text: 'El paciente no tiene un número de WhatsApp válido registrado.'
+      });
+    }
+
+    // 4. Construir mensaje con fecha y hora
+    const mensaje = `Hola ${nombrePaciente}, le recordamos su cita dental:\n\n` +
+                    `📅 Fecha: ${fecha}\n` +
+                    `🕗 Hora: ${horaInicio} – ${horaFin}\n` +
+                    `🦷 Motivo: ${motivo}\n\n` +
+                    `Por favor, confirme su asistencia. ¡Gracias!`;
+
+    const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
+
+  } catch (err) {
+    console.error('Error al reenviar por WhatsApp:', err);
+    Swal.fire('Error', 'No se pudo cargar la información de la cita o del paciente.', 'error');
+  }
 }
 
 async function cancelar(id) {
