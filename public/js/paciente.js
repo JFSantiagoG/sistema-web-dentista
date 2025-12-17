@@ -1,9 +1,11 @@
 /* ===========================================================
-   ✅ paciente.js (CORREGIDO + NOTIFICACIONES BONITAS)
+   ✅ paciente.js (COMPLETO + SUBIDA LEGACY QUE FUNCIONA)
    - Evita perder ?id=
    - Modal editar paciente sin navegación
    - Listeners robustos (capturing)
    - Toasts bonitos (SweetAlert2)
+   - Estudios: tabla agrupada + Ver + (opcional) Ver secciones 3D
+   - ✅ Subida de estudios: flujo legacy (file singular + group_id)
    =========================================================== */
 
 (() => {
@@ -14,8 +16,8 @@
     location.href = '/login.html';
     return;
   }
-  const rol = (roles[0] || '').toLowerCase();
 
+  const rol = (roles[0] || '').toLowerCase();
   const esDoctor = rol === 'doctor';
   const esAdmin  = rol === 'admin';
 
@@ -24,7 +26,6 @@
      =========================================================== */
   const hasSwal = typeof Swal !== 'undefined';
 
-  // Toast mixin (estilo "app")
   const Toast = hasSwal
     ? Swal.mixin({
         toast: true,
@@ -38,28 +39,15 @@
           toast.addEventListener('mouseenter', Swal.stopTimer);
           toast.addEventListener('mouseleave', Swal.resumeTimer);
         },
-        // animaciones suaves
         showClass: { popup: 'swal2-show' },
         hideClass: { popup: 'swal2-hide' }
       })
     : null;
 
-  function toastOk(msg) {
-    if (!hasSwal) return alert(msg);
-    return Toast.fire({ icon: 'success', title: msg });
-  }
-  function toastInfo(msg) {
-    if (!hasSwal) return alert(msg);
-    return Toast.fire({ icon: 'info', title: msg });
-  }
-  function toastWarn(msg) {
-    if (!hasSwal) return alert(msg);
-    return Toast.fire({ icon: 'warning', title: msg, timer: 2600 });
-  }
-  function toastErr(msg) {
-    if (!hasSwal) return alert(msg);
-    return Toast.fire({ icon: 'error', title: msg, timer: 3200 });
-  }
+  function toastOk(msg)   { if (!hasSwal) return alert(msg); return Toast.fire({ icon: 'success', title: msg }); }
+  function toastInfo(msg) { if (!hasSwal) return alert(msg); return Toast.fire({ icon: 'info',    title: msg }); }
+  function toastWarn(msg) { if (!hasSwal) return alert(msg); return Toast.fire({ icon: 'warning', title: msg, timer: 2600 }); }
+  function toastErr(msg)  { if (!hasSwal) return alert(msg); return Toast.fire({ icon: 'error',   title: msg, timer: 3200 }); }
 
   async function confirmSwal({
     title = '¿Confirmar?',
@@ -69,7 +57,6 @@
     icon = 'warning'
   } = {}) {
     if (!hasSwal) return confirm(`${title}\n${text}`.trim());
-
     const r = await Swal.fire({
       title,
       text,
@@ -94,11 +81,7 @@
       didOpen: () => Swal.showLoading()
     });
   }
-
-  function closeLoading() {
-    if (!hasSwal) return;
-    Swal.close();
-  }
+  function closeLoading() { if (!hasSwal) return; Swal.close(); }
 
   /* ===========================================================
      ✅ PacienteId BLINDADO
@@ -109,8 +92,6 @@
   }
 
   let pacienteId = getPacienteIdFromUrl();
-
-  // guarda respaldo
   if (pacienteId) sessionStorage.setItem('paciente_id_last', pacienteId);
   if (!pacienteId) pacienteId = sessionStorage.getItem('paciente_id_last');
 
@@ -164,13 +145,11 @@
   function guessTipoFromPath(path) {
     if (!path) return 'otro';
     const p = String(path).toLowerCase();
-
     if (p.endsWith('.dcm')) return 'rx';
     if (p.endsWith('.jpg') || p.endsWith('.jpeg') ||
         p.endsWith('.png') || p.endsWith('.webp') ||
         p.endsWith('.gif')) return 'foto';
     if (p.endsWith('.bmp') || p.includes('pano')) return 'panoramica';
-
     return 'otro';
   }
 
@@ -494,7 +473,7 @@
         `).join('') || `<tr><td colspan="5" class="text-center text-muted">Sin recetas</td></tr>`
       );
 
-      // Presupuestos
+      // Presupuestos (auto-detect forma)
       (() => {
         const rows = Array.isArray(data.presupuestos) ? data.presupuestos : [];
         const tbody = document.getElementById('tb-presupuestos');
@@ -683,7 +662,6 @@
       const ultimaRaw  = g.files[cantidad - 1]?.fecha_subida || g.files[cantidad - 1]?.fecha || g.files[cantidad - 1]?.creado_en || null;
 
       const notaResumen = [...g.files].reverse().find(f => f.notas && String(f.notas).trim())?.notas || '';
-
       return { key: g.key, files: g.files, cantidad, fechaPrimera: primeraRaw, fechaUltima: ultimaRaw, notaResumen };
     });
 
@@ -767,44 +745,32 @@
 
         const groupId = g.key || files[0]?.group_id || files[0]?.group || null;
 
-        const btnVer = groupId
-          ? `<a class="btn btn-sm btn-outline-primary" href="/visualizador?paciente=${encodeURIComponent(pacienteId)}&group=${encodeURIComponent(groupId)}" rel="noopener">👁️ Ver</a>`
-          : `<button type="button" class="btn btn-sm btn-outline-secondary" disabled>Sin grupo</button>`;
+        // Detectar 3D (opcional)
+        const allDicom = files.length > 0 && files.every(f => ((f.storage_path || f.nombre_archivo || '').toLowerCase().endsWith('.dcm')));
+        const esTomografico = (singleTipo === 'tac' || singleTipo === 'cbct');
+        const es3D = esTomografico && allDicom && n > 1;
 
-        return `<tr><td>${fecha}</td><td>${tipoHtml}</td><td>${notaCell}</td><td>${btnVer}</td></tr>`;
+        let btnVer = '';
+        let btn3D = '';
+
+        if (!groupId) {
+          btnVer = `<button type="button" class="btn btn-sm btn-outline-secondary" disabled>Sin grupo</button>`;
+        } else {
+          const baseViewerUrl = `/visualizador?paciente=${encodeURIComponent(pacienteId)}&group=${encodeURIComponent(groupId)}`;
+          btnVer = `<a class="btn btn-sm btn-outline-primary" href="${baseViewerUrl}" rel="noopener">👁️ Ver</a>`;
+          /*
+          if (es3D) {
+            btn3D = `<a class="btn btn-sm btn-warning ms-1" href="${baseViewerUrl}&mode=3d" rel="noopener">🧊 Ver secciones</a>`;
+          }*/
+        }
+
+        return `<tr><td>${fecha}</td><td>${tipoHtml}</td><td>${notaCell}</td><td>${btnVer} ${btn3D}</td></tr>`;
       }).join('');
     } catch (err) {
       console.error('Error cargando estudios:', err);
       toastErr('❌ Error al cargar estudios (ver consola).');
       tbody.innerHTML = `<tr><td colspan="4" class="text-danger text-center">❌ Error al cargar estudios</td></tr>`;
     }
-  }
-
-  /* ===========================================================
-     ✅ Colapsar tablas
-     =========================================================== */
-  function applyTbodyCollapse(tbodySelector, maxRows = 5) {
-    const tbody = document.querySelector(tbodySelector);
-    if (!tbody) return;
-
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    if (rows.length <= maxRows) return;
-
-    const toggleBtn = document.querySelector(`.table-toggle[data-tbody="${tbodySelector}"]`);
-    if (!toggleBtn) return;
-
-    let expanded = false;
-
-    function update() {
-      rows.forEach((row, idx) => {
-        row.style.display = (!expanded && idx >= maxRows) ? 'none' : '';
-      });
-      toggleBtn.textContent = expanded ? '▲ Ver menos' : '▼ Ver todo';
-    }
-
-    toggleBtn.style.display = 'inline-block';
-    toggleBtn.addEventListener('click', () => { expanded = !expanded; update(); });
-    update();
   }
 
   /* ===========================================================
@@ -871,12 +837,252 @@
   }
 
   /* ===========================================================
+     ✅ Colapsar tablas
+     =========================================================== */
+  function applyTbodyCollapse(tbodySelector, maxRows = 5) {
+    const tbody = document.querySelector(tbodySelector);
+    if (!tbody) return;
+
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    if (rows.length <= maxRows) return;
+
+    const toggleBtn = document.querySelector(`.table-toggle[data-tbody="${tbodySelector}"]`);
+    if (!toggleBtn) return;
+
+    let expanded = false;
+
+    function update() {
+      rows.forEach((row, idx) => {
+        row.style.display = (!expanded && idx >= maxRows) ? 'none' : '';
+      });
+      toggleBtn.textContent = expanded ? '▲ Ver menos' : '▼ Ver todo';
+    }
+
+    toggleBtn.style.display = 'inline-block';
+    toggleBtn.addEventListener('click', () => { expanded = !expanded; update(); });
+    update();
+  }
+
+  /* ===========================================================
+     ✅ SUBIDA DE ESTUDIOS: LEGACY (LA QUE SÍ FUNCIONA)
+     - Envía "file" (singular) por cada request
+     - group_id compartido
+     =========================================================== */
+  function bindUploadEstudioLegacy() {
+    const MAX_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB por archivo
+    const BATCH_SIZE     = 40;
+    const XHR_TIMEOUT_MS = 10 * 60 * 1000; // 10 min por archivo
+
+    let uploadModal, uploadForm, fileInput, tipoSelect, notasInput, bar, status, info, submitBtn;
+
+    const btnOpen = document.getElementById('btn-subir-estudio');
+    uploadForm    = document.getElementById('formUploadEstudio');
+    fileInput     = document.getElementById('inputArchivoEstudio');
+    tipoSelect    = document.getElementById('selectTipoEstudio');
+    notasInput    = document.getElementById('inputNotasEstudio');
+    bar           = document.getElementById('uploadProgressBar');
+    status        = document.getElementById('uploadStatus');
+    info          = document.getElementById('fileInfo');
+    submitBtn     = document.getElementById('btnEnviarUpload');
+
+    // si no existe el modal/elementos, no hacemos nada
+    if (!btnOpen || !uploadForm || !fileInput) return;
+
+    function fmtBytes(b) {
+      if (b == null) return '—';
+      if (b < 1024) return `${b} B`;
+      if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+      return `${(b / 1024 / 1024).toFixed(2)} MB`;
+    }
+
+    function setProgress(pct) {
+      if (!bar) return;
+      const v = Math.max(0, Math.min(100, Math.round(pct)));
+      bar.style.width = `${v}%`;
+      bar.setAttribute('aria-valuenow', String(v));
+      bar.textContent = `${v}%`;
+    }
+
+    function resetProgress() {
+      setProgress(0);
+      if (status) status.textContent = '';
+    }
+
+    function validateFiles(files) {
+      if (!files || !files.length) return 'Selecciona al menos un archivo.';
+      for (const f of files) {
+        if (f.size > MAX_SIZE_BYTES) return `El archivo "${f.name}" excede ${fmtBytes(MAX_SIZE_BYTES)}.`;
+      }
+      return null;
+    }
+
+    function generarGroupId() {
+      return 'grp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
+
+    function prepararFile(originalFile) {
+      const name = originalFile.name || '';
+      if (name.includes('.')) return originalFile;
+
+      const newName = name + '.dcm';
+      try {
+        return new File([originalFile], newName, { type: originalFile.type || 'application/dicom' });
+      } catch (err) {
+        console.warn('No se pudo recrear File, uso el original:', err);
+        return originalFile;
+      }
+    }
+
+    function uploadSingleFile(file, groupId, url) {
+      return new Promise((resolve, reject) => {
+        const f = prepararFile(file);
+        const fd = new FormData();
+
+        // ✅ CLAVE: "file" (singular) como tu versión que funcionaba
+        fd.append('file', f);
+        fd.append('group_id', groupId);
+
+        const tipo  = (tipoSelect?.value || '').trim();
+        const notas = (notasInput?.value || '').trim();
+        if (tipo)  fd.append('tipo', tipo);
+        if (notas) fd.append('notas', notas);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', url, true);
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhr.timeout = XHR_TIMEOUT_MS;
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) return resolve();
+
+          let msg = `HTTP ${xhr.status}`;
+          try {
+            const j = JSON.parse(xhr.responseText || '{}');
+            if (j?.msg) msg = j.msg;
+          } catch {
+            const t = (xhr.responseText || '').slice(0, 200);
+            if (t) msg = `${msg}: ${t}`;
+          }
+          reject(new Error(msg));
+        };
+
+        xhr.onerror = () => reject(new Error('Error de red al subir (onerror).'));
+        xhr.ontimeout = () => reject(new Error('Timeout al subir (tardó demasiado).'));
+
+        xhr.send(fd);
+      });
+    }
+
+    btnOpen.addEventListener('click', (e) => {
+      e.preventDefault();
+      ensurePacienteIdInUrl();
+
+      if (!esDoctor) {
+        toastWarn('⚠️ Solo un doctor puede subir estudios');
+        return;
+      }
+
+      resetProgress();
+      if (info) info.textContent = '';
+      uploadForm.reset();
+
+      const modalEl = document.getElementById('modalUploadEstudio');
+      if (typeof bootstrap === 'undefined' || !modalEl) {
+        toastErr('❌ No se pudo abrir el modal (Bootstrap no cargó o falta el modal)');
+        return;
+      }
+
+      uploadModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      uploadModal.show();
+    });
+
+    fileInput.addEventListener('change', () => {
+      const files = Array.from(fileInput.files || []);
+      if (!files.length) {
+        if (info) info.textContent = '';
+        return;
+      }
+      const totalBytes = files.reduce((acc, f) => acc + (f.size || 0), 0);
+      if (info) info.textContent = `Archivos: ${files.length} — Total: ${fmtBytes(totalBytes)}`;
+    });
+
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      ensurePacienteIdInUrl();
+      if (!pacienteId) return toastErr('❌ Falta pacienteId');
+
+      const files = Array.from(fileInput.files || []);
+      const err = validateFiles(files);
+      if (err) return toastWarn(err);
+
+      const groupId = generarGroupId();
+      const url = `/api/patients/${encodeURIComponent(pacienteId)}/studies/upload`;
+
+      if (submitBtn) submitBtn.disabled = true;
+
+      showLoading('Subiendo estudio...', 'No cierres esta ventana');
+      resetProgress();
+
+      const total = files.length;
+      let okCount = 0;
+      let failCount = 0;
+
+      try {
+        const totalBatches = Math.ceil(total / BATCH_SIZE);
+
+        for (let start = 0; start < total; start += BATCH_SIZE) {
+          const batchIndex = Math.floor(start / BATCH_SIZE) + 1;
+          const batchFiles = files.slice(start, start + BATCH_SIZE);
+
+          console.log(`🔹 Lote ${batchIndex}/${totalBatches} con ${batchFiles.length} archivos`);
+
+          for (const file of batchFiles) {
+            try {
+              await uploadSingleFile(file, groupId, url);
+              okCount++;
+            } catch (fileErr) {
+              failCount++;
+              console.error('❌ Error subiendo archivo (continuo):', file.name, fileErr);
+            }
+
+            const pctGlobal = ((okCount + failCount) / total) * 100;
+            setProgress(pctGlobal);
+            if (status) status.textContent = `Subiendo... (${okCount + failCount}/${total})`;
+          }
+        }
+
+        closeLoading();
+
+        if (failCount === 0) toastOk(`✅ Se subieron ${okCount} archivo(s) correctamente`);
+        else toastWarn(`⚠️ Subidos: ${okCount}. Fallaron: ${failCount} (ver consola)`);
+
+        setTimeout(async () => {
+          uploadModal?.hide();
+          await cargarEstudios();
+        }, 600);
+
+      } catch (err2) {
+        closeLoading();
+        console.error('❌ Error general de subida:', err2);
+        toastErr('❌ Error general al subir estudio');
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+        if (status) status.textContent = '';
+      }
+    }, true);
+  }
+
+  /* ===========================================================
      ✅ INIT
      =========================================================== */
   document.addEventListener('DOMContentLoaded', async () => {
     ensurePacienteIdInUrl();
     ocultarBotonesCrearPorRol();
 
+    bindUploadEstudioLegacy(); // ✅ subida funcionando como antes
     bindEditarPacienteSubmit();
     bindHistorialZip();
 

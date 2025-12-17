@@ -523,11 +523,6 @@ if (docsTable) {
             <label style="font-weight:600; font-size:.9rem; margin:0 0 4px; display:block;">Dirección</label>
             <input id="eDir" class="swal2-input" style="margin:0;" value="${esc(medico.direccion || "")}">
           </div>
-
-          <div style="grid-column:1/-1;">
-            <label style="font-weight:600; font-size:.9rem; margin:0 0 4px; display:block;">Firma URL</label>
-            <input id="eFirma" class="swal2-input" style="margin:0;" value="${esc(medico.firma_url || "")}">
-          </div>
         </div>
       </div>
     `,
@@ -688,11 +683,6 @@ function setupSearch() {
             <div style="grid-column: 1 / -1;">
               <label style="font-size:.85rem; display:block; margin:0 0 4px;">Dirección</label>
               <input id="docDireccion" class="swal2-input" style="margin:0;" placeholder="Opcional">
-            </div>
-
-            <div style="grid-column: 1 / -1;">
-              <label style="font-size:.85rem; display:block; margin:0 0 4px;">Firma URL</label>
-              <input id="docFirmaUrl" class="swal2-input" style="margin:0;" placeholder="Opcional">
             </div>
           </div>
         </div>
