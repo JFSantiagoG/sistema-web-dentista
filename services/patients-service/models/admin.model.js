@@ -401,18 +401,23 @@ async function getFormsLog({
   }
 
   if (search) {
+    const like = `%${search}%`;
     where.push(`
       (
         CONCAT(IFNULL(p.nombre,''),' ',IFNULL(p.apellido,'')) LIKE ?
         OR p.email LIKE ?
+
         OR u1.email LIKE ?
         OR u2.email LIKE ?
+
+        OR CONCAT(IFNULL(m1.nombre,''),' ',IFNULL(m1.apellido,'')) LIKE ?
+        OR CONCAT(IFNULL(m2.nombre,''),' ',IFNULL(m2.apellido,'')) LIKE ?
+
         OR ft.nombre LIKE ?
         OR CAST(f.id AS CHAR) LIKE ?
       )
     `);
-    const like = `%${search}%`;
-    params.push(like, like, like, like, like, like);
+    params.push(like, like, like, like, like, like, like, like);
   }
 
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -431,17 +436,31 @@ async function getFormsLog({
       f.fecha_creacion,
       f.fecha_actualizacion,
 
+      -- who created (user + medico)
+      u1.id AS creado_por_user_id,
       u1.email AS creado_por_email,
-      u2.email AS actualizado_por_email,
+      CONCAT(IFNULL(m1.nombre,''),' ',IFNULL(m1.apellido,'')) AS creado_por_nombre,
 
+      -- who updated (user + medico)
+      u2.id AS actualizado_por_user_id,
+      u2.email AS actualizado_por_email,
+      CONCAT(IFNULL(m2.nombre,''),' ',IFNULL(m2.apellido,'')) AS actualizado_por_nombre,
+
+      -- deleted info (when eliminado_logico = 1)
       CASE WHEN f.eliminado_logico = 1 THEN u2.email ELSE NULL END AS eliminado_por_email,
+      CASE WHEN f.eliminado_logico = 1 THEN CONCAT(IFNULL(m2.nombre,''),' ',IFNULL(m2.apellido,'')) ELSE NULL END AS eliminado_por_nombre,
       CASE WHEN f.eliminado_logico = 1 THEN f.fecha_actualizacion ELSE NULL END AS fecha_eliminacion
 
     FROM formulario f
     JOIN formulario_tipo ft ON ft.id = f.tipo_id
     JOIN pacientes p ON p.id = f.paciente_id
+
     LEFT JOIN users u1 ON u1.id = f.creado_por
+    LEFT JOIN medicos m1 ON m1.user_id = u1.id
+
     LEFT JOIN users u2 ON u2.id = f.actualizado_por
+    LEFT JOIN medicos m2 ON m2.user_id = u2.id
+
     ${whereSql}
     ORDER BY f.fecha_creacion DESC
     LIMIT ? OFFSET ?;
@@ -452,15 +471,25 @@ async function getFormsLog({
     FROM formulario f
     JOIN formulario_tipo ft ON ft.id = f.tipo_id
     JOIN pacientes p ON p.id = f.paciente_id
+
     LEFT JOIN users u1 ON u1.id = f.creado_por
+    LEFT JOIN medicos m1 ON m1.user_id = u1.id
+
     LEFT JOIN users u2 ON u2.id = f.actualizado_por
+    LEFT JOIN medicos m2 ON m2.user_id = u2.id
+
     ${whereSql};
   `;
 
   const [rows] = await db.query(sql, [...params, limit, offset]);
   const [[countRow]] = await db.query(countSql, params);
 
-  return { rows, total: Number(countRow?.total || 0), limit, offset };
+  return {
+    rows,
+    total: Number(countRow?.total || 0),
+    limit,
+    offset
+  };
 }
 
 async function softDeleteForm(formId, userId) {
@@ -508,5 +537,5 @@ module.exports = {
   // auditoría
   getFormsLog,
   softDeleteForm,
-  restoreForm
+  restoreForm,
 };
