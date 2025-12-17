@@ -110,6 +110,21 @@ async function listMedicos(req, res) {
   }
 }
 
+async function getMedicoById(req, res) {
+  try {
+    const medicoId = Number(req.params.id);
+    if (!Number.isInteger(medicoId) || medicoId <= 0) {
+      return res.status(400).json({ msg: 'ID de médico inválido' });
+    }
+
+    const medico = await adminModel.getMedicoById(medicoId);
+    return res.json({ medico });
+  } catch (err) {
+    console.error('admin.getMedicoById:', err);
+    return res.status(400).json({ msg: err.message || 'Error obteniendo médico' });
+  }
+}
+
 async function createDoctorFull(req, res) {
   try {
     const payload = req.body || {};
@@ -121,7 +136,6 @@ async function createDoctorFull(req, res) {
     res.status(400).json({ msg: err.message || 'Error creando doctor' });
   }
 }
-
 
 async function updateMedico(req, res) {
   try {
@@ -151,31 +165,79 @@ async function getStats(req, res) {
   }
 }
 
-async function getMedicoById(req, res) {
+// =========================
+// AUDITORÍA (formularios)
+// =========================
+async function formsLog(req, res) {
   try {
-    const medicoId = Number(req.params.id);
-    if (!Number.isInteger(medicoId) || medicoId <= 0) {
-      return res.status(400).json({ msg: 'ID de médico inválido' });
-    }
+    const {
+      search = '',
+      tipo = '',
+      eliminado = '',
+      limit = 50,
+      offset = 0
+    } = req.query;
 
-    const medico = await adminModel.getMedicoById(medicoId);
-    return res.json({ medico });
+    const data = await adminModel.getFormsLog({ search, tipo, eliminado, limit, offset });
+    res.json(data);
   } catch (err) {
-    console.error('admin.getMedicoById:', err);
-    return res.status(400).json({ msg: err.message || 'Error obteniendo médico' });
+    console.error('admin.formsLog:', err);
+    res.status(500).json({ message: 'Error obteniendo logs de formularios' });
+  }
+}
+
+async function deleteFormSoft(req, res) {
+  try {
+    const formId = Number(req.params.id);
+    if (!formId) return res.status(400).json({ message: 'ID inválido' });
+
+    const userId = req.user?.id || null; // viene del verificarToken
+    const affected = await adminModel.softDeleteForm(formId, userId);
+
+    if (!affected) return res.status(404).json({ message: 'Formulario no encontrado' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('admin.deleteFormSoft:', err);
+    res.status(500).json({ message: 'Error eliminando formulario' });
+  }
+}
+
+async function restoreForm(req, res) {
+  try {
+    const formId = Number(req.params.id);
+    if (!formId) return res.status(400).json({ message: 'ID inválido' });
+
+    const userId = req.user?.id || null;
+    const affected = await adminModel.restoreForm(formId, userId);
+
+    if (!affected) return res.status(404).json({ message: 'Formulario no encontrado' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('admin.restoreForm:', err);
+    res.status(500).json({ message: 'Error recuperando formulario' });
   }
 }
 
 module.exports = {
+  // users
   listUsers,
   checkUserEmailExists,
   createUser,
   setUserActive,
   resetUserPassword,
   setUserRolesByName,
+
+  // medicos
   listMedicos,
+  getMedicoById,
   createDoctorFull,
   updateMedico,
+
+  // stats
   getStats,
-  getMedicoById,
+
+  // auditoría
+  formsLog,
+  deleteFormSoft,
+  restoreForm,
 };

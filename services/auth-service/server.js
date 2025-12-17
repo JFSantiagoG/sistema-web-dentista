@@ -91,7 +91,7 @@ app.post('/login', async (req, res) => {
       rol: rolesArr[0] || 'sin-rol'
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '45m' });
 
     return res.json({
       accessToken: token,

@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 
+const { verificarToken } = require('../middlewares/auth');
+const requireAdmin  = require('../middlewares/requireAdmin');   // tu requireAdmin.js
+
 const {
   listUsers,
   createUser,
@@ -13,8 +16,12 @@ const {
   getMedicoById,
   createDoctorFull,
   updateMedico,
-
   getStats,
+
+  // ✅ IMPORTA ESTAS (ya existen en tu controller)
+  formsLog,
+  deleteFormSoft,
+  restoreForm,
 } = require('../controllers/admin.controller');
 
 // ===== USERS =====
@@ -33,5 +40,12 @@ router.put('/medicos/:id', updateMedico);
 
 // ===== STATS =====
 router.get('/stats', getStats);
+
+// ✅ Auditoría / Logs de formularios (SIN duplicar /admin)
+router.get('/forms/logs', verificarToken, requireAdmin, formsLog);
+
+// ✅ Eliminar lógico / recuperar
+router.put('/forms/:id/delete', verificarToken, requireAdmin, deleteFormSoft);
+router.put('/forms/:id/restore', verificarToken, requireAdmin, restoreForm);
 
 module.exports = router;

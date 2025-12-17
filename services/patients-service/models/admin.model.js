@@ -75,7 +75,6 @@ async function createUser(payload) {
   if (!email || !email.includes('@')) throw new Error('email es obligatorio');
   if (!roles.length) throw new Error('roleNames debe incluir al menos: admin, doctor o asistente');
 
-  // email duplicado
   const [exists] = await db.query('SELECT 1 FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1', [email]);
   if (exists.length) throw new Error('Ya existe un usuario con ese email');
 
@@ -129,7 +128,6 @@ async function createUser(payload) {
 
     await conn.commit();
 
-    // ✅ importante: devolver pass una sola vez para copiarlo
     return {
       ok: true,
       userId,
@@ -221,10 +219,8 @@ async function createDoctorFull(payload) {
     throw new Error('Faltan campos obligatorios: email, nombre, apellido');
   }
 
-  // ✅ password opcional -> si no viene, generar
   const plainPassword = (password && String(password).trim()) || genTempPassword(12);
 
-  // obtener role doctor
   const [doctorRole] = await db.query(`SELECT id FROM roles WHERE name = 'doctor' LIMIT 1`);
   if (!doctorRole.length) throw new Error("No existe rol 'doctor' en tabla roles");
 
@@ -232,20 +228,17 @@ async function createDoctorFull(payload) {
 
   await db.query('START TRANSACTION');
   try {
-    // 1) users
     const [uRes] = await db.query(
       `INSERT INTO users (email, password_hash, is_active) VALUES (?, ?, 1)`,
       [email, passHash]
     );
     const userId = uRes.insertId;
 
-    // 2) user_roles -> doctor
     await db.query(
       `INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)`,
       [userId, doctorRole[0].id]
     );
 
-    // 3) medicos
     const [mRes] = await db.query(`
       INSERT INTO medicos
       (nombre, apellido, cedula, especialidad, genero, email, rfc,
@@ -259,7 +252,7 @@ async function createDoctorFull(payload) {
     await db.query('COMMIT');
 
     const [rows] = await db.query(`SELECT * FROM medicos WHERE id = ?`, [mRes.insertId]);
-    return { medico: rows[0], tempPassword: plainPassword }; // ✅ devolvemos pass
+    return { medico: rows[0], tempPassword: plainPassword };
   } catch (e) {
     await db.query('ROLLBACK');
     if (String(e.message || '').includes('Duplicate')) {
@@ -269,12 +262,10 @@ async function createDoctorFull(payload) {
   }
 }
 
-
 async function updateMedico(medicoId, payload) {
-  // ✅ Ahora SÍ permitimos email
   const allowed = [
     'nombre', 'apellido', 'cedula', 'especialidad', 'genero',
-    'email', // ✅
+    'email',
     'rfc', 'telefono_principal', 'telefono_secundario',
     'direccion', 'firma_url'
   ];
@@ -293,7 +284,6 @@ async function updateMedico(medicoId, payload) {
 
   await db.query('START TRANSACTION');
   try {
-    // Traer medico actual para saber user_id y email anterior
     const [curRows] = await db.query(
       `SELECT id, email, user_id FROM medicos WHERE id = ? LIMIT 1`,
       [medicoId]
@@ -303,9 +293,7 @@ async function updateMedico(medicoId, payload) {
     const current = curRows[0];
     const newEmail = (payload.email !== undefined) ? String(payload.email).trim() : null;
 
-    // Si cambió email, validar duplicados en medicos y users
     if (newEmail && newEmail.toLowerCase() !== String(current.email || '').toLowerCase()) {
-      // medicos.email es UNIQUE, pero validamos para dar error amigable
       const [mDup] = await db.query(
         `SELECT 1 FROM medicos WHERE LOWER(email)=LOWER(?) AND id <> ? LIMIT 1`,
         [newEmail, medicoId]
@@ -316,11 +304,9 @@ async function updateMedico(medicoId, payload) {
         `SELECT 1 FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1`,
         [newEmail]
       );
-      // Si existe en users, podría ser él mismo si tiene user_id,
-      // por eso validamos: si tiene user_id, permitimos que sea el mismo user.
-      if (uDup.length && !current.user_id) {
-        throw new Error('Ya existe un usuario con ese email');
-      }
+
+      if (uDup.length && !current.user_id) throw new Error('Ya existe un usuario con ese email');
+
       if (uDup.length && current.user_id) {
         const [sameUser] = await db.query(
           `SELECT 1 FROM users WHERE LOWER(email)=LOWER(?) AND id = ? LIMIT 1`,
@@ -330,7 +316,6 @@ async function updateMedico(medicoId, payload) {
       }
     }
 
-    // Update medicos
     vals.push(medicoId);
     const [res] = await db.query(
       `UPDATE medicos SET ${sets.join(', ')} WHERE id = ?`,
@@ -338,12 +323,8 @@ async function updateMedico(medicoId, payload) {
     );
     if (res.affectedRows === 0) throw new Error('Médico no encontrado');
 
-    // ✅ Si el medico tiene user_id y cambió email -> sincronizar users.email
     if (current.user_id && newEmail) {
-      await db.query(
-        `UPDATE users SET email = ? WHERE id = ?`,
-        [newEmail, current.user_id]
-      );
+      await db.query(`UPDATE users SET email = ? WHERE id = ?`, [newEmail, current.user_id]);
     }
 
     await db.query('COMMIT');
@@ -358,7 +339,6 @@ async function updateMedico(medicoId, payload) {
     throw e;
   }
 }
-
 
 async function getStats() {
   const [[u]] = await db.query(`SELECT COUNT(*) AS usersActive FROM users WHERE is_active = 1`);
@@ -379,6 +359,7 @@ async function userEmailExists(email) {
   );
   return rows.length > 0;
 }
+
 async function getMedicoById(medicoId) {
   const [rows] = await db.query(`
     SELECT id, nombre, apellido, cedula, especialidad, genero, email,
@@ -393,17 +374,139 @@ async function getMedicoById(medicoId) {
   return rows[0];
 }
 
+// =========================
+// AUDITORÍA: Logs formularios
+// =========================
+async function getFormsLog({
+  search = '',
+  tipo = '',
+  eliminado = '', // '', '0', '1'
+  limit = 50,
+  offset = 0
+}) {
+  limit = Math.min(Math.max(Number(limit) || 50, 1), 200);
+  offset = Math.max(Number(offset) || 0, 0);
+
+  const where = [];
+  const params = [];
+
+  if (tipo) {
+    where.push(`ft.nombre = ?`);
+    params.push(tipo);
+  }
+
+  if (eliminado === '0' || eliminado === '1') {
+    where.push(`f.eliminado_logico = ?`);
+    params.push(Number(eliminado));
+  }
+
+  if (search) {
+    where.push(`
+      (
+        CONCAT(IFNULL(p.nombre,''),' ',IFNULL(p.apellido,'')) LIKE ?
+        OR p.email LIKE ?
+        OR u1.email LIKE ?
+        OR u2.email LIKE ?
+        OR ft.nombre LIKE ?
+        OR CAST(f.id AS CHAR) LIKE ?
+      )
+    `);
+    const like = `%${search}%`;
+    params.push(like, like, like, like, like, like);
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const sql = `
+    SELECT
+      f.id AS formulario_id,
+      f.paciente_id,
+      CONCAT(IFNULL(p.nombre,''),' ',IFNULL(p.apellido,'')) AS paciente_nombre,
+      p.email AS paciente_email,
+
+      ft.nombre AS tipo_formulario,
+      f.estado,
+      f.eliminado_logico,
+
+      f.fecha_creacion,
+      f.fecha_actualizacion,
+
+      u1.email AS creado_por_email,
+      u2.email AS actualizado_por_email,
+
+      CASE WHEN f.eliminado_logico = 1 THEN u2.email ELSE NULL END AS eliminado_por_email,
+      CASE WHEN f.eliminado_logico = 1 THEN f.fecha_actualizacion ELSE NULL END AS fecha_eliminacion
+
+    FROM formulario f
+    JOIN formulario_tipo ft ON ft.id = f.tipo_id
+    JOIN pacientes p ON p.id = f.paciente_id
+    LEFT JOIN users u1 ON u1.id = f.creado_por
+    LEFT JOIN users u2 ON u2.id = f.actualizado_por
+    ${whereSql}
+    ORDER BY f.fecha_creacion DESC
+    LIMIT ? OFFSET ?;
+  `;
+
+  const countSql = `
+    SELECT COUNT(*) AS total
+    FROM formulario f
+    JOIN formulario_tipo ft ON ft.id = f.tipo_id
+    JOIN pacientes p ON p.id = f.paciente_id
+    LEFT JOIN users u1 ON u1.id = f.creado_por
+    LEFT JOIN users u2 ON u2.id = f.actualizado_por
+    ${whereSql};
+  `;
+
+  const [rows] = await db.query(sql, [...params, limit, offset]);
+  const [[countRow]] = await db.query(countSql, params);
+
+  return { rows, total: Number(countRow?.total || 0), limit, offset };
+}
+
+async function softDeleteForm(formId, userId) {
+  const sql = `
+    UPDATE formulario
+    SET eliminado_logico = 1,
+        actualizado_por = ?,
+        fecha_actualizacion = CURRENT_TIMESTAMP
+    WHERE id = ?;
+  `;
+  const [r] = await db.query(sql, [userId || null, formId]);
+  return r.affectedRows;
+}
+
+async function restoreForm(formId, userId) {
+  const sql = `
+    UPDATE formulario
+    SET eliminado_logico = 0,
+        actualizado_por = ?,
+        fecha_actualizacion = CURRENT_TIMESTAMP
+    WHERE id = ?;
+  `;
+  const [r] = await db.query(sql, [userId || null, formId]);
+  return r.affectedRows;
+}
 
 module.exports = {
+  // users
   listUsersWithRoles,
   createUser,
   setUserActive,
   resetUserPassword,
   setUserRolesByName,
+  userEmailExists,
+
+  // medicos
   listMedicos,
   createDoctorFull,
   updateMedico,
-  getStats,
-  userEmailExists,
   getMedicoById,
+
+  // stats
+  getStats,
+
+  // auditoría
+  getFormsLog,
+  softDeleteForm,
+  restoreForm
 };

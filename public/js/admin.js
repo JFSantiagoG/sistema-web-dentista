@@ -1,5 +1,8 @@
 const API_BASE = "/api/patients";
 const ENDPOINTS = {
+  formsLog: `${API_BASE}/admin/forms/logs`,
+  formSoftDelete: (id) => `${API_BASE}/admin/forms/${id}/delete`,
+  formRestore: (id) => `${API_BASE}/admin/forms/${id}/restore`,
   users: `${API_BASE}/admin/users`,
   createUser: `${API_BASE}/admin/users`,
   userExists: (email) => `${API_BASE}/admin/users/exists?email=${encodeURIComponent(email)}`,
@@ -1057,8 +1060,214 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupLogout();
   setupActions();
   setupSearch();
+  setupLogsUI();
 
   await loadUsers("");
   await loadDoctors("");
   await loadStats();
 });
+
+// -------------------------------
+// Logs (Formularios)
+// -------------------------------
+let LOGS_LIMIT = 20;
+let logsOffset = 0;
+
+function fmtDT(v) {
+  if (!v) return '—';
+  try {
+    return new Date(v).toLocaleString('es-MX');
+  } catch {
+    return String(v);
+  }
+}
+
+function badgeEliminado(flag) {
+  return Number(flag) ? `<span class="badge bg-danger">Sí</span>` : `<span class="badge bg-success">No</span>`;
+}
+
+function renderLogs(rows = []) {
+  const tbody = document.getElementById('tablaLogs');
+  if (!tbody) return;
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4">Sin registros</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const eliminado = Number(r.eliminado_logico) === 1;
+
+    const paciente = `
+      <div class="fw-semibold">${esc(r.paciente_nombre || '—')}</div>
+      <div class="text-muted small">ID: ${esc(String(r.paciente_id || '—'))} ${r.paciente_email ? `• ${esc(r.paciente_email)}` : ''}</div>
+    `;
+
+    const creado = `
+      <div>${fmtDT(r.fecha_creacion)}</div>
+      ${r.creado_por_email ? `<div class="text-muted small">${esc(r.creado_por_email)}</div>` : `<div class="text-muted small">—</div>`}
+    `;
+
+    const actualizado = `
+      <div>${fmtDT(r.fecha_actualizacion)}</div>
+      ${r.actualizado_por_email ? `<div class="text-muted small">${esc(r.actualizado_por_email)}</div>` : `<div class="text-muted small">—</div>`}
+    `;
+
+    const eliminadoInfo = eliminado
+      ? `<div class="text-danger small">
+           <div><b>${esc(r.eliminado_por_email || '—')}</b></div>
+           <div>${fmtDT(r.fecha_eliminacion || r.fecha_actualizacion)}</div>
+         </div>`
+      : `<div class="text-muted small">—</div>`;
+
+    const acciones = eliminado
+      ? `
+        <button class="btn btn-sm btn-outline-success" data-action="restore-form" data-id="${r.formulario_id}">
+          ♻️ Recuperar
+        </button>`
+      : `
+        <button class="btn btn-sm btn-outline-danger" data-action="delete-form" data-id="${r.formulario_id}">
+          🗑️ Eliminar
+        </button>`;
+
+    return `
+      <tr>
+        <td>${esc(String(r.formulario_id))}</td>
+        <td>${paciente}</td>
+        <td><span class="badge bg-dark">${esc(r.tipo_formulario || '—')}</span></td>
+        <td>${fmtDT(r.fecha_creacion)}</td>
+        <td>${esc(r.creado_por_email || '—')}</td>
+        <td>${fmtDT(r.fecha_actualizacion)}</td>
+        <td>${badgeEliminado(r.eliminado_logico)}<div class="mt-1">${eliminadoInfo}</div></td>
+        <td>${acciones}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function loadLogs(reset = false) {
+  const meta = document.getElementById('logsMeta');
+
+  if (reset) logsOffset = 0;
+
+  const search = (document.getElementById('logSearch')?.value || '').trim();
+  const tipo = (document.getElementById('logTipo')?.value || '').trim();
+  const eliminado = (document.getElementById('logEliminado')?.value || '').trim();
+
+  const qs = new URLSearchParams({
+    search,
+    tipo,
+    eliminado,
+    limit: String(LOGS_LIMIT),
+    offset: String(logsOffset),
+  }).toString();
+
+  try {
+    loadingOn?.('Cargando logs...');
+    const data = await apiFetch(`${ENDPOINTS.formsLog}?${qs}`);
+    loadingOff?.();
+
+    const rows = data?.rows || [];
+    const total = Number(data?.total || 0);
+
+    renderLogs(rows);
+
+    const from = total ? (logsOffset + 1) : 0;
+    const to = Math.min(logsOffset + LOGS_LIMIT, total);
+    if (meta) meta.textContent = `Mostrando ${from}-${to} de ${total}`;
+
+    // Habilitar/Deshabilitar paginación
+    const btnPrev = document.getElementById('logsPrev');
+    const btnNext = document.getElementById('logsNext');
+    if (btnPrev) btnPrev.disabled = logsOffset <= 0;
+    if (btnNext) btnNext.disabled = (logsOffset + LOGS_LIMIT) >= total;
+
+  } catch (err) {
+    loadingOff?.();
+    console.error('Logs:', err);
+    toastErr?.('Error', err.message || 'No se pudieron cargar los logs');
+    renderLogs([]);
+    if (meta) meta.textContent = '—';
+  }
+}
+
+function setupLogsUI() {
+  const btnLoad = document.getElementById('btnLoadLogs');
+  const btnPrev = document.getElementById('logsPrev');
+  const btnNext = document.getElementById('logsNext');
+  const tbody = document.getElementById('tablaLogs');
+
+  btnLoad?.addEventListener('click', () => loadLogs(true));
+
+  document.getElementById('logSearch')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') loadLogs(true);
+  });
+
+  btnPrev?.addEventListener('click', () => {
+    logsOffset = Math.max(0, logsOffset - LOGS_LIMIT);
+    loadLogs(false);
+  });
+
+  btnNext?.addEventListener('click', () => {
+    logsOffset = logsOffset + LOGS_LIMIT;
+    loadLogs(false);
+  });
+
+  // Delegación acciones Restore/Delete
+  tbody?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+
+    const action = btn.dataset.action;
+    const id = btn.dataset.id;
+
+    try {
+      if (action === 'delete-form') {
+        const ok = await confirmDanger({
+          title: 'Eliminar formulario',
+          text: `Se marcará como eliminado ID: ${id}`,
+          confirmText: 'Sí, eliminar',
+        });
+        if (!ok) return;
+
+        loadingOn?.('Eliminando...');
+        await apiFetch(ENDPOINTS.formSoftDelete(id), { method: 'PUT' });
+        loadingOff?.();
+
+        toastOk?.('Eliminado', 'Formulario marcado como eliminado.');
+        await loadLogs(false);
+        await loadStats(); // opcional
+      }
+
+      if (action === 'restore-form') {
+        const ok = await Swal.fire({
+          title: 'Recuperar formulario',
+          text: `Se restaurará el formulario ID: ${id}`,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonText: 'Sí, recuperar',
+          cancelButtonText: 'Cancelar',
+        }).then(r => r.isConfirmed);
+
+        if (!ok) return;
+
+        loadingOn?.('Recuperando...');
+        await apiFetch(ENDPOINTS.formRestore(id), { method: 'PUT' });
+        loadingOff?.();
+
+        toastOk?.('Recuperado', 'Formulario restaurado.');
+        await loadLogs(false);
+        await loadStats();
+      }
+
+    } catch (err) {
+      loadingOff?.();
+      console.error(err);
+      toastErr?.('Error', err.message || 'Ocurrió un error');
+    }
+  });
+
+  // Cuando abras el modal, carga logs
+  const modalEl = document.getElementById('modalLogs');
+  modalEl?.addEventListener('shown.bs.modal', () => loadLogs(true));
+}

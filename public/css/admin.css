@@ -70,3 +70,140 @@ body {
   -webkit-user-select: text !important;
   opacity: 1 !important;
 }
+/* =======================================================
+   Logs de formularios (Admin) - COLOR + limpio (acorde a tu panel)
+   Pegar al final de css/admin.css
+   ======================================================= */
+
+.admin-logs .modal-content{
+  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,.08);
+  overflow: hidden;
+}
+
+/* Header con color suave (no exagerado) */
+.admin-logs .modal-header{
+  background: linear-gradient(90deg, rgba(13,110,253,.12), rgba(32,201,151,.10));
+  border-bottom: 1px solid rgba(0,0,0,.08);
+}
+
+.admin-logs .modal-title{
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+
+/* Toolbar en una sola línea */
+.admin-logs .logs-toolbar{
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: nowrap; /* ✅ misma línea */
+}
+
+.admin-logs .logs-filters{
+  display: flex;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-logs .logs-field{
+  min-width: 0;
+}
+
+.admin-logs .logs-field-search{ flex: 1.2; }
+.admin-logs .logs-field-type{ flex: .8; }
+.admin-logs .logs-field-del{ flex: .55; }
+
+.admin-logs .form-label{
+  font-size: .82rem;
+  font-weight: 700;
+  color: #495057;
+}
+
+.admin-logs .form-control,
+.admin-logs .form-select{
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,.12);
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.admin-logs .form-control:focus,
+.admin-logs .form-select:focus{
+  border-color: rgba(13,110,253,.35);
+  box-shadow: 0 0 0 .2rem rgba(13,110,253,.12);
+}
+
+/* Acciones a la derecha */
+.admin-logs .logs-actions{
+  display: flex;
+  align-items: end;
+  gap: 10px;
+}
+
+/* Botón Cargar con color pro */
+.admin-logs .btn-logs{
+  background: linear-gradient(90deg, #0d6efd, #20c997);
+  border: none;
+  color: #fff;
+  font-weight: 800;
+  border-radius: 12px;
+  padding: 10px 14px;
+  box-shadow: 0 10px 18px rgba(13,110,253,.18);
+}
+
+.admin-logs .btn-logs:hover{
+  filter: brightness(.98);
+  transform: translateY(-1px);
+}
+
+.admin-logs #logsMeta{
+  font-weight: 600;
+  color: #6c757d;
+}
+
+/* Tabla wrap */
+.admin-logs .logs-table-wrap{
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 14px;
+  background: #fff;
+}
+
+/* encabezado sticky + un poco de color */
+.admin-logs thead th{
+  background: #f8f9fa !important;
+  font-weight: 800;
+  color: #343a40;
+  border-bottom: 2px solid rgba(13,110,253,.15) !important;
+}
+
+.admin-logs tbody tr:hover{
+  background: rgba(13,110,253,.05);
+}
+
+/* Chips para "Tipo" (tu badge negro se ve más lindo si lo suavizamos) */
+.admin-logs .badge.bg-dark{
+  background: rgba(13,110,253,.10) !important;
+  color: #0d6efd !important;
+  border: 1px solid rgba(13,110,253,.22);
+  font-weight: 800;
+}
+
+/* Badges Sí/No más consistentes */
+.admin-logs .badge.bg-danger{ background: rgba(220,53,69,.12) !important; color:#dc3545 !important; border:1px solid rgba(220,53,69,.22); }
+.admin-logs .badge.bg-success{ background: rgba(25,135,84,.12) !important; color:#198754 !important; border:1px solid rgba(25,135,84,.22); }
+
+/* Botones de acción por fila */
+.admin-logs .action-btns .btn{
+  border-radius: 10px;
+  font-weight: 800;
+  padding: 7px 10px;
+}
+
+/* Responsive: en pantallas chicas sí bajamos a 2 líneas */
+@media (max-width: 992px){
+  .admin-logs .logs-toolbar{ flex-wrap: wrap; }
+  .admin-logs .logs-actions{ width: 100%; justify-content: space-between; }
+}
