@@ -189,13 +189,34 @@
 
     {% endif %}
 
-    <!-- Botón volver -->
-    <div class="text-center mt-4">
+    <!-- Botones de navegación -->
+    <div class="text-center mt-4 d-flex justify-content-center gap-3 flex-wrap">
+      <button class="btn btn-outline-primary" onclick="window.history.back()">
+        ⬅️ Volver a la página anterior
+      </button>
       <button class="btn btn-secondary" onclick="window.location.href='/menu.html'">
-        ⬅️ Volver al menú
+        🏠 Volver al menú
       </button>
     </div>
-  </div>
+
+    <!-- Aviso de privacidad -->
+    <footer class="footer-privacidad mt-5 py-4 border-top">
+      <div class="container text-center text-muted small">
+        <p class="mb-1">
+          <i class="fas fa-lock me-1"></i>
+          <strong>Aviso de Privacidad:</strong> Los datos personales presentados son tratados con confidencialidad y únicamente para fines clínicos y administrativos del consultorio dental, conforme a la 
+          <a href="https://www.diputados.gob.mx/LeyesBiblio/pdf/LFPDPPP.pdf" target="_blank" rel="noopener noreferrer" class="text-decoration-underline">Ley Federal de Protección de Datos Personales en Posesión de Particulares</a>.
+        </p>
+        <p class="mb-0">
+          © <span id="anio-actual"></span> ESCOM. Todos los derechos reservados.
+        </p>
+      </div>
+    </footer>
+
+    <!-- Script para año dinámico -->
+    <script>
+      document.getElementById('anio-actual').textContent = new Date().getFullYear();
+    </script>
 
   <!-- Librerías DICOM -->
   <script src="/visualizador/static/libs/cornerstone.min.js"></script>

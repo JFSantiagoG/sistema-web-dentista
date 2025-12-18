@@ -1,5 +1,69 @@
 // =============================
-// Validación correo electrónico (sin espacios)
+// 🔤 Solo texto en Nombre, Apellido y Ocupación (con acentos y ñ)
+// =============================
+['nombre', 'apellido', 'ocupacion'].forEach(id => {
+  const input = document.getElementById(id);
+  if (!input) return;
+
+  // Bloquear entrada no permitida en tiempo real
+  input.addEventListener('input', function (e) {
+    let value = e.target.value;
+    // Solo letras, espacios, acentos, ñ/Ñ
+    value = value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, '');
+    e.target.value = value;
+  });
+
+  // Evitar pegar texto no válido
+  input.addEventListener('paste', function (e) {
+    setTimeout(() => {
+      let value = e.target.value;
+      value = value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, '');
+      e.target.value = value;
+    }, 10);
+  });
+});
+
+// =============================
+// 📞 Solo 10 dígitos en teléfonos (sin letras, símbolos ni espacios)
+// =============================
+['telefono_principal', 'telefono_secundario'].forEach(id => {
+  const input = document.getElementById(id);
+  if (!input) return;
+
+  // Limitar entrada a 10 dígitos y solo números
+  input.addEventListener('input', function (e) {
+    let value = e.target.value.replace(/\D/g, ''); // Elimina todo lo que no sea dígito
+    if (value.length > 10) value = value.slice(0, 10);
+    e.target.value = value;
+  });
+
+  // Bloquear pegado no válido
+  input.addEventListener('paste', function (e) {
+    setTimeout(() => {
+      let value = e.target.value.replace(/\D/g, '');
+      if (value.length > 10) value = value.slice(0, 10);
+      e.target.value = value;
+    }, 10);
+  });
+
+  // Opcional: prevenir teclas no numéricas en el teclado (mejora UX)
+  input.addEventListener('keydown', function (e) {
+    if (
+      e.key.length === 1 &&
+      !/^[0-9]$/.test(e.key) &&
+      e.key !== 'Backspace' &&
+      e.key !== 'Delete' &&
+      e.key !== 'ArrowLeft' &&
+      e.key !== 'ArrowRight' &&
+      e.key !== 'Tab'
+    ) {
+      e.preventDefault();
+    }
+  });
+});
+
+// =============================
+// ✉️ Validación de correo electrónico (sin espacios + formato)
 // =============================
 document.getElementById('email')?.addEventListener('input', function (e) {
   let value = e.target.value;
@@ -9,7 +73,7 @@ document.getElementById('email')?.addEventListener('input', function (e) {
 });
 
 // =============================
-// Autorellena edad desde la fecha de nacimiento
+// 📅 Autorellena edad desde la fecha de nacimiento
 // =============================
 (function () {
   const fnac = document.getElementById('fecha_nacimiento');
@@ -31,20 +95,22 @@ document.getElementById('email')?.addEventListener('input', function (e) {
 })();
 
 // =============================
-// Formulario de nuevo paciente
+// 📝 Validación de correo en envío (ya existía, la mantenemos)
+// =============================
+const validarEmail = (email) => {
+  if (!email) return true;
+  const re = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+  return re.test(String(email).toLowerCase());
+};
+
+// =============================
+// 📤 Manejo del formulario
 // =============================
 (function () {
   const form = document.getElementById('pacienteForm');
   if (!form) return;
 
   let sending = false;
-
-  // ➕ Función de validación de correo (definida una sola vez)
-  const validarEmail = (email) => {
-    if (!email) return true; // opcional → vacío es válido
-    const re = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
-    return re.test(String(email).toLowerCase());
-  };
 
   const getPayload = () => ({
     nombre:               document.getElementById('nombre').value.trim(),
@@ -67,14 +133,12 @@ document.getElementById('email')?.addEventListener('input', function (e) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // 1. Validación básica de HTML5
     if (!form.checkValidity()) {
       form.classList.add('was-validated');
       await Swal.fire('Campos incompletos', 'Revisa los campos marcados con *', 'warning');
       return;
     }
 
-    // 2. ➕ Validación adicional: correo electrónico
     const email = document.getElementById('email')?.value.trim();
     if (email && !validarEmail(email)) {
       await Swal.fire('Correo inválido', 'Por favor ingresa un correo electrónico válido (ej: nombre@dominio.com).', 'error');
@@ -82,13 +146,10 @@ document.getElementById('email')?.addEventListener('input', function (e) {
       return;
     }
 
-    // 3. Evitar envíos múltiples
     if (sending) return;
-
     const payload = getPayload();
 
-    // === Confirmación antes de guardar ===
-    const { isConfirmed, isDenied } = await Swal.fire({
+    const { isConfirmed } = await Swal.fire({
       title: '¿Guardar paciente?',
       html: `
         <div class="text-start">
@@ -99,17 +160,11 @@ document.getElementById('email')?.addEventListener('input', function (e) {
         </div>
       `,
       icon: 'question',
-      showDenyButton: true,
       showCancelButton: true,
       confirmButtonText: 'Sí, guardar',
-      denyButtonText: 'No',
       cancelButtonText: 'Cancelar'
     });
 
-    if (isDenied) {
-      await Swal.fire('Operación cancelada', 'No se guardó el paciente.', 'info');
-      return;
-    }
     if (!isConfirmed) return;
 
     const token = localStorage.getItem('token') || '';
