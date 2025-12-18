@@ -1,15 +1,3 @@
-(() => {
-  const params = new URLSearchParams(window.location.search);
-  const t = params.get('token');
-  if (t) {
-    localStorage.setItem('token', t);
-    params.delete('token');
-    const clean = window.location.pathname + (params.toString() ? `?${params.toString()}` : '');
-    window.history.replaceState({}, '', clean);
-  }
-})();
-
-
 const urlParams = new URLSearchParams(window.location.search);
 const viewerMode = urlParams.get('mode') || '2d';
 const pacienteId = urlParams.get('paciente') || '';
