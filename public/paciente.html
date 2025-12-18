@@ -16,7 +16,7 @@
     <!-- 🔹 Encabezado -->
     <div class="d-flex justify-content-between align-items-start mb-4">
       <div>
-        <h1 class="h4 fw-bold text-primary mb-1">👤 Perfil del Paciente</h1>
+        <h1 class="h4 fw-bold text-primary mb-1">👤 Expediente del Paciente</h1>
         <p class="text-muted small mb-0">Información general y formularios clínicos</p>
       </div>
       <button type="button" class="btn btn-outline-secondary d-flex align-items-center gap-1" onclick="window.location.href='/menu.html'">
@@ -360,7 +360,7 @@
         </div>
       </section>
 
-      <!-- 👶 Diagnóstico Infantil (solo si edad >= 25) -->
+      <!-- 👶 Diagnóstico Infantil (solo si edad >= 18) -->
       <section id="seccion-diag-infantil" class="mb-4 p-4 bg-white rounded-3 shadow-sm">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h4 class="text-secondary mb-0 fw-semibold">👶 Diagnóstico Infantil</h4>
@@ -552,7 +552,7 @@
     function actualizarVisibilidadDiagnosticoInfantil(edad) {
       const seccion = document.getElementById('seccion-diag-infantil');
       if (seccion) {
-        if (edad < 25) {
+        if (edad < 18) {
           seccion.style.display = 'none';
         } else {
           seccion.style.display = '';

@@ -33,6 +33,60 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnEnviar           = document.getElementById('btnEnviar');
   const btnPDF              = document.getElementById('btnPDF');
 
+  // --- teléfono helpers (igual que en receta.js)
+  function normalizarTelefono(telefonoRaw) {
+    if (!telefonoRaw) return null;
+    const limpio = String(telefonoRaw).replace(/\D/g, '');
+    if (limpio.length === 10) {
+      return '52' + limpio; // MX nacional
+    }
+    if (limpio.length >= 11 && limpio.length <= 15) {
+      return limpio;
+    }
+    return null;
+  }
+
+  function extraerTelefonoDeObjeto(p) {
+    if (!p) return null;
+    return (
+      normalizarTelefono(p.telefono_principal) ||
+      normalizarTelefono(p.telefono_secundario) ||
+      normalizarTelefono(p.telefono) ||
+      normalizarTelefono(p.celular) ||
+      normalizarTelefono(p.whatsapp)
+    );
+  }
+
+  async function setNumeroWhatsApp(btn, raw) {
+    if (!btn) return;
+
+    let numero =
+      extraerTelefonoDeObjeto(raw?.paciente) ||
+      extraerTelefonoDeObjeto(raw) ||
+      null;
+
+    if (!numero) {
+      const pid = raw?.paciente_id || pacienteId;
+      if (pid) {
+        try {
+          const res = await fetch(`/api/patients/${pid}`, { headers: authHeaders });
+          if (res.ok) {
+            const p = await res.json();
+            numero = extraerTelefonoDeObjeto(p);
+          }
+        } catch (e) {
+          console.warn('No se pudo obtener teléfono desde /api/patients/', e);
+        }
+      }
+    }
+
+    if (numero) {
+      btn.setAttribute('data-numero-paciente', numero);
+    } else {
+      btn.removeAttribute('data-numero-paciente');
+    }
+  }
+
   // Firma (solo para PDF)
   const canvas   = document.getElementById('signature-pad');
   const clearBtn = document.getElementById('clearSignature-pad');
@@ -198,6 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
       opt.textContent = name;
       opt.selected = true;
       pacienteSelect.appendChild(opt);
+      await setNumeroWhatsApp(btnEnviar, p);
     } catch(e) {
       console.error('Error cargando paciente:', e);
       await err('Error', 'No se pudo cargar el paciente.');
@@ -246,6 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Error cargar evolución visualizar:', e);
       await err('Error', 'No se pudo cargar la evolución.');
     }
+    await setNumeroWhatsApp(btnEnviar, json); 
   }
 
   // ====== Construcción de payload
@@ -347,10 +403,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ====== Enviar (simulación siempre)
-  async function enviarFormulario(){
+  // ====== Enviar por WhatsApp o simular
+  async function enviarFormulario() {
+    const numero = btnEnviar?.getAttribute('data-numero-paciente');
     const folio = formularioIdParam || formularioId || '(sin folio)';
-    await ok('✅ Enviado (simulación)', `Se ha enviado la simulación del formulario. Folio: ${folio}`);
+
+    if (numero && /^\d{10,15}$/.test(numero)) {
+      const mensaje = encodeURIComponent(`Hola, adjunto su hoja de evolución clínica. Folio: ${folio}`);
+      const url = `https://wa.me/${numero}?text=${mensaje}`;
+      window.open(url, '_blank');
+    } else {
+      await ok('📤 Contactar con paciente', `No se encontró número de WhatsApp.\nFolio: ${folio}\n\n(Puede descargar el PDF y enviarlo manualmente.)`);
+    }
   }
 
   // ====== PDF (incluye TODO en append)
