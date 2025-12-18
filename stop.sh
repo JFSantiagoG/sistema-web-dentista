@@ -1,16 +1,13 @@
 #!/bin/bash
-SERVICES=("gateway" "auth" "forms" "pdf" "appointments" "patients" "visualizador" "whatsapp")
 
-echo "⛔ Deteniendo servicios clínicos..."
+# Puertos utilizados por tus servicios
+PORTS=(8080 3001 3002 3003 3005 3006 3007 3010)
 
-for svc in "${SERVICES[@]}"; do
-  # Verificar si la sesión screen existe
-  if screen -list | grep -q "clinica_$svc"; then
-    echo "  - Deteniendo clinica_$svc..."
-    screen -S "clinica_$svc" -X quit
-  else
-    echo "  - clinica_$svc no está activa."
-  fi
+echo "🛑 Deteniendo servicios en los puertos: ${PORTS[*]}..."
+
+for port in "${PORTS[@]}"; do
+    echo "   Intentando matar proceso en puerto $port..."
+    sudo fuser -k "$port"/tcp >/dev/null 2>&1
 done
 
-echo "✅ Todos los servicios han sido detenidos."
+echo "✅ Todos los servicios han sido detenidos (si existían)."

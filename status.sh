@@ -1,26 +1,33 @@
 #!/bin/bash
 
-# Lista de servicios (debe coincidir con los nombres usados en start.sh)
-SERVICES=("gateway" "auth" "forms" "pdf" "appointments" "patients" "visualizador")
+# Rutas y configuración
+BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "🔍 Estado de los servicios clínicos:"
-echo "----------------------------------"
+# Definir mapeo de puertos → nombres de servicio
+declare -A SERVICES
+SERVICES[8080]="gateway (proxy)"
+SERVICES[3001]="auth"
+SERVICES[3002]="forms"
+SERVICES[3003]="pdf"
+SERVICES[3005]="appointments"
+SERVICES[3006]="patients"
+SERVICES[3007]="visualizador"
+SERVICES[3010]="whatsapp"
 
-any_running=false
+# Obtener puertos en uso (solo los que están escuchando en IPv4/IPv6)
+ACTIVE_PORTS=$(sudo ss -tulpn 2>/dev/null | awk -F '[: ]+' '/:([0-9]+).*LISTEN/ {print $5}' | sort -u)
 
-for svc in "${SERVICES[@]}"; do
-  session_name="clinica_$svc"
-  if screen -list | grep -q "$session_name"; then
-    echo "✅ $svc: ACTIVO"
-    any_running=true
-  else
-    echo "❌ $svc: DETENIDO"
-  fi
+echo "🔍 Verificando estado de los servicios..."
+echo "----------------------------------------"
+
+for port in "${!SERVICES[@]}"; do
+    if printf '%s\n' "$ACTIVE_PORTS" | grep -q "^${port}$"; then
+        echo "✅ ${SERVICES[$port]} (puerto $port) → ACTIVO"
+    else
+        echo "❌ ${SERVICES[$port]} (puerto $port) → INACTIVO"
+    fi
 done
 
-echo "----------------------------------"
-if [ "$any_running" = true ]; then
-  echo "💡 Consejo: Usa 'screen -r clinica_NOMBRE' para ver logs en vivo."
-else
-  echo "⚠️ Ningún servicio está activo. Ejecuta './start.sh' para iniciarlos."
-fi
+echo "----------------------------------------"
+echo "💡 Usa './start.sh' para iniciar los servicios."
+echo "💡 Usa './stop.sh' para detenerlos."
