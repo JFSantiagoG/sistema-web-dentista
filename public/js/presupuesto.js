@@ -394,8 +394,8 @@ async function enviarPorWhatsApp() {
   }
 
   const mensaje = `Hola, aquí está tu presupuesto dental:\n\n` +
-    `💰 *Presupuesto Total:* $${total.toFixed(2)}\n` +
-    `📅 *Pago Mensual:* $${mensual.toFixed(2)}\n\n` +
+    ` *Presupuesto Total:* $${total.toFixed(2)}\n` +
+    ` *Pago Mensual:* $${mensual.toFixed(2)}\n\n` +
     `¡Gracias por confiar en nuestro consultorio!`;
 
   // URL de WhatsApp (formato internacional: +52 + número sin 0 ni 1 al inicio)

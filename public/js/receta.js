@@ -1,39 +1,35 @@
-// public/js/receta.js
 document.addEventListener('DOMContentLoaded', async () => {
   const form = document.getElementById('recetaForm');
   if (!form) return console.error('❌ No se encontró #recetaForm');
 
   // --- refs del DOM
   const nombreEl   = form.querySelector('[name="nombrePaciente"]');
-  const fechaEl    = form.querySelector('[name="fecha"]'); // fecha de emisión (YYYY-MM-DD)
+  const fechaEl    = form.querySelector('[name="fecha"]');
   const edadEl     = form.querySelector('[name="edad"]');
   const hiddenId   = document.getElementById('pacienteId');
   const tablaBody  = document.querySelector('#tablaMedicamentos tbody');
   const addBtn     = document.getElementById('addMedicamentoBtn');
   const btnGuardar = document.getElementById('btnGuardar');
   const btnEnviar  = document.getElementById('btnEnviar');
-  const canvas     = document.getElementById('signature-pad'); // firma
+  const canvas     = document.getElementById('signature-pad');
   const btnClear   = document.getElementById('clearSignature-pad');
-  const firmaImg   = document.getElementById('firmaRecetaImg'); // <img> para modo visualizar
+  const firmaImg   = document.getElementById('firmaRecetaImg');
 
-  // 👇 base para archivos de firma a través del gateway
   const FIRMA_BASE_URL = '/api/patients/uploads';
 
-  // --- QueryString (nuevo o visualizar)
+  // --- QueryString
   const qs = new URLSearchParams(location.search);
   const pacienteIdQS   = qs.get('paciente_id') || qs.get('id');
   const formularioIdQS = qs.get('formulario_id');
 
   if (hiddenId && pacienteIdQS) hiddenId.value = pacienteIdQS;
 
-  // --- Estado local: folio
   const SS_KEY   = (pid) => `receta:formId:${pid}`;
   const SAVE_KEY = (pid) => `receta:saved:${pid}`;
   let formularioId = formularioIdQS
     ? Number(formularioIdQS)
     : (pacienteIdQS ? Number(sessionStorage.getItem(SS_KEY(pacienteIdQS))) || null : null);
 
-  // --- Canal para avisar al perfil
   const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('recetas') : null;
   function notificarRecetaGuardada(pid, folio) {
     try {
@@ -42,22 +38,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch {}
   }
 
-  // --- Helpers fecha
+  // --- Fecha de hoy
   const hoyISO = (() => {
     const now = new Date();
     const iso = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     return iso;
   })();
 
-  // --- auth headers
+  // --- Auth
   const token = localStorage.getItem('token');
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
-  // --- Helpers varios
-  function setInput(el, val) { if (el) el.value = val ?? ''; }
-
-  function nombreDesdePaciente(p) {
-    return [p?.nombre, p?.apellido].filter(Boolean).join(' ').trim();
+  // --- Helpers
+  function setInput(el, val) {
+    if (el) el.value = val ?? '';
   }
 
   const buildNombre = (p) =>
@@ -66,76 +60,205 @@ document.addEventListener('DOMContentLoaded', async () => {
       .join(' ')
       .trim();
 
-  const crearFila = () => {
+  // === MEDICAMENTOS PREDEFINIDOS ===
+  const medicamentosData = {
+    "Amoxicilina": {
+      dosis: "500 mg",
+      frecuencia: "Cada 8 horas",
+      duracion: "5–7 días",
+      indicaciones: "Infecciones dentales (abscesos, celulitis, periodontitis aguda)."
+    },
+    "Amoxicilina + Ácido clavulánico": {
+      dosis: "500/125 mg o 875/125 mg",
+      frecuencia: "Cada 8 o 12 horas (según formulación)",
+      duracion: "5–7 días",
+      indicaciones: "Infecciones moderadas a severas, o cuando se sospecha resistencia bacteriana."
+    },
+    "Clindamicina": {
+      dosis: "300 mg",
+      frecuencia: "Cada 6–8 horas",
+      duracion: "5–7 días",
+      indicaciones: "Alternativa en pacientes alérgicos a penicilinas."
+    },
+    "Ibuprofeno": {
+      dosis: "400–600 mg",
+      frecuencia: "Cada 6–8 horas (máx. 2400 mg/día)",
+      duracion: "3–5 días (solo mientras persista el dolor/inflamación)",
+      indicaciones: "Dolor postoperatorio, inflamación."
+    },
+    "Paracetamol": {
+      dosis: "500–1000 mg",
+      frecuencia: "Cada 6–8 horas (máx. 4000 mg/día)",
+      duracion: "3–5 días",
+      indicaciones: "Dolor leve a moderado; alternativa si hay contraindicación para AINEs."
+    },
+    "Ibuprofeno + Paracetamol": {
+      dosis: "Ibuprofeno 400 mg + Paracetamol 500–650 mg",
+      frecuencia: "Cada 8 horas (alternando o combinando según protocolo)",
+      duracion: "2–5 días",
+      indicaciones: "Manejo del dolor dental postoperatorio (sinergia analgésica)."
+    },
+    "Metronidazol": {
+      dosis: "500 mg",
+      frecuencia: "Cada 8 horas",
+      duracion: "5–7 días",
+      indicaciones: "Infecciones anaerobias (ej. periodontitis aguda, abscesos pericoronarios). Usualmente en combinación con amoxicilina."
+    },
+    "Diclofenaco sódico": {
+      dosis: "50 mg",
+      frecuencia: "Cada 8 horas",
+      duracion: "3–5 días",
+      indicaciones: "Dolor e inflamación postoperatoria."
+    },
+    "Dexametasona": {
+      dosis: "4–8 mg (dosis única o dividida)",
+      frecuencia: "Una sola dosis o dividida en 2–3 tomas el primer día",
+      duracion: "1–3 días (generalmente solo el día de la cirugía y el siguiente)",
+      indicaciones: "Reducción de edema postoperatorio (ej. tras extracciones complejas o cirugía de terceros molares)."
+    },
+    "Enjuague bucal con clorhexidina al 0.12%": {
+      dosis: "15 mL",
+      frecuencia: "Enjuague durante 30 segundos, 2 veces al día (mañana y noche)",
+      duracion: "7–14 días (no más de 2 semanas continuas para evitar manchas dentales)",
+      indicaciones: "Prevención de infecciones, control de placa postoperatoria."
+    }
+  };
+
+  // === CREAR FILA DE MEDICAMENTO ===
+  function crearFila() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><input type="text" class="form-control" name="medicamento[]"></td>
-      <td><input type="text" class="form-control" name="dosis[]"></td>
-      <td><input type="text" class="form-control" name="frecuencia[]"></td>
-      <td><input type="text" class="form-control" name="duracion[]"></td>
-      <td><input type="text" class="form-control" name="indicaciones[]"></td>
+      <td>
+        <select class="form-control medicamento-select" name="medicamento[]">
+          <option value="" selected disabled>Seleccionar medicamento...</option>
+          <option value="Amoxicilina">Amoxicilina</option>
+          <option value="Amoxicilina + Ácido clavulánico">Amoxicilina + Ácido clavulánico</option>
+          <option value="Clindamicina">Clindamicina</option>
+          <option value="Ibuprofeno">Ibuprofeno</option>
+          <option value="Paracetamol">Paracetamol</option>
+          <option value="Ibuprofeno + Paracetamol">Ibuprofeno + Paracetamol</option>
+          <option value="Metronidazol">Metronidazol</option>
+          <option value="Diclofenaco sódico">Diclofenaco sódico</option>
+          <option value="Dexametasona">Dexametasona</option>
+          <option value="Enjuague bucal con clorhexidina al 0.12%">Enjuague bucal con clorhexidina al 0.12%</option>
+          <option value="Otros">Otros</option>
+        </select>
+        <input type="text" class="form-control medicamento-otro-input mt-1" placeholder="Especificar medicamento..." style="display:none;">
+      </td>
+      <td><input type="text" class="form-control dosis-input" name="dosis[]" placeholder="Ej: 500 mg"></td>
+      <td><input type="text" class="form-control frecuencia-input" name="frecuencia[]" placeholder="Ej: Cada 8 horas"></td>
+      <td><input type="text" class="form-control duracion-input" name="duracion[]" placeholder="Ej: 5–7 días"></td>
+      <td><input type="text" class="form-control indicaciones-input" name="indicaciones[]" placeholder="Indicaciones..."></td>
       <td class="text-center">
         <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row">🗑️</button>
       </td>`;
     return tr;
+  }
+
+  // === MANEJAR CAMBIO EN SELECT ===
+  function llenarCamposMedicamento(selectElement) {
+    const medicamentoNombre = selectElement.value;
+    const fila = selectElement.closest('tr');
+    const otroInput = fila.querySelector('.medicamento-otro-input');
+
+    if (medicamentoNombre === 'Otros') {
+      otroInput.style.display = 'block';
+      otroInput.focus();
+      // Limpiar campos
+      ['dosis-input', 'frecuencia-input', 'duracion-input', 'indicaciones-input'].forEach(cls => {
+        const el = fila.querySelector(`.${cls}`);
+        if (el) el.value = '';
+      });
+    } else {
+      otroInput.style.display = 'none';
+      otroInput.value = '';
+      if (medicamentosData[medicamentoNombre]) {
+        fila.querySelector('.dosis-input').value = medicamentosData[medicamentoNombre].dosis;
+        fila.querySelector('.frecuencia-input').value = medicamentosData[medicamentoNombre].frecuencia;
+        fila.querySelector('.duracion-input').value = medicamentosData[medicamentoNombre].duracion;
+        fila.querySelector('.indicaciones-input').value = medicamentosData[medicamentoNombre].indicaciones;
+      } else {
+        ['dosis-input', 'frecuencia-input', 'duracion-input', 'indicaciones-input'].forEach(cls => {
+          const el = fila.querySelector(`.${cls}`);
+          if (el) el.value = '';
+        });
+      }
+    }
+  }
+
+  // === CAPTURAR INPUT EN "OTROS" (opcional, solo UX) ===
+  document.addEventListener('input', (e) => {
+    if (e.target.classList.contains('medicamento-otro-input')) {
+      // No es necesario modificar el <select>, porque buildData lo maneja
+    }
+  });
+
+  // === FIRMA ===
+  async function getFirmaBase64() {
+    // 1) Desde imagen guardada
+    if (firmaImg && firmaImg.src && firmaImg.style.display !== 'none') {
+      try {
+        const resp = await fetch(firmaImg.src);
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const base64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+          return base64;
+        }
+      } catch (e) {
+        console.warn('Error al obtener firma desde imagen:', e);
+      }
+    }
+
+    // 2) Desde canvas
+    if (canvas && !canvas.classList.contains('d-none')) {
+      try {
+        return canvas.toDataURL('image/png');
+      } catch (e) {
+        console.warn('Error al leer canvas:', e);
+      }
+    }
+
+    return null;
+  }
+
+  // === BUILD DATA ===
+  const buildData = () => {
+    const data = {
+      pacienteId: pacienteIdQS || null,
+      nombrePaciente: nombreEl?.value || '',
+      fecha: fechaEl?.value || '',
+      edad: edadEl?.value || '',
+      nombreMedico: form.nombreMedico.value,
+      cedula: form.cedula.value,
+      medicamentos: []
+    };
+
+    tablaBody.querySelectorAll('tr').forEach(fila => {
+      const select = fila.querySelector('.medicamento-select');
+      const otroInput = fila.querySelector('.medicamento-otro-input');
+      let nombreMed = select?.value || '';
+
+      if (nombreMed === 'Otros' && otroInput?.value?.trim()) {
+        nombreMed = otroInput.value.trim();
+      }
+
+      data.medicamentos.push({
+        nombre: nombreMed,
+        dosis: fila.querySelector('[name="dosis[]"]')?.value || '',
+        frecuencia: fila.querySelector('[name="frecuencia[]"]')?.value || '',
+        duracion: fila.querySelector('[name="duracion[]"]')?.value || '',
+        indicaciones: fila.querySelector('[name="indicaciones[]"]')?.value || ''
+      });
+    });
+
+    return data;
   };
 
-// --- Firma (para guardar / PDF)
-async function getFirmaBase64() {
-  // 1) INTENTAR PRIMERO DESDE LA IMAGEN (modo VISUALIZAR)
-  if (firmaImg && firmaImg.src && firmaImg.style.display !== 'none') {
-    try {
-      console.log('[receta] intentando firma desde <img>', firmaImg.src);
-
-      const resp = await fetch(firmaImg.src);
-      if (!resp.ok) {
-        console.warn('[getFirmaBase64] HTTP error al cargar imagen:', resp.status);
-      } else {
-        const blob = await resp.blob();
-        const base64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-
-        console.log('[receta] firma desde <img> (base64)', String(base64).slice(0, 80) + '...');
-        return base64; // data:image/png;base64,...
-      }
-    } catch (e) {
-      console.error('[getFirmaBase64] Error convirtiendo imagen:', e);
-    }
-  }
-
-  // 2) Luego intentar desde un signaturePad global (modo NUEVO)
-  if (typeof window.getSignaturePad === 'function') {
-    const fromPad = window.getSignaturePad();
-    if (fromPad) {
-      console.log('[receta] firma desde signaturePad(global)', String(fromPad).slice(0, 80) + '...');
-      return fromPad;
-    }
-  }
-
-  // 3) Luego intentar desde el canvas (modo NUEVO, cuando no está oculto)
-  if (canvas && !canvas.classList.contains('d-none')) {
-    try {
-      const dataUrl = canvas.toDataURL('image/png');
-      console.log('[receta] firma desde canvas', dataUrl.slice(0, 80) + '...');
-      return dataUrl;
-    } catch (e) {
-      console.warn('[getFirmaBase64] Error leyendo canvas:', e);
-    }
-  }
-
-  console.log('[receta] getFirmaBase64 -> SIN firma');
-  // 4) No hay firma
-  return null;
-}
-
-
-
-
-  // --- helpers nombre archivo / descarga PDF
+  // === UTILS ===
   function stripAccents(str = '') {
     return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
@@ -166,19 +289,14 @@ async function getFirmaBase64() {
     URL.revokeObjectURL(url);
   }
 
-  // --- telefono helpers
+  // === TELÉFONO ===
   function normalizarTelefono(telefonoRaw) {
     if (!telefonoRaw) return null;
     const limpio = String(telefonoRaw).replace(/\D/g, '');
-    if (limpio.length === 10) {
-      return '52' + limpio; // MX nacional
-    }
-    if (limpio.length >= 11 && limpio.length <= 15) {
-      return limpio; // ya con lada
-    }
+    if (limpio.length === 10) return '52' + limpio;
+    if (limpio.length >= 11 && limpio.length <= 15) return limpio;
     return null;
   }
-
   function extraerTelefonoDeObjeto(p) {
     if (!p) return null;
     return (
@@ -192,26 +310,20 @@ async function getFirmaBase64() {
 
   async function setNumeroWhatsApp(btn, raw) {
     if (!btn) return;
-
-    // 1) Intentar con datos del detalle
     let numero =
       extraerTelefonoDeObjeto(raw?.paciente) ||
       extraerTelefonoDeObjeto(raw) ||
       null;
 
-    // 2) Si no hay, intentar con pacienteId del detalle o de la URL
-    if (!numero) {
-      const pid = raw?.paciente_id || pacienteIdQS || raw?.paciente?.id;
-      if (pid) {
-        try {
-          const res = await fetch(`/api/patients/${pid}`, { headers: authHeaders });
-          if (res.ok) {
-            const p = await res.json();
-            numero = extraerTelefonoDeObjeto(p);
-          }
-        } catch (e) {
-          console.warn('No se pudo obtener teléfono desde /api/patients/', e);
+    if (!numero && raw?.paciente_id) {
+      try {
+        const res = await fetch(`/api/patients/${raw.paciente_id}`, { headers: authHeaders });
+        if (res.ok) {
+          const p = await res.json();
+          numero = extraerTelefonoDeObjeto(p);
         }
+      } catch (e) {
+        console.warn('No se pudo obtener teléfono:', e);
       }
     }
 
@@ -222,43 +334,15 @@ async function getFirmaBase64() {
     }
   }
 
-  // --- Construir payload desde la UI (para guardar/pdf)
-  const buildData = () => {
-    const data = {
-      pacienteId: pacienteIdQS || null,
-      nombrePaciente: nombreEl?.value || '',
-      fecha: fechaEl?.value || '',
-      edad: edadEl?.value || '',
-      nombreMedico: form.nombreMedico.value,
-      cedula: form.cedula.value,
-      medicamentos: []
-    };
-    tablaBody.querySelectorAll('tr').forEach(fila => {
-      data.medicamentos.push({
-        nombre: fila.querySelector('[name="medicamento[]"]')?.value || '',
-        dosis: fila.querySelector('[name="dosis[]"]')?.value || '',
-        frecuencia: fila.querySelector('[name="frecuencia[]"]')?.value || '',
-        duracion: fila.querySelector('[name="duracion[]"]')?.value || '',
-        indicaciones: fila.querySelector('[name="indicaciones[]"]')?.value || ''
-      });
-    });
-    return data;
-  };
-
-  // =========================================================
-  //                 MODO NUEVO (paciente_id)
-  // =========================================================
+  // === MODO NUEVO ===
   async function cargarPaciente() {
     if (!pacienteIdQS) return;
     try {
       const res = await fetch(`/api/patients/${pacienteIdQS}`, { headers: authHeaders });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const p = await res.json();
-
       if (nombreEl) nombreEl.value = buildNombre(p) || '';
       if (edadEl) edadEl.value = (p?.edad != null) ? `${p.edad} años` : '— años';
-
-      // Número WhatsApp en NUEVO
       await setNumeroWhatsApp(btnEnviar, p);
     } catch (e) {
       console.error('Error al cargar paciente:', e);
@@ -266,20 +350,13 @@ async function getFirmaBase64() {
     }
   }
 
-  // Inicializa fecha para modo NUEVO (hoy). En visualizar se sobrescribe.
   if (fechaEl && !formularioIdQS) {
     fechaEl.value = hoyISO;
     fechaEl.readOnly = true;
-    fechaEl.min = hoyISO;
-    fechaEl.max = hoyISO;
   }
-
-  // Nombre/edad siempre solo lectura
   [nombreEl, edadEl].forEach(el => el && (el.readOnly = true));
 
-  // =========================================================
-  //                 MODO VISUALIZAR (formulario_id)
-  // =========================================================
+  // === MODO VISUALIZAR ===
   function normMed(m = {}) {
     return {
       medicamento: m.medicamento ?? m.nombre ?? m.nombre_medicamento ?? m.drug ?? '',
@@ -298,11 +375,33 @@ async function getFirmaBase64() {
       return;
     }
 
+    const nombresPredefinidos = Object.keys(medicamentosData);
+
     meds.forEach(raw => {
       const m = normMed(raw);
+      const esOtro = !nombresPredefinidos.includes(m.medicamento);
+      const valorSelect = esOtro ? 'Otros' : m.medicamento;
+      const valorOtro = esOtro ? m.medicamento : '';
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><input type="text" class="form-control" name="medicamento[]" value="${m.medicamento}"></td>
+        <td>
+          <select class="form-control medicamento-select" name="medicamento[]" ${formularioIdQS ? 'disabled' : ''}>
+            <option value="" disabled>Seleccionar medicamento...</option>
+            <option value="Amoxicilina"${valorSelect === "Amoxicilina" ? ' selected' : ''}>Amoxicilina</option>
+            <option value="Amoxicilina + Ácido clavulánico"${valorSelect === "Amoxicilina + Ácido clavulánico" ? ' selected' : ''}>Amoxicilina + Ácido clavulánico</option>
+            <option value="Clindamicina"${valorSelect === "Clindamicina" ? ' selected' : ''}>Clindamicina</option>
+            <option value="Ibuprofeno"${valorSelect === "Ibuprofeno" ? ' selected' : ''}>Ibuprofeno</option>
+            <option value="Paracetamol"${valorSelect === "Paracetamol" ? ' selected' : ''}>Paracetamol</option>
+            <option value="Ibuprofeno + Paracetamol"${valorSelect === "Ibuprofeno + Paracetamol" ? ' selected' : ''}>Ibuprofeno + Paracetamol</option>
+            <option value="Metronidazol"${valorSelect === "Metronidazol" ? ' selected' : ''}>Metronidazol</option>
+            <option value="Diclofenaco sódico"${valorSelect === "Diclofenaco sódico" ? ' selected' : ''}>Diclofenaco sódico</option>
+            <option value="Dexametasona"${valorSelect === "Dexametasona" ? ' selected' : ''}>Dexametasona</option>
+            <option value="Enjuague bucal con clorhexidina al 0.12%"${valorSelect === "Enjuague bucal con clorhexidina al 0.12%" ? ' selected' : ''}>Enjuague bucal con clorhexidina al 0.12%</option>
+            <option value="Otros"${valorSelect === "Otros" ? ' selected' : ''}>Otros</option>
+          </select>
+          <input type="text" class="form-control medicamento-otro-input mt-1" value="${valorOtro}" placeholder="Especificar medicamento..." style="display:${esOtro ? 'block' : 'none'};">
+        </td>
         <td><input type="text" class="form-control" name="dosis[]" value="${m.dosis}"></td>
         <td><input type="text" class="form-control" name="frecuencia[]" value="${m.frecuencia}"></td>
         <td><input type="text" class="form-control" name="duracion[]" value="${m.duracion}"></td>
@@ -315,82 +414,34 @@ async function getFirmaBase64() {
   }
 
   async function populateFromDetalle(raw) {
-    console.log('Detalle receta recibido:', raw);
-
-    // Nombre
-    const nombre =
-      nombreDesdePaciente(raw.paciente) ||
-      (typeof raw.nombrePaciente === 'string' ? raw.nombrePaciente : '') ||
-      '—';
+    const nombre = buildNombre(raw.paciente) || raw.nombrePaciente || '—';
     setInput(nombreEl, nombre);
+    setInput(fechaEl, (raw.fecha || '').slice(0, 10));
+    setInput(edadEl, (raw?.paciente?.edad != null) ? `${raw.paciente.edad} años` : '— años');
 
-    // Fecha
-    const fecha = (raw.fecha || '').slice(0, 10);
-    setInput(fechaEl, fecha);
-
-    // Edad
-    const edadNum = (raw.edad_anios ?? raw?.paciente?.edad ?? null);
-    setInput(edadEl, (edadNum != null) ? `${edadNum} años` : '— años');
-
-    // Medicamentos
     renderMedicamentos(tablaBody, raw.medicamentos || []);
 
-    // ==============================
-    //        FIRMA GUARDADA
-    // ==============================
-    const firmaWrap = document.querySelector('.firma-wrap');
+    // Ocultar canvas, mostrar firma guardada
+    if (canvas) canvas.classList.add('d-none');
+    if (btnClear) btnClear.classList.add('d-none');
 
-    // 🔍 intentamos varios nombres posibles del campo
-    const firmaPath =
-      raw.firma_path ||
-      raw.firmaPath ||
-      raw.firma_archivo ||
-      raw.firmaArchivo ||
-      raw.firma_file ||
-      raw.firmaFile ||
-      raw.firma;
-
-    console.log('Campos de firma detectados:', {
-      firma_path: raw.firma_path,
-      firmaPath: raw.firmaPath,
-      firma_archivo: raw.firma_archivo,
-      firmaArchivo: raw.firmaArchivo,
-      firma_file: raw.firma_file,
-      firmaFile: raw.firmaFile,
-      firma: raw.firma
-    });
-
-    // En modo visualizar NO queremos que se vea el canvas
-    if (canvas) {
-      canvas.classList.add('d-none');
-    }
-    if (btnClear) {
-      btnClear.classList.add('d-none');
-    }
-
+    const firmaPath = raw.firma_path || raw.firmaPath || raw.firma_archivo || raw.firma;
     if (firmaImg) {
       if (firmaPath) {
-        const url = `${FIRMA_BASE_URL}/${encodeURIComponent(firmaPath)}`;
-        console.log('Mostrando firma en <img> desde:', url);
-        firmaImg.src = url;
+        firmaImg.src = `${FIRMA_BASE_URL}/${encodeURIComponent(firmaPath)}`;
         firmaImg.style.display = 'block';
       } else {
-        console.warn('No se encontró ruta de firma en el detalle.');
         firmaImg.style.display = 'none';
       }
     }
 
-    // Número WhatsApp en VISUALIZAR (detalle + fetch si hace falta)
     await setNumeroWhatsApp(btnEnviar, raw);
   }
 
   async function cargarParaVisualizar(formId) {
     try {
       const res = await fetch(`/api/patients/forms/receta/${encodeURIComponent(formId)}`, {
-        headers: {
-          Accept: 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
+        headers: { Accept: 'application/json', ...authHeaders }
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
@@ -401,17 +452,11 @@ async function getFirmaBase64() {
     }
   }
 
-  // =========================================================
-  //                   LISTENERS DE LA UI
-  // =========================================================
+  // === LISTENERS ===
   addBtn?.addEventListener('click', () => {
-    tablaBody.appendChild(crearFila());
-    Swal.fire({
-      icon: 'success',
-      title: 'Medicamento agregado',
-      timer: 900,
-      showConfirmButton: false
-    });
+    const tr = crearFila();
+    tablaBody.appendChild(tr);
+    Swal.fire({ icon: 'success', title: 'Medicamento agregado', timer: 900, showConfirmButton: false });
   });
 
   tablaBody.addEventListener('click', (e) => {
@@ -422,58 +467,36 @@ async function getFirmaBase64() {
       } else {
         tr.remove();
       }
-      Swal.fire({
-        icon: 'info',
-        title: 'Fila eliminada',
-        timer: 800,
-        showConfirmButton: false
-      });
+      Swal.fire({ icon: 'info', title: 'Fila eliminada', timer: 800, showConfirmButton: false });
     }
   });
 
-  // --- guardar receta en BD (con firma base64)
+  // Listener para los selects (incluyendo los nuevos)
+  tablaBody.addEventListener('change', (e) => {
+    if (e.target.classList.contains('medicamento-select')) {
+      llenarCamposMedicamento(e.target);
+    }
+  });
+
+  // === GUARDAR ===
   async function guardarRecetaEnBD() {
     const data = buildData();
     const pacienteId = pacienteIdQS;
 
     if (!pacienteId) {
-      await Swal.fire({
-        icon: 'warning',
-        title: 'ID no encontrado',
-        text: 'La URL debe incluir ?paciente_id=<id>'
-      });
+      await Swal.fire({ icon: 'warning', title: 'ID no encontrado', text: 'La URL debe incluir ?paciente_id=<id>' });
       return null;
     }
 
     const firma = await getFirmaBase64();
-    if (firma) {
-      data.firmaBase64 = firma;
-    }
-
+    if (firma) data.firmaBase64 = firma;
 
     if (!data.medicamentos.length || !data.medicamentos.some(m => m.nombre?.trim())) {
-      await Swal.fire({
-        icon: 'warning',
-        title: 'Faltan datos',
-        text: 'Agrega al menos un medicamento.'
-      });
+      await Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Agrega al menos un medicamento.' });
       return null;
     }
 
-    if (formularioId && !formularioIdQS) {
-      const r = await Swal.fire({
-        title: `Esta receta ya fue guardada (folio ${formularioId}).`,
-        text: '¿Deseas guardar otra receta nueva con estos datos?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Sí, crear otra',
-        cancelButtonText: 'Cancelar'
-      });
-      if (!r.isConfirmed) return null;
-    }
-
     btnGuardar && (btnGuardar.disabled = true);
-
     try {
       const res = await fetch(`/api/patients/${pacienteId}/recetas`, {
         method: 'POST',
@@ -489,19 +512,11 @@ async function getFirmaBase64() {
         notificarRecetaGuardada(pacienteId, formularioId);
       }
 
-      await Swal.fire({
-        icon: 'success',
-        title: 'Guardado',
-        text: `Folio: ${formularioId ?? '—'}`
-      });
+      await Swal.fire({ icon: 'success', title: 'Guardado', text: `Folio: ${formularioId ?? '—'}` });
       return formularioId;
     } catch (e) {
       console.error('Error al guardar receta:', e);
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'No se pudo guardar la receta.'
-      });
+      await Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar la receta.' });
       return null;
     } finally {
       btnGuardar && (btnGuardar.disabled = false);
@@ -510,16 +525,11 @@ async function getFirmaBase64() {
 
   btnGuardar?.addEventListener('click', guardarRecetaEnBD);
 
-  // --- Enviar por WhatsApp
+  // === ENVIAR POR WHATSAPP ===
   btnEnviar?.addEventListener('click', async () => {
     const numero = btnEnviar.getAttribute('data-numero-paciente');
-
     if (!numero || !/^\d{10,15}$/.test(numero)) {
-      await Swal.fire({
-        icon: 'warning',
-        title: 'Número no disponible',
-        text: 'El paciente no tiene un número de WhatsApp válido registrado.'
-      });
+      await Swal.fire({ icon: 'warning', title: 'Número no disponible', text: 'El paciente no tiene un número de WhatsApp válido registrado.' });
       return;
     }
 
@@ -528,26 +538,15 @@ async function getFirmaBase64() {
     window.open(url, '_blank');
   });
 
-  // --- Generar PDF
+  // === PDF ===
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-
     if (!formularioId) {
-      await Swal.fire({
-        title: 'Primero guarda la receta',
-        text: 'Para generar el PDF necesitas guardar la receta y obtener un folio.',
-        icon: 'warning',
-        confirmButtonText: 'Entendido'
-      });
+      await Swal.fire({ title: 'Primero guarda la receta', text: 'Para generar el PDF necesitas guardar la receta y obtener un folio.', icon: 'warning' });
       return;
     }
 
-    const pre = await Swal.fire({
-      icon: 'info',
-      title: 'Se abrirá el PDF en otra pestaña',
-      text: 'Al regresar, podrás descargarlo desde aquí con un nombre sugerido.',
-      confirmButtonText: 'Entendido'
-    });
+    const pre = await Swal.fire({ icon: 'info', title: 'Se abrirá el PDF en otra pestaña', text: 'Al regresar, podrás descargarlo desde aquí con un nombre sugerido.', confirmButtonText: 'Entendido' });
     if (!pre.isConfirmed) return;
 
     const data = buildData();
@@ -574,11 +573,7 @@ async function getFirmaBase64() {
       await Swal.fire({
         icon: 'success',
         title: 'PDF listo',
-        html: `
-          <p>El PDF se abrió en otra pestaña.</p>
-          <p class="mb-1"><small>Nombre sugerido:</small></p>
-          <code style="user-select:all">${filename}.pdf</code>
-        `,
+        html: `<p>El PDF se abrió en otra pestaña.</p><p class="mb-1"><small>Nombre sugerido:</small></p><code style="user-select:all">${filename}.pdf</code>`,
         showCancelButton: true,
         confirmButtonText: '⬇️ Descargar PDF',
         cancelButtonText: 'Cerrar'
@@ -589,182 +584,31 @@ async function getFirmaBase64() {
       URL.revokeObjectURL(viewUrl);
     } catch (err) {
       console.error('Error al generar PDF:', err);
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'No se pudo generar el PDF.'
-      });
+      await Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo generar el PDF.' });
     }
   });
 
-  // =========================================================
-  //        Flujo de inicio según QS (nuevo vs visualizar)
-  // =========================================================
+  // === FLUJO INICIAL ===
   if (formularioIdQS) {
-    // Ocultar botones edición
+    // Modo visualizar
     btnGuardar?.classList.add('d-none');
     addBtn?.classList.add('d-none');
     btnClear?.classList.add('d-none');
-
-    // Cargar datos receta existente
     await cargarParaVisualizar(formularioIdQS);
 
-    // Bloquear campos pero permitir acciones
-    form.querySelectorAll('input, textarea, select, button').forEach(el => {
-      const id = el.id || '';
-      const type = el.type || '';
-      const tag = el.tagName;
-
-      const isEnviar = id === 'btnEnviar';
-      const isSubmit = type === 'submit';
-      const isActionButton = isEnviar || isSubmit;
-
-      if (isActionButton) {
-        el.removeAttribute('disabled');
-        el.removeAttribute('readonly');
-        return;
-      }
-
-      if (type === 'hidden') return;
-
-      if (tag === 'SELECT') {
-        el.setAttribute('disabled', 'true');
-        return;
-      }
-
-      if (tag === 'INPUT' || tag === 'TEXTAREA') {
+    // Bloquear campos
+    form.querySelectorAll('input, textarea, select').forEach(el => {
+      if (el.type !== 'hidden') {
         el.setAttribute('readonly', 'true');
+        el.setAttribute('disabled', 'true');
         el.classList.add('bg-light');
       }
     });
-
-    tablaBody.querySelectorAll('input').forEach(input => {
-      input.setAttribute('readonly', 'true');
-      input.classList.add('bg-light');
-    });
-
-    tablaBody.querySelectorAll('.btn-delete-row').forEach(btn => {
-      btn.style.display = 'none';
-    });
+    tablaBody.querySelectorAll('.btn-delete-row').forEach(btn => btn.style.display = 'none');
 
   } else if (pacienteIdQS) {
     await cargarPaciente();
   }
 });
 
-// Definir los datos predeterminados para cada medicamento
-const medicamentosData = {
-  "Amoxicilina": {
-    dosis: "500 mg",
-    frecuencia: "Cada 8 horas",
-    duracion: "5–7 días",
-    indicaciones: "Infecciones dentales (abscesos, celulitis, periodontitis aguda)."
-  },
-  "Amoxicilina + Ácido clavulánico": {
-    dosis: "500/125 mg o 875/125 mg",
-    frecuencia: "Cada 8 o 12 horas (según formulación)",
-    duracion: "5–7 días",
-    indicaciones: "Infecciones moderadas a severas, o cuando se sospecha resistencia bacteriana."
-  },
-  "Clindamicina": {
-    dosis: "300 mg",
-    frecuencia: "Cada 6–8 horas",
-    duracion: "5–7 días",
-    indicaciones: "Alternativa en pacientes alérgicos a penicilinas."
-  },
-  "Ibuprofeno": {
-    dosis: "400–600 mg",
-    frecuencia: "Cada 6–8 horas (máx. 2400 mg/día)",
-    duracion: "3–5 días (solo mientras persista el dolor/inflamación)",
-    indicaciones: "Dolor postoperatorio, inflamación."
-  },
-  "Paracetamol": {
-    dosis: "500–1000 mg",
-    frecuencia: "Cada 6–8 horas (máx. 4000 mg/día)",
-    duracion: "3–5 días",
-    indicaciones: "Dolor leve a moderado; alternativa si hay contraindicación para AINEs."
-  },
-  "Ibuprofeno + Paracetamol": {
-    dosis: "Ibuprofeno 400 mg + Paracetamol 500–650 mg",
-    frecuencia: "Cada 8 horas (alternando o combinando según protocolo)",
-    duracion: "2–5 días",
-    indicaciones: "Manejo del dolor dental postoperatorio (sinergia analgésica)."
-  },
-  "Metronidazol": {
-    dosis: "500 mg",
-    frecuencia: "Cada 8 horas",
-    duracion: "5–7 días",
-    indicaciones: "Infecciones anaerobias (ej. periodontitis aguda, abscesos pericoronarios). Usualmente en combinación con amoxicilina."
-  },
-  "Diclofenaco sódico": {
-    dosis: "50 mg",
-    frecuencia: "Cada 8 horas",
-    duracion: "3–5 días",
-    indicaciones: "Dolor e inflamación postoperatoria."
-  },
-  "Dexametasona": {
-    dosis: "4–8 mg (dosis única o dividida)",
-    frecuencia: "Una sola dosis o dividida en 2–3 tomas el primer día",
-    duracion: "1–3 días (generalmente solo el día de la cirugía y el siguiente)",
-    indicaciones: "Reducción de edema postoperatorio (ej. tras extracciones complejas o cirugía de terceros molares)."
-  },
-  "Enjuague bucal con clorhexidina al 0.12%": {
-    dosis: "15 mL",
-    frecuencia: "Enjuague durante 30 segundos, 2 veces al día (mañana y noche)",
-    duracion: "7–14 días (no más de 2 semanas continuas para evitar manchas dentales)",
-    indicaciones: "Prevención de infecciones, control de placa postoperatoria."
-  }
-  // "Otros" no tiene datos predeterminados, se dejarán los campos vacíos.
-};
-
-// Función para llenar los campos basados en la selección
-function llenarCamposMedicamento(selectElement) {
-  const medicamentoNombre = selectElement.value;
-  const fila = selectElement.closest('tr');
-  
-  // Obtener los inputs de la misma fila
-  const dosisInput = fila.querySelector('.dosis-input');
-  const frecuenciaInput = fila.querySelector('.frecuencia-input');
-  const duracionInput = fila.querySelector('.duracion-input');
-  const indicacionesInput = fila.querySelector('.indicaciones-input');
-
-  if (medicamentoNombre && medicamentosData[medicamentoNombre]) {
-    // Si el medicamento está en nuestra lista, llenamos los campos
-    dosisInput.value = medicamentosData[medicamentoNombre].dosis;
-    frecuenciaInput.value = medicamentosData[medicamentoNombre].frecuencia;
-    duracionInput.value = medicamentosData[medicamentoNombre].duracion;
-    indicacionesInput.value = medicamentosData[medicamentoNombre].indicaciones;
-  } else {
-    // Si es "Otros" o no está definido, limpiamos los campos
-    dosisInput.value = '';
-    frecuenciaInput.value = '';
-    duracionInput.value = '';
-    indicacionesInput.value = '';
-  }
-}
-
-// Asociar el evento 'change' a todos los selects existentes (incluyendo los nuevos)
-document.addEventListener('DOMContentLoaded', function() {
-  // Para los selects que ya están en el DOM al cargar la página
-  document.querySelectorAll('.medicamento-select').forEach(function(select) {
-    select.addEventListener('change', function() {
-      llenarCamposMedicamento(this);
-    });
-  });
-
-  // Si tienes una función para agregar nuevas filas (como addMedicamentoBtn), asegúrate de que al crear una nueva fila,
-  // el nuevo select también tenga el evento 'change' asociado.
-  // Por ejemplo, si usas jQuery o plain JS para agregar filas, deberías hacer algo como:
-  // newSelect.addEventListener('change', function() { llenarCamposMedicamento(this); });
-});
-
-// Si estás usando jQuery para manejar el botón de agregar, aquí un ejemplo de cómo podrías integrarlo:
-// (Asumiendo que tu función addMedicamentoBtn ya existe)
-// document.getElementById('addMedicamentoBtn').addEventListener('click', function() {
-//   // ... código para clonar la fila o crear una nueva ...
-//   const nuevaFila = /* tu código para crear la nueva fila */;
-//   const nuevoSelect = nuevaFila.querySelector('.medicamento-select');
-//   nuevoSelect.addEventListener('change', function() {
-//     llenarCamposMedicamento(this);
-//   });
-// });
+document.getElementById('anio-actual').textContent = new Date().getFullYear();
