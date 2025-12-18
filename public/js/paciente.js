@@ -475,11 +475,7 @@
             <td>${fdate(r.fecha)}</td>
             <td>${r.doctor || '—'}</td>
             <td>${r.meds_count ?? 0}</td>
-            <td>
-              <span class="badge ${r.estado === 'firmado' ? 'bg-success' : r.estado === 'cerrado' ? 'bg-secondary' : 'bg-warning text-dark'}">
-                ${r.estado || 'borrador'}
-              </span>
-            </td>
+            
             <td>${actionBtns(r.formulario_id, 'receta.html')}</td>
           </tr>
         `).join('') || `<tr><td colspan="5" class="text-center text-muted">Sin recetas</td></tr>`
