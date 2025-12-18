@@ -1,4 +1,4 @@
-const express     = require('express');
+const express = require('express');
 const PDFDocument = require('pdfkit');
 const { insertarEncabezado, insertarPie } = require('../utils/pdfHelpers');
 const { insertarFirma } = require('../utils/pdffirma');
@@ -15,13 +15,16 @@ router.post('/generate', (req, res) => {
   }
 
   const {
-    nombrePaciente, fecha, edad,
-    nombreMedico, cedula,
+    nombrePaciente = '',
+    fecha = '',
+    edad = '',
+    nombreMedico = '',
+    cedula = '',
     medicamentos = []
   } = req.body;
 
   const doc = new PDFDocument({
-    size: [595.28, 420],
+    size: [595.28, 420], // A5 apaisado como lo tenías
     margin: 40
   });
 
@@ -32,60 +35,220 @@ router.post('/generate', (req, res) => {
     res.send(Buffer.concat(chunks));
   });
 
-  // Encabezado
-  insertarEncabezado(doc, 'CIRUJANO DENTISTA NANCY HERNÁNDEZ LÓPEZ', [
-    'ESPECIALISTA EN CIRUGÍA Y ORTOPEDIA MAXILAR'
-  ]);
+  // =========================
+  // CONFIG LAYOUT
+  // =========================
+  const FOOTER_RESERVE = 80; // reserva para que NUNCA se encime con el pie
+  const startX = 50;
 
-  // Datos paciente
-  doc
-    .font('Helvetica')
-    .fontSize(10)
-    .fillColor('gray')
-    .text(`FECHA: ${fecha}`, 50)
-    .moveDown(0.3)
-    .text(`NOMBRE DEL PACIENTE: ${nombrePaciente}`, 50, doc.y, { continued: true })
-    .text(`EDAD: ${edad}`, { align: 'right' })
-    .moveDown(1);
-
-  // Tabla medicamentos
   const headers = ['Medicamento', 'Dosis', 'Frecuencia', 'Duración', 'Indicaciones'];
   const widths  = [110, 80, 80, 80, 150];
-  const startX  = 50;
-  const headerY = doc.y;
 
-  headers.forEach((h, i) => {
-    const x = startX + widths.slice(0, i).reduce((a, b) => a + b, 0);
+  const paddingX = 6;
+  const paddingY = 5;
+
+  const fontSizeHeader = 10;  // no tan grande para que quepa
+  const fontSizeBody   = 9;
+  const minRowHeight   = 22;
+
+  const HEADER_TITLE = 'CIRUJANO DENTISTA NANCY HERNÁNDEZ LÓPEZ';
+  const HEADER_LINES = ['ESPECIALISTA EN CIRUGÍA Y ORTOPEDIA MAXILAR'];
+
+  // =========================
+  // HELPERS
+  // =========================
+  function drawHeader() {
+    insertarEncabezado(doc, HEADER_TITLE, HEADER_LINES);
+  }
+
+  function drawFooter() {
+    insertarPie(doc, false);
+  }
+
+  function bottomLimit() {
+    return doc.page.height - doc.page.margins.bottom - FOOTER_RESERVE;
+  }
+
+  /**
+   * Asegura espacio antes de dibujar algo.
+   * Si no cabe: pone pie -> nueva página -> encabezado -> (opcional) callback
+   * Retorna true si cambió de página.
+   */
+  function ensureSpace(neededHeight, afterNewPage) {
+    if (doc.y + neededHeight <= bottomLimit()) return false;
+
+    // Cierra página actual
+    drawFooter();
+
+    // Nueva página
+    doc.addPage();
+
+    // Reponer encabezado
+    drawHeader();
+
+    // Hook (p.ej. volver a poner datos del paciente o header tabla)
+    if (typeof afterNewPage === 'function') afterNewPage();
+
+    return true;
+  }
+
+  function drawPatientBlock() {
+    // Altura aproximada del bloque (para el ensureSpace inicial si quieres)
     doc
-      .font('Helvetica-Bold')
-      .fontSize(12)
-      .fillColor('black')
-      .text(h, x, headerY, { width: widths[i], align: 'center' });
-  });
-  doc.moveDown(0.5);
+      .font('Helvetica')
+      .fontSize(10)
+      .fillColor('gray')
+      .text(`FECHA: ${fecha}`, startX)
+      .moveDown(0.3)
+      .text(`NOMBRE DEL PACIENTE: ${nombrePaciente}`, startX, doc.y, { continued: true })
+      .text(`EDAD: ${edad}`, { align: 'right' })
+      .moveDown(0.8);
+  }
 
-  medicamentos.forEach(m => {
-    const valores = [m.nombre, m.dosis, m.frecuencia, m.duracion, m.indicaciones];
-    const rowY = doc.y;
+  function rowHeightFor(values, { isHeader = false } = {}) {
+    const font = isHeader ? 'Helvetica-Bold' : 'Helvetica';
+    const size = isHeader ? fontSizeHeader : fontSizeBody;
 
-    valores.forEach((v, i) => {
-      const x = startX + widths.slice(0, i).reduce((a, b) => a + b, 0);
-      doc
-        .font('Helvetica')
-        .fontSize(11)
-        .text(v || '-', x, rowY, { width: widths[i], align: 'center' });
+    const heights = values.map((v, i) => {
+      const text = (v == null || v === '') ? '-' : String(v);
+      const h = doc.font(font).fontSize(size).heightOfString(text, {
+        width: widths[i] - paddingX * 2,
+        align: 'center'
+      });
+      return h + paddingY * 2;
     });
 
-    doc.moveDown(0.5);
+    return Math.max(minRowHeight, ...heights);
+  }
+
+  function drawTableHeader() {
+    const h = rowHeightFor(headers, { isHeader: true });
+
+    // Si justo el header no cabe (raro), salta y vuelve a dibujar
+    ensureSpace(h, () => {
+      drawPatientBlock();
+    });
+
+    const y = doc.y;
+    let x = startX;
+
+    for (let i = 0; i < headers.length; i++) {
+      const text = headers[i];
+
+      doc
+        .lineWidth(0.7)
+        .strokeColor('#333')
+        .rect(x, y, widths[i], h)
+        .stroke();
+
+      const th = doc.font('Helvetica-Bold').fontSize(fontSizeHeader).heightOfString(text, {
+        width: widths[i] - paddingX * 2,
+        align: 'center'
+      });
+
+      const ty = y + (h - th) / 2;
+
+      doc
+        .fillColor('black')
+        .font('Helvetica-Bold')
+        .fontSize(fontSizeHeader)
+        .text(text, x + paddingX, ty, {
+          width: widths[i] - paddingX * 2,
+          align: 'center'
+        });
+
+      x += widths[i];
+    }
+
+    doc.y = y + h;
+    doc.moveDown(0.2);
+  }
+
+  function drawRow(values) {
+    const h = rowHeightFor(values, { isHeader: false });
+
+    // Si no cabe la fila, brinca de página y repite header tabla
+    const pageChanged = ensureSpace(h, () => {
+      drawPatientBlock();
+      drawTableHeader();
+    });
+
+    // (ya quedó en nueva página con header, o siguió igual)
+    const y = doc.y;
+    let x = startX;
+
+    for (let i = 0; i < values.length; i++) {
+      const text = (values[i] == null || values[i] === '') ? '-' : String(values[i]);
+
+      doc
+        .lineWidth(0.5)
+        .strokeColor('#999')
+        .rect(x, y, widths[i], h)
+        .stroke();
+
+      const th = doc.font('Helvetica').fontSize(fontSizeBody).heightOfString(text, {
+        width: widths[i] - paddingX * 2,
+        align: 'center'
+      });
+      const ty = y + (h - th) / 2;
+
+      doc
+        .fillColor('black')
+        .font('Helvetica')
+        .fontSize(fontSizeBody)
+        .text(text, x + paddingX, ty, {
+          width: widths[i] - paddingX * 2,
+          align: 'center'
+        });
+
+      x += widths[i];
+    }
+
+    doc.y = y + h;
+    doc.moveDown(0.15);
+  }
+
+  // =========================
+  // PDF CONTENT
+  // =========================
+  drawHeader();
+
+  // Datos paciente
+  // (si por alguna razón tu encabezado ocupa mucho, aseguras espacio para esto)
+  ensureSpace(60, () => drawPatientBlock());
+  drawPatientBlock();
+
+  // Tabla: header
+  drawTableHeader();
+
+  // Filas
+  const meds = Array.isArray(medicamentos) ? medicamentos : [];
+  if (meds.length === 0) {
+    drawRow(['-', '-', '-', '-', '-']);
+  } else {
+    meds.forEach(m => {
+      drawRow([
+        m?.nombre,
+        m?.dosis,
+        m?.frecuencia,
+        m?.duracion,
+        m?.indicaciones
+      ]);
+    });
+  }
+
+  // Espacio antes de la firma
+  // (ajusta 140 si tu firma es más grande)
+  ensureSpace(140, () => {
+    drawPatientBlock();
+    // no es necesario repetir header de tabla aquí, ya vamos a firma
   });
 
-  doc.moveDown(2);
-
-  // 👇 Insertar firma del médico
+  // Firma
   insertarFirma(doc, firmaMedico, { label: `${nombreMedico} · Cédula: ${cedula}` });
 
-  // Pie de página
-  insertarPie(doc, false);
+  // Pie final (última página)
+  drawFooter();
 
   doc.end();
 });
