@@ -45,11 +45,11 @@ router.post('/generate', (req, res) => {
   const widths  = [110, 80, 80, 80, 150];
 
   const paddingX = 6;
-  const paddingY = 5;
+  const paddingY = 3;
 
-  const fontSizeHeader = 10;  // no tan grande para que quepa
-  const fontSizeBody   = 9;
-  const minRowHeight   = 22;
+  const fontSizeHeader = 7;  // no tan grande para que quepa
+  const fontSizeBody   = 5;
+  const minRowHeight   = 18;
 
   const HEADER_TITLE = 'CIRUJANO DENTISTA NANCY HERNÁNDEZ LÓPEZ';
   const HEADER_LINES = ['ESPECIALISTA EN CIRUGÍA Y ORTOPEDIA MAXILAR'];
