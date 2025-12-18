@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // ✅ OK
       localStorage.setItem('token', data.accessToken);
       localStorage.setItem('roles', JSON.stringify(data.user?.roles || []));
+      document.cookie = `token=${encodeURIComponent(data.accessToken)}; Path=/; SameSite=Lax`;
 
       const roles = data.user?.roles || [];
 

@@ -1136,7 +1136,7 @@ function renderLogs(rows = []) {
         <td>${paciente}</td>
         <td><span class="badge bg-dark">${esc(r.tipo_formulario || '—')}</span></td>
         <td>${fmtDT(r.fecha_creacion)}</td>
-        <td>${esc(r.creado_por_email || '—')}</td>
+        <td>${esc(r.creado_por_nombre ? `Dr. ${r.creado_por_nombre}` : (r.creado_por_email || '—'))}</td>
         <td>${fmtDT(r.fecha_actualizacion)}</td>
         <td>${badgeEliminado(r.eliminado_logico)}<div class="mt-1">${eliminadoInfo}</div></td>
         <td>${acciones}</td>

@@ -7,6 +7,8 @@ router.use(verificarToken); // ← protege todas las rutas
 
 router.get('/today', ctrl.getToday);
 router.get('/by-date/:fecha', ctrl.getByDate);
+
+router.get('/:id', ctrl.getById);
 router.delete('/:id', ctrl.cancel);
 router.put('/:id/postpone', ctrl.postpone);
 router.post('/:id/resend', ctrl.resend);

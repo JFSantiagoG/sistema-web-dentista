@@ -188,16 +188,15 @@
       delBtn.textContent = '⏳ Eliminando...';
 
       try {
-        const DELETE_URL = `/api/patients/forms/${encodeURIComponent(formId)}`;
-        showLoading('Eliminando...', 'Espera un momento');
-
+        const DELETE_URL = `/api/patients/admin/forms/${encodeURIComponent(formId)}/delete`;
         const r = await fetch(DELETE_URL, {
-          method: 'DELETE',
+          method: 'PUT',
           headers: {
             Authorization: `Bearer ${token}`,
             Accept: 'application/json'
           }
         });
+
 
         if (!r.ok) {
           const t = await r.text();
@@ -756,8 +755,11 @@
         if (!groupId) {
           btnVer = `<button type="button" class="btn btn-sm btn-outline-secondary" disabled>Sin grupo</button>`;
         } else {
-          const baseViewerUrl = `/visualizador?paciente=${encodeURIComponent(pacienteId)}&group=${encodeURIComponent(groupId)}`;
-          btnVer = `<a class="btn btn-sm btn-outline-primary" href="${baseViewerUrl}" rel="noopener">👁️ Ver</a>`;
+          const baseViewerUrl =
+            `/visualizador?paciente=${encodeURIComponent(pacienteId)}&group=${encodeURIComponent(groupId)}`;
+
+          btnVer = `<a class="btn btn-sm btn-outline-primary" href="${baseViewerUrl}">👁️ Ver</a>`;
+
           /*
           if (es3D) {
             btn3D = `<a class="btn btn-sm btn-warning ms-1" href="${baseViewerUrl}&mode=3d" rel="noopener">🧊 Ver secciones</a>`;

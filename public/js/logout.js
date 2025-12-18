@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1) Limpiar datos de sesión
     localStorage.removeItem('token');
     localStorage.removeItem('roles');
+    document.cookie = 'token=; Path=/; Max-Age=0; SameSite=Lax';
 
     // 2) Redirigir al login
     window.location.href = '/index.html';  // o '/index.html'

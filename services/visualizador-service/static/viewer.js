@@ -3,7 +3,6 @@ const viewerMode = urlParams.get('mode') || '2d';
 const pacienteId = urlParams.get('paciente') || '';
 const groupId    = urlParams.get('group')   || '';
 const filesParam = urlParams.get('files')   || '';
-
 // ===============================
 //  HELPERS SWEETALERT2
 // ===============================
@@ -2025,4 +2024,3 @@ document.addEventListener('DOMContentLoaded', () => {
     })();
   }
 });
-

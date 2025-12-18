@@ -233,12 +233,17 @@ async function reenviar(id) {
       });
     }
 
-    // 4. Construir mensaje con fecha y hora
-    const mensaje = `Hola ${nombrePaciente}, le recordamos su cita dental:\n\n` +
-                    `📅 Fecha: ${fecha}\n` +
-                    `🕗 Hora: ${horaInicio} – ${horaFin}\n` +
-                    `🦷 Motivo: ${motivo}\n\n` +
-                    `Por favor, confirme su asistencia. ¡Gracias!`;
+    const CAL = '\u{1F4C5}'; // 📅
+    const CLK = '\u{1F557}'; // 🕗
+    const TOOTH = '\u{1F9B7}'; // 🦷 (ojo: puede fallar en algunos equipos)
+
+    const mensaje =
+      `Hola ${nombrePaciente}, le recordamos su cita dental:\n\n` +
+      `${CAL} Fecha: ${fecha}\n` +
+      `${CLK} Hora: ${horaInicio} – ${horaFin}\n` +
+      `${TOOTH} Motivo: ${motivo}\n\n` +
+      `Por favor, confirme su asistencia. ¡Gracias!`;
+
 
     const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
     window.open(url, '_blank');
