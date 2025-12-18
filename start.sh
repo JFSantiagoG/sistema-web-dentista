@@ -15,7 +15,7 @@ start_service() {
     npm install --omit=dev >/dev/null 2>&1
   fi
 
-  # 🔹 Config especial para el visualizador (Flask + MySQL)
+  # 🔹 Config especial para el visualizador (Flask + MySQL + JWT)
   if [[ "$name" == "visualizador" ]]; then
     # Crear venv si no existe
     if [ ! -d "venv" ]; then
@@ -28,11 +28,10 @@ start_service() {
     source venv/bin/activate
 
     echo "   📦 Instalando dependencias de Python en venv..."
-    # Opcional: actualizar pip dentro del venv
     pip install --upgrade pip >/dev/null 2>&1
 
-    # Flask, Werkzeug y mysql-connector-python dentro del venv
-    pip install flask werkzeug mysql-connector-python >/dev/null 2>&1
+    # ✅ Flask + Werkzeug + MySQL connector + PyJWT
+    pip install flask werkzeug mysql-connector-python PyJWT >/dev/null 2>&1
 
     export FLASK_ENV=production
     export FLASK_DEBUG=0
@@ -46,14 +45,14 @@ start_service() {
 }
 
 # Iniciar servicios
-start_service "gateway"      "$BASE/gateway"                      "node server.js"
-start_service "auth"         "$BASE/services/auth-service"        "node server.js"
-start_service "forms"        "$BASE/services/forms-service"       "node server.js"
-start_service "pdf"          "$BASE/services/pdf-service"         "node server.js"
+start_service "gateway"      "$BASE/gateway"                       "node server.js"
+start_service "auth"         "$BASE/services/auth-service"         "node server.js"
+start_service "forms"        "$BASE/services/forms-service"        "node server.js"
+start_service "pdf"          "$BASE/services/pdf-service"          "node server.js"
 start_service "appointments" "$BASE/services/appointments-service" "node server.js"
-start_service "patients"     "$BASE/services/patients-service"    "node server.js"
+start_service "patients"     "$BASE/services/patients-service"     "node server.js"
 start_service "visualizador" "$BASE/services/visualizador-service" "python3 app.py"
-start_service "whatsapp"     "$BASE/services/whatsapp-service"    "npm start"
+start_service "whatsapp"     "$BASE/services/whatsapp-service"     "npm start"
 
 echo "✅ Todos los servicios iniciados en sesiones screen."
 echo "👉 Usa './stop.sh' desde cualquier terminal para detenerlos."
