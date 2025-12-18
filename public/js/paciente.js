@@ -769,9 +769,10 @@
         if (!groupId) {
           btnVer = `<button type="button" class="btn btn-sm btn-outline-secondary" disabled>Sin grupo</button>`;
         } else {
+          const token = localStorage.getItem('token'); // ya lo tienes arriba, pero aquí lo dejo explícito
           const baseViewerUrl =
-            `/visualizador?paciente=${encodeURIComponent(pacienteId)}&group=${encodeURIComponent(groupId)}`;
-
+            `/visualizador?paciente=${encodeURIComponent(pacienteId)}&group=${encodeURIComponent(groupId)}`
+            + `&token=${encodeURIComponent(token)}`;
           btnVer = `<a class="btn btn-sm btn-outline-primary" href="${baseViewerUrl}">👁️ Ver</a>`;
 
           /*

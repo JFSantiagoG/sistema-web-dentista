@@ -1,3 +1,15 @@
+(() => {
+  const params = new URLSearchParams(window.location.search);
+  const t = params.get('token');
+  if (t) {
+    localStorage.setItem('token', t);
+    params.delete('token');
+    const clean = window.location.pathname + (params.toString() ? `?${params.toString()}` : '');
+    window.history.replaceState({}, '', clean);
+  }
+})();
+
+
 const urlParams = new URLSearchParams(window.location.search);
 const viewerMode = urlParams.get('mode') || '2d';
 const pacienteId = urlParams.get('paciente') || '';
@@ -1335,14 +1347,13 @@ async function buildStackFromQuery() {
   if (!paths.length) {
     const groupId = params.get('group') || params.get('group_id');
     if (groupId) {
-      const base =
-        window.location.pathname.startsWith('/visualizador')
-          ? '/visualizador'
-          : '';
-      const url = `${base}/api/group/${encodeURIComponent(groupId)}/files`;
+      const url = `/visualizador/api/group/${encodeURIComponent(groupId)}/files`;
 
       try {
-        const resp = await fetch(url);
+        const token = localStorage.getItem('token');
+        const resp = await fetch(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
         if (!resp.ok) {
           console.error('❌ Error HTTP en /api/group/... para 3D:', resp.status);
         } else {
@@ -1564,41 +1575,44 @@ async function init3DStackFromFiles() {
     }
   }
 
-  // =========================
-  // 3) ?group=  → API Flask
-  // =========================
-  if (!files.length) {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const groupId = params.get('group') || params.get('group_id');
+// =========================
+// 3) ?group=  → API Flask
+// =========================
+if (!files.length) {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const groupId = params.get('group') || params.get('group_id');
 
-      if (groupId) {
-        const base =
-          window.location.pathname.startsWith('/visualizador')
-            ? '/visualizador'
-            : '';
+    if (groupId) {
+      const token = localStorage.getItem('token');
 
-        const url = `${base}/api/group/${encodeURIComponent(
-          groupId
-        )}/files`;
+      const url = `/visualizador/api/group/${encodeURIComponent(groupId)}/files`
+                + (token ? `?token=${encodeURIComponent(token)}` : '');
 
-        const resp = await fetch(url);
-        if (!resp.ok) {
-          console.error('❌ Error HTTP en /api/group/...:', resp.status);
-        } else {
-          const data = await resp.json();
-          if (data && Array.isArray(data.files)) {
-            // Tu backend ya manda storage_path normalizado tipo "/visualizador/uploads/xxx"
-            files = data.files
-              .map(f => f.storage_path || f.path || f.file || null)
-              .filter(Boolean);
-          }
+      const res = await fetch(url, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Accept: 'application/json'
+        }
+      });
+
+
+      if (!res.ok) {
+        console.error('❌ Error HTTP en /api/group/...:', res.status, url);
+      } else {
+        const data = await res.json();
+        if (data && Array.isArray(data.files)) {
+          files = data.files
+            .map(f => f.storage_path || f.path || f.file || null)
+            .filter(Boolean);
         }
       }
-    } catch (err) {
-      console.error('❌ Error haciendo fetch a /api/group/...:', err);
     }
+  } catch (err) {
+    console.error('❌ Error haciendo fetch a /api/group/...:', err);
   }
+}
+
 
   console.log('DEBUG REJILLA - files encontrados:', files);
 
