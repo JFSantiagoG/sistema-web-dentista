@@ -373,6 +373,18 @@
     }, true);
   }
 
+  function actualizarVisibilidadDiagnosticoInfantil(edad) {
+    const seccion = document.getElementById('seccion-diag-infantil');
+    if (!seccion) return;
+
+    // Si no hay edad definida, mostramos por defecto (o puedes ocultar)
+    if (edad == null || edad >= 18) {
+      seccion.style.display = 'none';
+    } else {
+      seccion.style.display = '';
+    }
+  }
+
   /* ===========================================================
      ✅ CARGAR PERFIL
      =========================================================== */
@@ -407,6 +419,8 @@
 
       const p = data.paciente || {};
       wireEditarPaciente({ ...p, id: p.id ?? pacienteId });
+      wireEditarPaciente({ ...p, id: p.id ?? pacienteId });
+      actualizarVisibilidadDiagnosticoInfantil(p.edad != null ? Number(p.edad) : null);
 
       const sexoTexto = p.sexo
         ? (String(p.sexo).toUpperCase() === 'F' ? 'Femenina'
