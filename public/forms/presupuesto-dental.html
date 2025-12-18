@@ -17,7 +17,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2>✅ Presupuesto Dental</h2>
-                <p class="text-muted">Este formulario permite registrar los tratamientos dentales específicos para cada diente, así como tratamientos generales, y calcular el presupuesto total.</p>
+                <p class="text-muted">Este formulario permite registrar los tratamientos dentales específicos para cada seccion, así como tratamientos generales, y calcular el presupuesto total.</p>
             </div>
             <button class="btn btn-outline-secondary" onclick="window.history.back()">
                 ← Volver
@@ -139,13 +139,13 @@
             <!-- Sección 3: Tabla de Tratamientos -->
             <div class="card section-card tratamientos-tabla">
                 <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">3. Detalle de Tratamientos por Diente</h5>
+                    <h5 class="mb-0">3. Detalle de Tratamientos por secciones</h5>
                 </div>
                 <div class="card-body">
                     <table class="table table-bordered">
                         <thead>
                             <tr>
-                                <th>Diente</th>
+                                <th>Seccion</th>
                                 <th>Tratamiento</th>
                                 <th>Costo ($)</th>
                             </tr>
@@ -211,7 +211,7 @@
             <!-- Botones de Acción -->
             <div class="text-center mt-4">
             <button type="button" class="btn btn-outline-secondary btn-lg me-2" id="btnGuardar">💾 Guardar Borrador</button>
-            <button type="submit" class="btn btn-success btn-lg" id="btnEnviar">📤 Enviar Formulario</button>
+            <button type="submit" class="btn btn-success btn-lg" id="btnEnviar">📤 Contactar con paciente</button>
             <button type="button" class="btn btn-info btn-lg ms-2" id="btnPdf">🖨️ Descargar PDF</button>
             </div>
         </form>
@@ -229,7 +229,7 @@
                     <input type="hidden" id="dienteSeleccionado">
                     
                     <div class="mb-3">
-                        <label class="form-label">Diente:</label>
+                        <label class="form-label">Sección:</label>
                         <input type="text" class="form-control" id="dienteNumero" readonly>
                     </div>
                     
@@ -266,6 +266,23 @@
             </div>
         </div>
     </div>
+
+    <!-- Aviso de privacidad -->
+    <footer class="footer-privacidad mt-5 py-4 border-top">
+    <div class="container text-center text-muted small">
+        <p class="mb-1">
+        <i class="fas fa-lock me-1"></i>
+        <strong>Aviso de Privacidad:</strong> Los datos personales presentados son tratados con confidencialidad y únicamente para fines clínicos y administrativos del consultorio dental, conforme a la 
+        <a href="https://www.diputados.gob.mx/LeyesBiblio/pdf/LFPDPPP.pdf" target="_blank" rel="noopener noreferrer" class="text-decoration-underline">Ley Federal de Protección de Datos Personales en Posesión de Particulares</a>.
+        </p>
+        <p class="mb-0">
+        © <span id="anio-actual"></span> Consultorio Dental. Todos los derechos reservados.
+        </p>
+    </div>
+    </footer>
+
+    <!-- Font Awesome para el ícono del candado -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

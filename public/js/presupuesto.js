@@ -96,6 +96,7 @@ async function cargarPaciente() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const p = await res.json();
 
+    // ✅ Construir nombre completo
     const nombreCompleto = [p?.nombre, p?.apellido, p?.apellido_paterno, p?.apellido_materno]
       .filter(Boolean).join(' ').trim();
 
@@ -107,9 +108,16 @@ async function cargarPaciente() {
 
     numeroInput.value = String(pacienteId);
     numeroInput.readOnly = true;
+
+    // ✅ Guardar el teléfono del paciente (ajusta el campo según tu API)
+    // Campos comunes: 'telefono', 'tel1', 'celular', 'telefono_principal', etc.
+    const telefono = p?.telefono || p?.tel1 || p?.telefono_principal || p?.celular || null;
+    window.telefonoPaciente = telefono; // lo hacemos accesible globalmente
+
   } catch (err) {
     console.error('Error al cargar paciente:', err);
     await Swal.fire({ icon:'error', title:'Error', text:'No se pudo cargar el paciente.' });
+    window.telefonoPaciente = null; // por seguridad
   }
 }
 
@@ -357,14 +365,55 @@ async function guardarBorrador() {
 }
 
 // ===== Enviar (SIEMPRE simulado, NO guarda) =====
-async function simularEnvio() {
-  await Swal.fire({
-    icon: 'success',
-    title: 'Enviado',
-    html: `
-      <p>Se simuló el envío del presupuesto al paciente.</p>
-    `
+async function enviarPorWhatsApp() {
+  const totalTexto = document.getElementById('totalCosto').textContent.replace('$', '').trim();
+  const mensualTexto = document.getElementById('mensualidad').textContent.replace('$', '').trim();
+
+  const total = parseFloat(totalTexto) || 0;
+  const mensual = parseFloat(mensualTexto) || 0;
+
+  const telefono = window.telefonoPaciente;
+  if (!telefono) {
+    await Swal.fire({
+      icon: 'warning',
+      title: 'Teléfono no disponible',
+      text: 'No se encontró el número de teléfono del paciente para enviar el mensaje.'
+    });
+    return;
+  }
+
+  // Validar formato MX (10 dígitos)
+  const soloDigitos = telefono.replace(/\D/g, '');
+  if (soloDigitos.length !== 10) {
+    await Swal.fire({
+      icon: 'warning',
+      title: 'Teléfono inválido',
+      text: 'El número de teléfono del paciente debe tener 10 dígitos (formato MX).'
+    });
+    return;
+  }
+
+  const mensaje = `Hola, aquí está tu presupuesto dental:\n\n` +
+    `💰 *Presupuesto Total:* $${total.toFixed(2)}\n` +
+    `📅 *Pago Mensual:* $${mensual.toFixed(2)}\n\n` +
+    `¡Gracias por confiar en nuestro consultorio!`;
+
+  // URL de WhatsApp (formato internacional: +52 + número sin 0 ni 1 al inicio)
+  const url = `https://wa.me/52${soloDigitos}?text=${encodeURIComponent(mensaje)}`;
+
+  // Confirmar antes de abrir
+  const confirm = await Swal.fire({
+    title: '¿Enviar presupuesto por WhatsApp?',
+    html: `Se abrirá WhatsApp con el siguiente mensaje:<br><br><pre style="text-align:left;background:#f8f9fa;padding:10px;border-radius:5px;">${mensaje}</pre>`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: '✅ Sí, enviar',
+    cancelButtonText: 'Cancelar'
   });
+
+  if (confirm.isConfirmed) {
+    window.open(url, '_blank');
+  }
 }
 
 // ===== PDF =====
@@ -539,14 +588,14 @@ async function cargarPresupuestoDesdeServidor() {
 if (form) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    await simularEnvio();
+    await enviarPorWhatsApp();
   });
 }
 
 if (btnEnviar) {
   btnEnviar.addEventListener('click', async (e) => {
     e.preventDefault();
-    await simularEnvio();
+    await enviarPorWhatsApp();
   });
 }
 
@@ -575,3 +624,5 @@ document.addEventListener('DOMContentLoaded', () => {
       .forEach(cb => { cb.disabled = false; });// ← asegúrate que los generales son editables
   }
 });
+
+document.getElementById('anio-actual').textContent = new Date().getFullYear();
