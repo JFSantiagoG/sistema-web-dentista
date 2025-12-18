@@ -158,7 +158,6 @@
      =========================================================== */
   const actionBtns = (formId, formHtml) => `
     <a class="btn btn-sm btn-outline-primary me-1" href="forms/${formHtml}?formulario_id=${formId}">👁️ Visualizar</a>
-    <button type="button" class="btn btn-sm btn-outline-success me-1" data-action="send-form" data-form-id="${formId}">📤 Enviar</button>
     ${esAdmin ? `
       <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete-form" data-form-id="${formId}">
         🗑️ Eliminar

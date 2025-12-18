@@ -291,12 +291,30 @@
         <div class="text-center mt-4">
           <button type="button" class="btn btn-outline-secondary btn-lg me-2" id="btnBack">← Volver</button>
           <button type="button" class="btn btn-outline-primary btn-lg me-2" id="btnBorrador">💾 Guardar Borrador</button>
-          <button type="submit" class="btn btn-success btn-lg">📤 Enviar Formulario</button>
           <button type="button" class="btn btn-info btn-lg ms-2" id="btnPDF">🖨️ Descargar PDF</button>
         </div>
       </div>
     </form>
   </div>
+
+  <!-- Aviso de privacidad -->
+  <footer class="footer-privacidad mt-5 py-4 border-top">
+    <div class="container text-center text-muted small">
+      <p class="mb-1">
+        <i class="fas fa-lock me-1"></i>
+        <strong>Aviso de Privacidad:</strong> Los datos personales presentados son tratados con confidencialidad y únicamente para fines clínicos y administrativos del consultorio dental, conforme a la 
+        <a href="https://www.diputados.gob.mx/LeyesBiblio/pdf/LFPDPPP.pdf" target="_blank" class="text-decoration-underline">Ley Federal de Protección de Datos Personales en Posesión de Particulares</a>.
+      </p>
+      <p class="mb-0">
+        © <span id="anio-actual"></span> ESCOM. Todos los derechos reservados.
+      </p>
+    </div>
+  </footer>
+
+  <!-- Script para año dinámico -->
+  <script>
+    document.getElementById('anio-actual').textContent = new Date().getFullYear();
+  </script>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="../js/consent-quiro.js"></script>
