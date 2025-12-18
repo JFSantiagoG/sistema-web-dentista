@@ -1,9 +1,8 @@
-from flask import Flask, render_template, request, send_from_directory, abort, jsonify, g
+from flask import Flask, render_template, request, send_from_directory, abort, jsonify
 import os
 from werkzeug.utils import secure_filename
 import mysql.connector
 from mysql.connector import Error
-import jwt  # PyJWT
 
 app = Flask(__name__)
 
@@ -12,16 +11,12 @@ UPLOAD_FOLDER = 'uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ========= CONFIG DB =========
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_USER = os.getenv("DB_USER", "root")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "12345")
-DB_NAME = os.getenv("DB_NAME", "smileworks")
+# ========= CONFIG DB (ajusta si es necesario) =========
+DB_HOST = 'localhost'
+DB_USER = 'root'
+DB_PASSWORD = '12345' 
+DB_NAME = 'smileworks'
 
-# ========= CONFIG JWT =========
-# OJO: DEBE COINCIDIR con el secret del auth-service (Node)
-JWT_SECRET = os.getenv("JWT_SECRET", "VA5epMVF75S5rsu7B3wkQ1jxjcDQqZCbkxtZwT9Cr7JtaHbQ6ZSPsWb7ukTzxo69")
-JWT_ALGOS = ["HS256"]
 
 
 def get_db_connection():
@@ -34,121 +29,27 @@ def get_db_connection():
     )
 
 
-# ==========================
-#  AUTH / JWT
-# ==========================
-def _get_token_from_request():
-    """
-    Obtiene token desde:
-      1) Authorization: Bearer <token>   (case-insensitive)
-      2) cookie token=<token>
-      3) querystring ?token=<token>
-    """
-    auth = (request.headers.get("Authorization") or "").strip()
-    if auth.lower().startswith("bearer "):
-        return auth.split(" ", 1)[1].strip()
-
-    cookie_token = request.cookies.get("token")
-    if cookie_token and cookie_token.strip():
-        return cookie_token.strip()
-
-    t = request.args.get("token")
-    if t and t.strip() and t.strip().lower() != "null":
-        return t.strip()
-
-    return None
-
-
-
-def _decode_jwt(token: str):
-    """Decodifica el JWT y regresa (payload, error_str)."""
-    if not token:
-        return None, "missing_token"
-
-    try:
-        payload = jwt.decode(
-            token,
-            JWT_SECRET,
-            algorithms=JWT_ALGOS,
-            options={"require": ["exp", "iat"]}  # opcional pero recomendado
-        )
-        return payload, None
-
-    except jwt.ExpiredSignatureError:
-        return None, "expired"
-
-    except jwt.InvalidSignatureError:
-        return None, "bad_signature"
-
-    except jwt.DecodeError:
-        return None, "decode_error"
-
-    except Exception as e:
-        return None, f"other:{str(e)}"
-
-
-
-@app.before_request
-def protect_visualizador():
-    """
-    IMPORTANTE:
-      - Dejamos PÚBLICO:
-          /              (HTML del visor)
-          /static/...     (css/js/libs)
-          /uploads/...    (archivos porque <img> y Cornerstone NO mandan Authorization)
-      - Protegemos:
-          /api/...        (consultas a BD)
-          /upload         (subida)
-    """
-    path = request.path
-
-    # Público: HTML y assets
-    if path == "/" or path.startswith("/static/"):
-        return None
-
-    # Público: servir archivos para Cornerstone/img
-    if path.startswith("/uploads/"):
-        return None
-
-    # Protegido: API y upload
-    if path.startswith("/api/") or path.startswith("/upload"):
-        token = _get_token_from_request()
-        payload, err = _decode_jwt(token)
-
-        if not payload:
-            return jsonify({
-                "msg": "No autenticado",
-                "reason": err,
-                "has_auth_header": bool(request.headers.get("Authorization")),
-                "has_query_token": bool(request.args.get("token")),
-            }), 401
-
-        g.user = payload
-        return None
-
-
-
-# ==========================
-#  HELPERS DE PATHS
-# ==========================
 def _normalize_storage_path(storage_path: str) -> str:
     """
-    Acepta:
+    Acepta valores como:
       - "miimagen.png"
       - "/visualizador/uploads/miimagen.png"
       - "/uploads/miimagen.dcm"
-    y devuelve el basename seguro: "miimagen.png"
+    y devuelve sólo el basename asegurado: "miimagen.png"
     """
     if not storage_path:
         return None
-    base = os.path.basename(str(storage_path))
+    base = os.path.basename(storage_path)
     base = secure_filename(base)
-    return base or None
+    if not base:
+        return None
+    return base
 
 
 def _to_viewer_path(storage_path: str) -> str:
     """
-    Convierte patient_files.storage_path a una ruta consumible por el frontend:
+    Recibe lo que hay en patient_files.storage_path y lo convierte a
+    una ruta que el frontend puede usar:
 
       - "miimagen.dcm"               → "/visualizador/uploads/miimagen.dcm"
       - "/uploads/miimagen.dcm"      → "/visualizador/uploads/miimagen.dcm"
@@ -156,37 +57,37 @@ def _to_viewer_path(storage_path: str) -> str:
     """
     if not storage_path:
         return None
-
     s = str(storage_path)
+
     if s.startswith('/visualizador/uploads/'):
         return s
     if s.startswith('/uploads/'):
         return '/visualizador' + s
-
-    # nombre suelto o ruta rara -> forzamos
+    # nombre suelto
     return '/visualizador/uploads/' + s.lstrip('/')
 
 
 # ==========================================
 #  RUTA PRINCIPAL DEL VISOR
-#  /visualizador?file=...              (1 archivo)
-#  /visualizador?files=a,b,c           (rejilla/carrusel)
-#  /visualizador?paciente=..&group=..  (modo por group)
+#  /visualizador?file=...        (1 archivo)
+#  /visualizador?files=a,b,c     (rejilla/carrusel)
+#  /visualizador?paciente=..&group=.. (modo por grupo)
 # ==========================================
 @app.route('/')
 def index():
     file_arg    = request.args.get('file')
     files_arg   = request.args.get('files')
-    group_arg   = request.args.get('group')
-    paciente_id = request.args.get('paciente')
+    group_arg   = request.args.get('group')      # para compatibilidad si entras directo con ?group=
+    paciente_id = request.args.get('paciente')   # de momento solo por si quieres mostrar algo
 
-    filename  = None
-    filenames = None
+    filename  = None   # visor único
+    filenames = None   # rejilla/carrusel
 
-    # Modo multi: ?files=a,b,c
+    # Si viene ?files= usamos eso (modo explícito antiguo)
     if files_arg:
         raw_parts = [p.strip() for p in files_arg.split(',') if p.strip()]
         normalized = []
+
         for part in raw_parts:
             base = _normalize_storage_path(part)
             if not base:
@@ -200,7 +101,7 @@ def index():
 
         filenames = normalized
 
-    # Modo single: ?file=...
+    # Modo visor único (?file=...)
     elif file_arg:
         filename = _normalize_storage_path(file_arg)
         if not filename:
@@ -210,7 +111,9 @@ def index():
         if not os.path.isfile(fullpath):
             abort(404, description="Archivo no encontrado en uploads.")
 
-    # Si viene group=, el JS hace fetch a /api/group/<group>/files (protegido)
+    # Si solo viene ?group= lo resuelve el JS con un fetch a /api/group/<group>/files
+    # y rellena la rejilla/carrusel con esos archivos.
+
     return render_template(
         'index.html',
         filename=filename,
@@ -221,17 +124,17 @@ def index():
 
 
 # ==========================================
-#  API: archivos por group_id
+#  API: archivos por group_id (para viewer.js)
 #  GET /api/group/<group_id>/files
+#   → { group_id: "...", files: [ {id, storage_path_normalizado, tipo, notas, ...}, ... ] }
 # ==========================================
-@app.route('/api/group/<group_id>/files', methods=['GET'])
+@app.route('/api/group/<group_id>/files')
 def api_group_files(group_id):
-    conn = None
-    cur = None
     try:
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
 
+        # ✅ Usamos SOLO columnas que sí existen en patient_files
         cur.execute(
             """
             SELECT
@@ -249,6 +152,8 @@ def api_group_files(group_id):
             (group_id,)
         )
         rows = cur.fetchall()
+        cur.close()
+        conn.close()
 
         files = []
         for r in rows:
@@ -259,39 +164,33 @@ def api_group_files(group_id):
                 "group_id": r.get("group_id"),
                 "tipo": r.get("tipo"),
                 "notas": r.get("notas") or "",
-                "storage_path": viewer_path,
-                "fecha_subida": (r.get("fecha_subida").isoformat() if r.get("fecha_subida") else None),
+                "storage_path": viewer_path,  # 👉 ya en formato /visualizador/uploads/...
+                "fecha_subida": (
+                    r.get("fecha_subida").isoformat()
+                    if r.get("fecha_subida") else None
+                ),
             })
 
-        return jsonify({"group_id": group_id, "files": files})
+        return jsonify({
+            "group_id": group_id,
+            "files": files
+        })
 
     except Error as e:
-        app.logger.exception("Error DB en /api/group/<group_id>/files")
+        app.logger.exception("Error al consultar patient_files por group_id")
         return jsonify({"error": "db_error", "message": str(e)}), 500
-
     except Exception as e:
         app.logger.exception("Error inesperado en /api/group/<group_id>/files")
         return jsonify({"error": "internal_error", "message": str(e)}), 500
 
-    finally:
-        try:
-            if cur:
-                cur.close()
-        except Exception:
-            pass
-        try:
-            if conn:
-                conn.close()
-        except Exception:
-            pass
 
 
 # ==========================================
 #  SUBIDA (formulario directo al visualizador)
-#  POST /upload
 # ==========================================
 @app.route('/upload', methods=['POST'])
 def upload():
+    # Permite uno o varios archivos (carpeta)
     files = request.files.getlist('imagen')
     if not files:
         return "No se recibió archivo", 400
@@ -301,25 +200,31 @@ def upload():
         if not file or not file.filename:
             continue
 
+        # Nombre base seguro
         filename = secure_filename(file.filename)
         if not filename:
             continue
 
-        # Normaliza extensiones
+        # Si NO tiene extensión → .dcm
         if "." not in filename:
             filename = filename + ".dcm"
+
+        # Normalizar .dicom → .dcm
         if filename.lower().endswith(".dicom"):
             filename = filename[:-6] + ".dcm"
 
+        # Guardar archivo ya normalizado
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         saved.append(filename)
 
     if not saved:
         return "Nombre(s) de archivo inválido(s)", 400
 
+    # 1 solo archivo → visor normal
     if len(saved) == 1:
         return render_template('index.html', filename=saved[0], filenames=None)
 
+    # Varios archivos → modo rejilla
     return render_template('index.html', filename=None, filenames=saved)
 
 
@@ -331,12 +236,11 @@ def serve_image(filename):
     filename = secure_filename(filename)
     if not filename:
         abort(400, description="Nombre de archivo inválido.")
-
     if filename.lower().endswith(".dcm"):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename, mimetype='application/dicom')
-
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
 if __name__ == '__main__':
+    # recuerda: en producción lo levantas con start.sh (screen)
     app.run(host="0.0.0.0", port=3010, debug=False, use_reloader=False)
