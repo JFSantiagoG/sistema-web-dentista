@@ -403,13 +403,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ====== Enviar por WhatsApp o simular
+  // ====== Enviar por WhatsApp
   async function enviarFormulario() {
     const numero = btnEnviar?.getAttribute('data-numero-paciente');
     const folio = formularioIdParam || formularioId || '(sin folio)';
 
     if (numero && /^\d{10,15}$/.test(numero)) {
-      const mensaje = encodeURIComponent(`Hola, adjunto su hoja de evolución clínica. Folio: ${folio}`);
+      const mensaje = encodeURIComponent(`Hola, recientemente se genero su hoja de evolución clínica. Folio: ${folio}`);
       const url = `https://wa.me/${numero}?text=${mensaje}`;
       window.open(url, '_blank');
     } else {
@@ -522,3 +522,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })();
 });
+
+document.getElementById('anio-actual').textContent = new Date().getFullYear();
