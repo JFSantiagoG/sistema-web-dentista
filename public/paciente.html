@@ -10,47 +10,64 @@
   <script src="js/auth-guard.js" defer></script>
 </head>
 
-<body class="bg-light">
-  <div class="container py-5">
+<body class="bg-light d-flex flex-column min-vh-100">
+  <div class="container py-4 flex-grow-1">
 
-    <!-- Encabezado -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- 🔹 Encabezado -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
       <div>
-        <h2 class="fw-bold text-primary mb-0">👤 Perfil del Paciente</h2>
-        <small class="text-muted">Información general y formularios clínicos</small>
+        <h1 class="h4 fw-bold text-primary mb-1">👤 Perfil del Paciente</h1>
+        <p class="text-muted small mb-0">Información general y formularios clínicos</p>
       </div>
-      <button type="button" class="btn btn-outline-dark" onclick="window.location.href='/menu.html'">← Volver al menú</button>
+      <button type="button" class="btn btn-outline-secondary d-flex align-items-center gap-1" onclick="window.location.href='/menu.html'">
+        <span>←</span> Volver al menú
+      </button>
     </div>
 
-    <!-- Tarjeta -->
-    <div class="card shadow-sm mb-4">
-      <div class="card-body" id="tarjetaPaciente">
+    <!-- 📘 Instrucciones de uso -->
+    <div class="alert alert-light border rounded-3 shadow-sm mb-4">
+      <h6 class="alert-heading fw-bold text-muted mb-2">ℹ️ Cómo usar esta página</h6>
+      <ul class="mb-0 small">
+        <li>Consulta y actualiza los datos personales del paciente.</li>
+        <li>Sube estudios de imagen (fotos, radiografías, DICOM, etc.) desde el botón "+ Subir estudio".</li>
+        <li>Accede a formularios clínicos como evoluciones, recetas, consentimientos y presupuestos.</li>
+        <li>Algunas secciones (como diagnóstico infantil) solo aparecen según la edad del paciente.</li>
+      </ul>
+    </div>
+
+    <!-- Tarjeta de datos del paciente -->
+    <div class="card shadow-sm mb-4 rounded-3 border-0">
+      <div class="card-body p-4" id="tarjetaPaciente">
         <!-- se llena por JS -->
       </div>
     </div>
 
-    <!-- Botones rápidos (opcional, arriba) -->
+    <!-- Botones rápidos -->
     <div class="d-flex justify-content-end mb-4 gap-2 flex-wrap">
-      <button type="button" class="btn btn-warning" id="btn-editar-paciente">✏️ Editar datos del paciente</button>
-      <button type="button" class="btn btn-primary" id="btn-crear-historial">📋 Generar historial médico</button>
-      <button type="button" class="btn btn-success">📤 Contactar con paciente</button>
+      <button type="button" class="btn btn-warning d-flex align-items-center gap-1" id="btn-editar-paciente">
+        <span>✏️</span> Editar datos del paciente
+      </button>
+      <button type="button" class="btn btn-primary d-flex align-items-center gap-1" id="btn-crear-historial">
+        <span>📋</span> Generar historial médico
+      </button>
+      <button type="button" class="btn btn-success d-flex align-items-center gap-1">
+        <span>📤</span> Contactar con paciente
+      </button>
     </div>
 
+    <!-- Secciones de formularios -->
     <div class="formularios">
 
       <!-- 🖼️ Estudios de Imagen -->
-      <section class="mb-5">
+      <section class="mb-4 p-4 bg-white rounded-3 shadow-sm">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h4 class="text-secondary mb-0">🖼️ Estudios de Imagen</h4>
-
-          <!-- ✅ evitar navegación accidental -->
-          <a class="btn btn-success btn-sm" id="btn-subir-estudio" href="javascript:void(0)" role="button">
-            ➕ Subir estudio
+          <h4 class="text-secondary mb-0 fw-semibold">🖼️ Estudios de Imagen</h4>
+          <a class="btn btn-success btn-sm d-flex align-items-center gap-1" id="btn-subir-estudio" href="javascript:void(0)" role="button">
+            <span>➕</span> Subir estudio
           </a>
         </div>
-
-        <div class="table-responsive mb-2">
-          <table class="table table-bordered table-hover align-middle">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
               <tr>
                 <th>Fecha</th>
@@ -62,7 +79,6 @@
             <tbody id="tb-studies"></tbody>
           </table>
         </div>
-
         <div class="d-flex justify-content-center mt-2">
           <button type="button"
                   class="btn btn-sm btn-outline-secondary table-toggle"
@@ -74,15 +90,14 @@
         </div>
       </section>
 
-      <!-- 1) 📈 Evoluciones -->
-      <section class="mb-5">
+      <!-- Evoluciones -->
+      <section class="mb-4 p-4 bg-white rounded-3 shadow-sm">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h4 class="text-secondary mb-0">📈 Evoluciones</h4>
-          <a class="btn btn-success btn-sm" id="btn-nueva-evo" href="javascript:void(0)" role="button">➕ Crear nueva evolución</a>
+          <h4 class="text-secondary mb-0 fw-semibold">📈 Evoluciones</h4>
+          <a class="btn btn-success btn-sm d-flex align-items-center gap-1" id="btn-nueva-evo" href="javascript:void(0)">➕ Crear nueva evolución</a>
         </div>
-
         <div class="table-responsive">
-          <table class="table table-bordered table-hover align-middle">
+          <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
               <tr>
                 <th>Fecha</th>
@@ -94,7 +109,6 @@
             <tbody id="tb-evoluciones"></tbody>
           </table>
         </div>
-
         <div class="d-flex justify-content-center mt-2">
           <button type="button"
                   class="btn btn-sm btn-outline-secondary table-toggle"
@@ -106,15 +120,14 @@
         </div>
       </section>
 
-      <!-- 2) 💊 Recetas -->
-      <section class="mb-5">
+      <!-- Recetas -->
+      <section class="mb-4 p-4 bg-white rounded-3 shadow-sm">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h4 class="text-secondary mb-0">💊 Recetas</h4>
-          <a class="btn btn-success btn-sm" id="btn-nueva-receta" href="javascript:void(0)" role="button">➕ Crear nueva receta</a>
+          <h4 class="text-secondary mb-0 fw-semibold">💊 Recetas</h4>
+          <a class="btn btn-success btn-sm d-flex align-items-center gap-1" id="btn-nueva-receta" href="javascript:void(0)">➕ Crear nueva receta</a>
         </div>
-
         <div class="table-responsive">
-          <table class="table table-bordered table-hover align-middle">
+          <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
               <tr>
                 <th>Fecha</th>
@@ -127,7 +140,6 @@
             <tbody id="tb-recetas"></tbody>
           </table>
         </div>
-
         <div class="d-flex justify-content-center mt-2">
           <button type="button"
                   class="btn btn-sm btn-outline-secondary table-toggle"
@@ -139,15 +151,14 @@
         </div>
       </section>
 
-      <!-- 3) 💰 Presupuestos Dentales -->
-      <section class="mb-5">
+      <!-- Presupuestos -->
+      <section class="mb-4 p-4 bg-white rounded-3 shadow-sm">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h4 class="text-secondary mb-0">💰 Presupuestos Dentales</h4>
-          <a class="btn btn-success btn-sm" id="btn-nuevo-pres" href="javascript:void(0)" role="button">➕ Crear nuevo presupuesto</a>
+          <h4 class="text-secondary mb-0 fw-semibold">💰 Presupuestos Dentales</h4>
+          <a class="btn btn-success btn-sm d-flex align-items-center gap-1" id="btn-nuevo-pres" href="javascript:void(0)">➕ Crear nuevo presupuesto</a>
         </div>
-
         <div class="table-responsive">
-          <table class="table table-bordered table-hover align-middle">
+          <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
               <tr>
                 <th>Fecha</th>
@@ -159,7 +170,6 @@
             <tbody id="tb-presupuestos"></tbody>
           </table>
         </div>
-
         <div class="d-flex justify-content-center mt-2">
           <button type="button"
                   class="btn btn-sm btn-outline-secondary table-toggle"
@@ -171,15 +181,14 @@
         </div>
       </section>
 
-      <!-- 4) 📝 Consentimiento Odontológico -->
-      <section class="mb-5">
+      <!-- Consentimiento Odontológico -->
+      <section class="mb-4 p-4 bg-white rounded-3 shadow-sm">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h4 class="text-secondary mb-0">📝 Consentimiento Odontológico</h4>
-          <a class="btn btn-success btn-sm" id="btn-nuevo-co" href="javascript:void(0)" role="button">➕ Crear nuevo consentimiento</a>
+          <h4 class="text-secondary mb-0 fw-semibold">📝 Consentimiento Odontológico</h4>
+          <a class="btn btn-success btn-sm d-flex align-items-center gap-1" id="btn-nuevo-co" href="javascript:void(0)">➕ Crear nuevo consentimiento</a>
         </div>
-
         <div class="table-responsive">
-          <table class="table table-bordered table-hover align-middle">
+          <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
               <tr>
                 <th>Fecha</th>
@@ -191,7 +200,6 @@
             <tbody id="tb-consent-odont"></tbody>
           </table>
         </div>
-
         <div class="d-flex justify-content-center mt-2">
           <button type="button"
                   class="btn btn-sm btn-outline-secondary table-toggle"
@@ -203,15 +211,14 @@
         </div>
       </section>
 
-      <!-- 5) 📝 Consentimiento Quirúrgico -->
-      <section class="mb-5">
+      <!-- Consentimiento Quirúrgico -->
+      <section class="mb-4 p-4 bg-white rounded-3 shadow-sm">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h4 class="text-secondary mb-0">📝 Consentimiento Quirúrgico</h4>
-          <a class="btn btn-success btn-sm" id="btn-nuevo-cq" href="javascript:void(0)" role="button">➕ Crear nuevo consentimiento</a>
+          <h4 class="text-secondary mb-0 fw-semibold">📝 Consentimiento Quirúrgico</h4>
+          <a class="btn btn-success btn-sm d-flex align-items-center gap-1" id="btn-nuevo-cq" href="javascript:void(0)">➕ Crear nuevo consentimiento</a>
         </div>
-
         <div class="table-responsive">
-          <table class="table table-bordered table-hover align-middle">
+          <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
               <tr>
                 <th>Fecha</th>
@@ -223,7 +230,6 @@
             <tbody id="tb-consent-quiro"></tbody>
           </table>
         </div>
-
         <div class="d-flex justify-content-center mt-2">
           <button type="button"
                   class="btn btn-sm btn-outline-secondary table-toggle"
@@ -235,15 +241,14 @@
         </div>
       </section>
 
-      <!-- 6) 🧾 Historia Clínica -->
-      <section class="mb-5">
+      <!-- Historia Clínica -->
+      <section class="mb-4 p-4 bg-white rounded-3 shadow-sm">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h4 class="text-secondary mb-0">🧾 Historia Clínica</h4>
-          <a class="btn btn-success btn-sm" id="btn-nueva-historia" href="javascript:void(0)" role="button">➕ Crear nueva historia</a>
+          <h4 class="text-secondary mb-0 fw-semibold">🧾 Historia Clínica</h4>
+          <a class="btn btn-success btn-sm d-flex align-items-center gap-1" id="btn-nueva-historia" href="javascript:void(0)">➕ Crear nueva historia</a>
         </div>
-
         <div class="table-responsive">
-          <table class="table table-bordered table-hover align-middle">
+          <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
               <tr>
                 <th>Form ID</th>
@@ -255,7 +260,6 @@
             <tbody id="tb-historia"></tbody>
           </table>
         </div>
-
         <div class="d-flex justify-content-center mt-2">
           <button type="button"
                   class="btn btn-sm btn-outline-secondary table-toggle"
@@ -267,15 +271,14 @@
         </div>
       </section>
 
-      <!-- 7) 📄 Justificantes -->
-      <section class="mb-5">
+      <!-- Justificantes -->
+      <section class="mb-4 p-4 bg-white rounded-3 shadow-sm">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h4 class="text-secondary mb-0">📄 Justificantes</h4>
-          <a class="btn btn-success btn-sm" id="btn-nuevo-justificante" href="javascript:void(0)" role="button">➕ Crear nuevo justificante</a>
+          <h4 class="text-secondary mb-0 fw-semibold">📄 Justificantes</h4>
+          <a class="btn btn-success btn-sm d-flex align-items-center gap-1" id="btn-nuevo-justificante" href="javascript:void(0)">➕ Crear nuevo justificante</a>
         </div>
-
         <div class="table-responsive">
-          <table class="table table-bordered table-hover align-middle">
+          <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
               <tr>
                 <th>Emisión</th>
@@ -287,7 +290,6 @@
             <tbody id="tb-justificantes"></tbody>
           </table>
         </div>
-
         <div class="d-flex justify-content-center mt-2">
           <button type="button"
                   class="btn btn-sm btn-outline-secondary table-toggle"
@@ -299,15 +301,14 @@
         </div>
       </section>
 
-      <!-- 8) 🦷 Odontograma Final -->
-      <section class="mb-5">
+      <!-- Odontograma Final -->
+      <section class="mb-4 p-4 bg-white rounded-3 shadow-sm">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h4 class="text-secondary mb-0">🦷 Odontograma Final</h4>
-          <a class="btn btn-success btn-sm" id="btn-nuevo-odont" href="javascript:void(0)" role="button">➕ Crear nuevo odontograma</a>
+          <h4 class="text-secondary mb-0 fw-semibold">🦷 Odontograma Final</h4>
+          <a class="btn btn-success btn-sm d-flex align-items-center gap-1" id="btn-nuevo-odont" href="javascript:void(0)">➕ Crear nuevo odontograma</a>
         </div>
-
         <div class="table-responsive">
-          <table class="table table-bordered table-hover align-middle">
+          <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
               <tr>
                 <th>Término</th>
@@ -319,7 +320,6 @@
             <tbody id="tb-odont-final"></tbody>
           </table>
         </div>
-
         <div class="d-flex justify-content-center mt-2">
           <button type="button"
                   class="btn btn-sm btn-outline-secondary table-toggle"
@@ -331,15 +331,14 @@
         </div>
       </section>
 
-      <!-- 9) 🦷 Ortodoncia -->
-      <section class="mb-5">
+      <!-- Ortodoncia -->
+      <section class="mb-4 p-4 bg-white rounded-3 shadow-sm">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h4 class="text-secondary mb-0">🦷 Ortodoncia</h4>
-          <a class="btn btn-success btn-sm" id="btn-nueva-orto" href="javascript:void(0)" role="button">➕ Crear nuevo registro</a>
+          <h4 class="text-secondary mb-0 fw-semibold">🦷 Ortodoncia</h4>
+          <a class="btn btn-success btn-sm d-flex align-items-center gap-1" id="btn-nueva-orto" href="javascript:void(0)">➕ Crear nuevo registro</a>
         </div>
-
         <div class="table-responsive">
-          <table class="table table-bordered table-hover align-middle">
+          <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
               <tr>
                 <th>Ingreso</th>
@@ -350,7 +349,6 @@
             <tbody id="tb-ortodoncia"></tbody>
           </table>
         </div>
-
         <div class="d-flex justify-content-center mt-2">
           <button type="button"
                   class="btn btn-sm btn-outline-secondary table-toggle"
@@ -362,15 +360,14 @@
         </div>
       </section>
 
-      <!-- 10) 👶 Diagnóstico Infantil -->
-      <section class="mb-5">
+      <!-- 👶 Diagnóstico Infantil (solo si edad >= 25) -->
+      <section id="seccion-diag-infantil" class="mb-4 p-4 bg-white rounded-3 shadow-sm">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h4 class="text-secondary mb-0">👶 Diagnóstico Infantil</h4>
-          <a class="btn btn-success btn-sm" id="btn-diag-infantil" href="javascript:void(0)" role="button">➕ Crear diagnóstico infantil</a>
+          <h4 class="text-secondary mb-0 fw-semibold">👶 Diagnóstico Infantil</h4>
+          <a class="btn btn-success btn-sm d-flex align-items-center gap-1" id="btn-diag-infantil" href="javascript:void(0)">➕ Crear diagnóstico infantil</a>
         </div>
-
         <div class="table-responsive">
-          <table class="table table-bordered table-hover align-middle">
+          <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
               <tr>
                 <th>Fecha</th>
@@ -381,7 +378,6 @@
             <tbody id="tb-diag-infantil"></tbody>
           </table>
         </div>
-
         <div class="d-flex justify-content-center mt-2">
           <button type="button"
                   class="btn btn-sm btn-outline-secondary table-toggle"
@@ -395,12 +391,26 @@
 
     </div>
 
-    <!-- ✅ AQUÍ APARECE EL BOTÓN DE DESCARGA AL TERMINAR -->
+    <!-- Botón de descarga (si aplica) -->
     <div class="d-flex justify-content-center mt-3">
       <div id="historialDownloadBox" class="d-none"></div>
     </div>
 
   </div>
+
+  <!-- Aviso de privacidad -->
+  <footer class="footer-privacidad mt-5 py-4 border-top">
+    <div class="container text-center text-muted small">
+      <p class="mb-1">
+        <i class="fas fa-lock me-1"></i>
+        <strong>Aviso de Privacidad:</strong> Los datos personales presentados son tratados con confidencialidad y únicamente para fines clínicos y administrativos del consultorio dental, conforme a la 
+        <a href="https://www.diputados.gob.mx/LeyesBiblio/pdf/LFPDPPP.pdf" target="_blank" rel="noopener noreferrer" class="text-decoration-underline">Ley Federal de Protección de Datos Personales en Posesión de Particulares</a>.
+      </p>
+      <p class="mb-0">
+        © <span id="anio-actual"></span> ESCOM. Todos los derechos reservados.
+      </p>
+    </div>
+  </footer>
 
   <!-- ================= MODAL SUBIR ESTUDIO ================= -->
   <div class="modal fade" id="modalUploadEstudio" tabindex="-1" aria-labelledby="modalUploadEstudioLabel" aria-hidden="true">
@@ -525,7 +535,36 @@
   <!-- Bootstrap JS (modal) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- JS principal (al final, ya con bootstrap cargado) -->
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="js/auth-guard.js" defer></script>
+
+  <!-- Font Awesome para el ícono del candado -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <script>
+    // Año automático
+    document.getElementById('anio-actual').textContent = new Date().getFullYear();
+
+    // --- Lógica para ocultar diagnóstico infantil según edad ---
+    // Esta función debe llamarse después de cargar los datos del paciente en `tarjetaPaciente`
+    function actualizarVisibilidadDiagnosticoInfantil(edad) {
+      const seccion = document.getElementById('seccion-diag-infantil');
+      if (seccion) {
+        if (edad < 25) {
+          seccion.style.display = 'none';
+        } else {
+          seccion.style.display = '';
+        }
+      }
+    }
+
+    // Nota: en tu archivo `paciente.js`, después de cargar los datos del paciente,
+    // asegúrate de llamar a:
+    //   actualizarVisibilidadDiagnosticoInfantil(edadDelPaciente);
+  </script>
+
   <script src="js/paciente.js"></script>
 </body>
 </html>

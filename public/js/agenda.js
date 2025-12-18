@@ -239,9 +239,9 @@ async function reenviar(id) {
 
     const mensaje =
       `Hola ${nombrePaciente}, le recordamos su cita dental:\n\n` +
-      `${CAL} Fecha: ${fecha}\n` +
-      `${CLK} Hora: ${horaInicio} – ${horaFin}\n` +
-      `${TOOTH} Motivo: ${motivo}\n\n` +
+      ` Fecha: ${fecha}\n` +
+      ` Hora: ${horaInicio} – ${horaFin}\n` +
+      ` Motivo: ${motivo}\n\n` +
       `Por favor, confirme su asistencia. ¡Gracias!`;
 
 

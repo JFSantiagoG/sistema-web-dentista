@@ -15,7 +15,7 @@ UPLOADS_PATIENTS="$PROJECT_ROOT/services/patients-service/uploads"
 UPLOADS_VISUALIZADOR="$PROJECT_ROOT/services/visualizador-service/uploads"
 
 # Directorio de respaldos
-BACKUP_DIR="/backups"
+BACKUP_DIR="/opt/sistema-web-dentista/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
 DB_BACKUP_FILE="$BACKUP_DIR/${DB_NAME}_backup_$DATE.sql.gz"
 UPLOADS_BACKUP_FILE="$BACKUP_DIR/uploads_backup_$DATE.tar.gz"
